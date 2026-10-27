@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/diskdefs">
+        <file alias="builtin">resources/builtin-diskdefs</file>
+        <file alias="cpmtools">resources/cpmtools-diskdefs</file>
+    </qresource>
+</RCC>

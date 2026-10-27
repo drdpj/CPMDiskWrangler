@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=CP/M Disk Wrangler
+GenericName=Disc image editor
+Comment=View and edit CP/M disc images (raw, ImageDisk, DSK, TeleDisk)
+Exec=cpmdiskwrangler %F
+Icon=cpmdiskwrangler
+Terminal=false
+Categories=Utility;Archiving;
+StartupWMClass=cpmdiskwrangler

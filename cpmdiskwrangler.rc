@@ -1,0 +1,32 @@
+// Windows resource script: gives cpmdiskwrangler.exe its icon in Explorer, the taskbar and Alt-Tab.
+// (The icon inside the running window is set by QApplication::setWindowIcon in main.cpp.)
+// Used by the CMake build only; qmake generates its own .rc from the .pro (keep the strings in step).
+#include <winver.h>
+IDI_ICON1 ICON "icons/cpmdiskwrangler.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     0,0,0,0
+PRODUCTVERSION  0,0,0,0
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080904b0"
+        BEGIN
+            VALUE "CompanyName",      "Daniel Jameson\0"
+            VALUE "FileDescription",  "CP/M Disk Wrangler\0"
+            VALUE "InternalName",     "cpmdiskwrangler\0"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 Daniel Jameson. Licensed under the GNU GPL v3 or later.\0"
+            VALUE "OriginalFilename", "cpmdiskwrangler.exe\0"
+            VALUE "ProductName",      "CP/M Disk Wrangler\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x809, 1200
+    END
+END
