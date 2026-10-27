@@ -33,7 +33,14 @@ class QAction;
 class QLabel;
 class QMimeData;
 
-typedef QPair<int, QString> FileRef;          // (user, CP/M name)
+// A file on the disc: which side's filesystem (0 unless the disc has a separate one on each side), user, name.
+struct FileRef {
+    int side = 0, user = 0;
+    QString name;
+    FileRef() = default;
+    FileRef(int s, int u, const QString &n) : side(s), user(u), name(n) {}
+    bool operator==(const FileRef &o) const { return side == o.side && user == o.user && name == o.name; }
+};
 
 // The file tree: accepts files and folders from the desktop, items from other windows of this program and
 // retro-files drags from other programs; drags its selection out the same three ways.
@@ -78,16 +85,18 @@ public:
     bool save();
     bool saveAs(const QString &path, Disk::Kind kind);
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
-    void importPaths(const QStringList &paths, int user);              // user -1: 0, or the folder's user number
-    void importItems(const QVector<XItem> &items, int user, ImportCtx &c);
-    bool importRetroFiles(const QByteArray &json, int user);
+    // user -1: each file's own user number (0 for files without one); side: which side's filesystem
+    void importPaths(const QStringList &paths, int user, int side = 0);
+    void importItems(const QVector<XItem> &items, int user, int side, ImportCtx &c);
+    bool importRetroFiles(const QByteArray &json, int user, int side = 0);
     bool exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, QString *err) const;
     QVector<FileRef> selectedRefs() const;
     bool deleteFiles(const QVector<FileRef> &refs, QString *err);
     void refresh();
 
     Disk::Image &image() { return m_img; }
-    Cpm::Volume &volume() { return m_vol; }
+    Cpm::Volume &volume(int side = 0) { return m_vols[side]; }
+    int sides() const { return m_nvols; }               // filesystems shown: 1, or 2 for a disc on each side
     const Detect::Result &detection() const { return m_det; }
     DropTree *tree() { return m_tree; }
     bool writable() const;
@@ -126,15 +135,19 @@ private:
     void rememberFormat();
     QString rememberedFormat() const;
     int targetUser(QTreeWidgetItem *it) const;
+    int targetSide(QTreeWidgetItem *it) const;
+    int currentSide() const;                            // the side of the selection (0 if none)
     int maxUser() const;
+    void detachAll();
     bool confirmDiscard();
-    void importOne(const XItem &x, int user, ImportCtx &c);
+    void importOne(const XItem &x, int user, int side, ImportCtx &c);
     void importSummary(const ImportCtx &c);
     void message(const QString &title, const QString &text, bool warning = true);
     QString title() const;
 
     Disk::Image m_img;
-    Cpm::Volume m_vol;
+    Cpm::Volume m_vols[2];
+    int m_nvols = 0;
     Detect::Result m_det;
     int m_detIndex = 0;                // which ranked reading is in use (-1: one set by hand)
     Detect::Candidate m_current;

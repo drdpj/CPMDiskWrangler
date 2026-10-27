@@ -159,12 +159,14 @@ bool Image::setRawLayout(const RawLayout &l, QString *err) {
             t.cyl = c;
             t.head = h;
             t.mode = l.mode;
-            for (int s = 0; s < l.sectrk; ++s) {
+            bool t0 = c == 0 && l.t0sectrk > 0;
+            int n = t0 ? l.t0sectrk : l.sectrk, size = t0 ? l.t0seclen : l.seclen;
+            for (int s = 0; s < n; ++s) {
                 Sector x;
-                x.c = quint8(c); x.h = quint8(h); x.r = quint8(l.firstId + s); x.n = quint8(qMax(0, sc));
-                x.size = l.seclen;
-                x.fileOffset = int(((qint64(c) * l.heads + h) * l.sectrk + s) * l.seclen);
-                x.data = m_raw.mid(x.fileOffset, l.seclen);
+                x.c = quint8(c); x.h = quint8(h); x.r = quint8(l.firstId + s); x.n = quint8(qMax(0, t0 ? sizeCode(size) : sc));
+                x.size = size;
+                x.fileOffset = int(l.trackOffset(c, h) + qint64(s) * size);
+                x.data = m_raw.mid(x.fileOffset, size);
                 t.secs.append(x);
             }
             m_tracks.append(t);

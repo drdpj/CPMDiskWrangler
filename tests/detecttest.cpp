@@ -54,8 +54,14 @@ int main(int argc, char **argv) {
             if (verbose) printf("        key %s\n", qPrintable(c.key()));
         }
         if (r.ranked.isEmpty()) { ++failures; continue; }
+        int sides = r.ranked.first().fmt.separateSides ? 2 : 1;
+        for (int side = 0; side < sides; ++side) {
+        if (sides > 1) printf("  --- side %d (a disc of its own)\n", side);
+        Cpm::Format fmt = r.ranked.first().fmt;
+        fmt.fixedHead = side;
+        fmt.derived = false;
         Cpm::Volume v;
-        if (!v.attach(&img, r.ranked.first().fmt, &err)) { printf("  attach failed: %s\n", qPrintable(err)); ++failures; continue; }
+        if (!v.attach(&img, fmt, &err)) { printf("  attach failed: %s\n", qPrintable(err)); ++failures; continue; }
         Cpm::Report rep = v.check();
         printf("  %d files, %d free blocks, %lldK free, label '%s', stamps %s; check: %d errors, %d warnings\n",
                v.files().size(), v.freeBlocks(), v.freeBytes() / 1024, qPrintable(v.label().name),
@@ -70,7 +76,7 @@ int main(int argc, char **argv) {
             ++shown;
         }
         if (!xdir.isEmpty()) {
-            QString d = xdir + "/" + QFileInfo(p).fileName();
+            QString d = xdir + "/" + QFileInfo(p).fileName() + (sides > 1 ? QString(".side%1").arg(side) : QString());
             QDir().mkpath(d);
             for (const Cpm::File &f : v.files()) {
                 QByteArray data;
@@ -80,6 +86,7 @@ int main(int argc, char **argv) {
                 QFile o(sub + "/" + f.name.toLower());
                 if (o.open(QIODevice::WriteOnly)) o.write(data);
             }
+        }
         }
     }
     return failures ? 1 : 0;

@@ -62,6 +62,10 @@ struct Format {
     // double-density disc. It must lie in the boot area (the filesystem never reads it). 0 = like the others.
     int t0sectrk = 0, t0seclen = 0, t0firstId = -1;
     bool t0fm = false;
+    // "separatesides yes": a two-sided disc that holds a separate filesystem on each side (as Research Machines
+    // double-sided discs do); tracks etc. describe one side. fixedHead (not in the file) picks the side read.
+    bool separateSides = false;
+    int fixedHead = 0;
 
     // ----- derived by derive()
     int physHeads = 1;            // heads the format uses

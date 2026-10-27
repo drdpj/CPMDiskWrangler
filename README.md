@@ -91,8 +91,16 @@ explicit, the Osborne 8-inch double-density format and Research Machines 480Z MD
 `resources/cpmtools-diskdefs` (cpmtools' file, GPL v3). Both use cpmtools' syntax; the built-in
 one adds a few keys (`heads`, `secbase`, `imdmode`, `track0`, `desc`, `source`) that cpmtools ignores.
 
+### A separate disc on each side
+Some double-sided discs hold two filesystems, one per side (Research Machines 480Z, for example). Detection tries
+a single-sided format on each side of a two-sided disc; when that reads best, the window shows **Side 0** and
+**Side 1**, each with its own user numbers, label and free space. Drop files on a side's rows to put them there;
+drag files from one side to the other to copy them. Raw images of these discs (side 0 then side 1, or cylinder by
+cylinder, each side with its own FM track 0 - 732,160 bytes for an RM 480Z MQ disc) open directly.
+
 ## Not supported
-Discs with two separate filesystems (one per side, as some Research Machines discs), copy-protected tracks
+Making a new disc with a separate filesystem on each side (open a blank one-sided format twice, or copy an
+existing image), copy-protected tracks
 (duplicate sector IDs; read but never written), TeleDisk 1.x "advanced compression", DateStamper's
 `!!!TIME&.DAT` stamps (the file is kept, just not interpreted), CP/M 3 passwords (kept, not checked).
 

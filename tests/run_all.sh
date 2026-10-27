@@ -31,7 +31,7 @@ if [ -n "$real" ]; then
   step "real images: round trip, detection, cpmtools comparison"
   "$b/fstest/fstest" roundtrip "$O"/*/*.IMD "$O"/roms/OZROM-1E/*.IMD | grep -v "^same" && fail=1
   "$b/detecttest/detecttest" "$O"/*/*.IMD "$O"/roms/OZROM-1E/*.IMD "$O"/copower88/*/*.td0 "$Z"/*.dsk \
-      "$real"/lesbird_H89/disks/*.H8D > "$W/detect.log" 2>&1
+      "$real"/lesbird_H89/disks/*.H8D $(ls "$real"/rm/*.img 2>/dev/null) > "$W/detect.log" 2>&1
   echo "detection: $(grep -c 'confidence high; writable' "$W/detect.log") known and writable, \
 $(grep -c 'confidence high; read-only' "$W/detect.log") found by search (read-only until confirmed), \
 $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0-9]* errors' "$W/detect.log") with check errors"
@@ -41,7 +41,8 @@ $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0
   step "GUI"
   adwdir=""
   if [ -n "$adw" ]; then "$b/interop/interop_adw" make "$W/adw" >/dev/null; adwdir="--adw $W/adw"; fi
-  "$b/guitest/guitest" "$W/gui" "$O/shipped-software/OS1DBASE.IMD" "$O/copower88/kaypro/copwrcpm.td0" $adwdir 2>/dev/null | grep -E "FAIL|all ok|FAILURES" || fail=1
+  rmimg=$(ls "$real"/rm/*.img 2>/dev/null | head -1)
+  "$b/guitest/guitest" "$W/gui" "$O/shipped-software/OS1DBASE.IMD" "$O/copower88/kaypro/copwrcpm.td0" $adwdir ${rmimg:+--rm "$rmimg"} 2>/dev/null | grep -E "FAIL|all ok|FAILURES" || fail=1
   [ -n "$adw" ] && { "$b/interop/interop_adw" read "$W/gui/out.json" | grep -q "GAME.COM" && echo "Acorn Disk Wrangler reads our drag: ok" || { echo "FAIL: Acorn Disk Wrangler could not read our drag"; fail=1; }; }
 fi
 echo; [ $fail -eq 0 ] && echo "ALL PASSED" || echo "SOME TESTS FAILED"

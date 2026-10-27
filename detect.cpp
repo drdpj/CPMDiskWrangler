@@ -283,6 +283,9 @@ bool pcwSpec(const Disk::Image &img, Cpm::Format *out) {
 bool physicallyFits(const Cpm::Format &f, const Disk::Image &img, const Disk::Shape &sh) {
     if (img.kind() == Disk::Kind::Raw) {
         const Disk::RawLayout &l = img.rawLayout();
+        if (f.t0sectrk > 0 && l.t0sectrk > 0 && (f.t0sectrk != l.t0sectrk || f.t0seclen != l.t0seclen)) return false;
+        if (f.separateSides) return f.seclen == l.seclen && f.sectrk == l.sectrk && l.heads == 2 && f.cylinders <= l.cyls;
+        if (l.sideBySide && l.heads == 2) return false;          // side after side: only for discs with a filesystem per side
         return f.seclen == l.seclen && f.sectrk == l.sectrk && f.physHeads == l.heads && f.cylinders <= l.cyls &&
                qint64(f.tracks) * f.sectrk + f.offsetSectors <= qint64(l.cyls) * l.heads * l.sectrk;
     }
@@ -310,8 +313,8 @@ QString Candidate::key() const {
     const Cpm::Format &f = fmt;
     QString sk;
     for (int v : f.xlat) sk += QString::number(v) + ",";
-    return QString("%1x%2x%3|").arg(raw.seclen).arg(raw.sectrk).arg(raw.heads) +
-           QString("%1|%2|%3|%4|%5|").arg(f.seclen).arg(f.sectrk).arg(f.tracks).arg(f.physHeads == 1 ? 0 : int(f.sides)).arg(f.dataStart) +
+    return QString("%1x%2x%3x%4x%5|").arg(raw.seclen).arg(raw.sectrk).arg(raw.heads).arg(raw.t0sectrk).arg(raw.sideBySide) +
+           QString("%1|%2|%3|%4|%5|").arg(f.seclen).arg(f.sectrk).arg(f.tracks).arg(f.separateSides ? 9 : f.physHeads == 1 ? 0 : int(f.sides)).arg(f.dataStart) +
            QString("%1|%2|%3|%4").arg(f.blocksize).arg(f.maxdir).arg(f.dirBlocks).arg(sk);
 }
 
@@ -372,10 +375,27 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         qint64 size = img.rawFileSize();
         auto addLayout = [&](const Disk::RawLayout &l) {
             for (const Disk::RawLayout &o : layouts)
-                if (o.seclen == l.seclen && o.sectrk == l.sectrk && o.cyls == l.cyls && o.heads == l.heads) return;
+                if (o.sameShape(l)) return;
             layouts.append(l);
         };
         for (const Cpm::Format &f : Cpm::library()) {
+            if (f.t0sectrk > 0 && !f.offsetSectors) {
+                // a track 0 of its own size: one side, or two sides (side after side, or cylinder by cylinder),
+                // each side with its own track 0 - a disc with a filesystem per side, or one over both sides
+                Disk::RawLayout l;
+                l.seclen = f.seclen; l.sectrk = f.sectrk; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen;
+                l.heads = 1;
+                l.cyls = f.physHeads == 1 ? f.tracks : f.cylinders;
+                if (f.physHeads == 1 && size == l.bytes()) addLayout(l);
+                l.heads = 2;
+                if (size == l.bytes()) {
+                    l.sideBySide = true;
+                    addLayout(l);
+                    l.sideBySide = false;
+                    addLayout(l);
+                }
+                continue;
+            }
             qint64 full = (qint64(f.tracks) * f.sectrk + f.offsetSectors) * f.seclen;
             qint64 trackBytes = qint64(f.sectrk) * f.seclen;
             bool fits = size == full || (size < full && size % trackBytes == 0 && size > qint64(f.dataStart + 4) * f.seclen &&
@@ -435,6 +455,39 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         // ----- known formats (a definition that doesn't say how many sides is tried both ways)
         for (const Cpm::Format &lf : Cpm::library()) {
             Cpm::Format f = lf;
+            // a single-sided format on a two-sided disc: perhaps a separate disc on each side
+            if (lf.physHeads == 1 && (raw ? layout.heads : sh.heads) == 2) {
+                Cpm::Format s = lf;
+                s.separateSides = true;
+                s.heads = 2;
+                QString e;
+                if (s.derive(&e) && physicallyFits(s, img, sh)) {
+                    Candidate c = evaluate(img, s, true);
+                    Cpm::Format s1 = c.fmt;
+                    s1.fixedHead = 1;
+                    s1.derived = false;
+                    Candidate c1 = evaluate(img, s1, true);
+                    if (c.score > -1e8) {
+                        c.fromLibrary = true;
+                        c.score += 3;
+                        c.evidence << "a known format (" + lf.origin + "), a separate disc on each side";
+                        if (c1.score > -5) {
+                            c.score += 2 + qMax(0.0, c1.score) * 0.5;
+                            c.evidence << QString("side 1: %1 files, %2").arg(c1.files).arg(c1.badEntries ? "with nonsense entries" : "a sensible directory");
+                        } else {
+                            c.score -= 4;
+                            c.evidence << "side 1 doesn't read as a disc of this format";
+                        }
+                        if (lf.t0sectrk > 0) {
+                            const Disk::Track *t0 = img.track(0, 0), *t1 = img.track(0, 1);
+                            bool same = t0 && t1 && t0->secs.size() == lf.t0sectrk && t1->secs.size() == lf.t0sectrk &&
+                                        t0->secs[0].size == lf.t0seclen && (t0->mode < 0 || (t0->mode <= 2) == lf.t0fm);
+                            if (same) { c.score += 3; c.evidence << QString("track 0 of each side is %1 x %2, as this format's is").arg(lf.t0sectrk).arg(lf.t0seclen); }
+                        }
+                        all.append(c);
+                    }
+                }
+            }
             if (!physicallyFits(f, img, sh) && lf.heads == 0 && lf.tracks % 2 == 0) {
                 f.heads = lf.physHeads == 1 ? 2 : 1;
                 QString e;
@@ -447,7 +500,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             c.fromLibrary = true;
             c.score += 3;
             c.evidence << "a known format (" + f.origin + ")";
-            if (f.t0sectrk > 0 && haveIds) {
+            if (f.t0sectrk > 0) {
                 const Disk::Track *t0 = img.track(0, 0);
                 bool same = t0 && t0->secs.size() == f.t0sectrk && !t0->secs.isEmpty() && t0->secs[0].size == f.t0seclen &&
                             (t0->mode < 0 || (t0->mode <= 2) == f.t0fm);

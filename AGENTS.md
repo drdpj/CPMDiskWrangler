@@ -101,7 +101,20 @@ copyright line in every header is `Copyright (C) 2026 Daniel Jameson`; put the s
     `tests/decode_container.py` and the IMD dumper).
   - `rm-dd`, `rm-qd`: cpmtools' layouts plus track 0 FM 16 x 128 from Adam Sampson's RM archiving notes
     (offog.org); **not checked against a real RM disc**.
-  - On double-sided discs only cylinder 0 head 0 gets the track 0 shape (no example of the other case yet).
+  - On double-sided discs `makeBlank` gives only cylinder 0 head 0 the track 0 shape. Raw layouts
+    (`RawLayout::t0sectrk/t0seclen`) give cylinder 0 of **each** side the track 0 shape, as on the RM discs.
+- **A separate disc on each side** (`separatesides yes`; `Format::fixedHead` picks the side; cpmtools ignores the
+  key): `tracks` etc. describe one side. Detection tries every single-sided library format this way on a
+  two-sided disc (scoring side 0, plus side 1 if it reads sensibly, plus each side's track 0 shape); the window
+  then attaches one `Cpm::Volume` per side (`m_vols[2]`), and every row, `FileRef`, drag payload and import
+  carries the side. Drags between the two sides of one window are allowed; drags back onto the same side are not.
+  Not yet: generic search for separate sides (only library formats), new discs of this kind.
+- **Research Machines 480Z** (checked on three of the owner's real discs: `BASIC-disk1.img`, `BASIC-disk2.img`,
+  `basiczasm.img`, raw, 732,160 bytes): side 0 then side 1 in the file; each side = FM track 0 of 16 x 128 (RM
+  boot code, "Quad density disc"), then 79 tracks of 9 x 512; each side is an `rm-qd` disc (skew 5, 3 boot
+  tracks, 2K blocks, 128 entries). All 20 files match cpmtools (run on each side cut out of the file); an edit of
+  side 1 left side 0 and both track 0s byte-identical and passes `fsck.cpm`. The images are the owner's, not in
+  the repo: `guitest --rm <image>` and `run_all.sh` (from `<real>/rm/*.img`) use them when given.
 - **TeleDisk**: 12-byte header (`TD` normal, `td` advanced), optional comment block, tracks (count, cylinder,
   head, crc), sectors (C H R N flags crc; data block with length and encoding 0 raw / 1 repeated pair /
   2 RLE). Checked against MAME's reader and on real Kaypro and Zorba images. 1.x advanced compression (LZW) is
@@ -178,5 +191,5 @@ for the directory) that every self-test had passed.
 
 ## Known gaps / ideas
 Acorn Z80 format unverified on a real disc; Torch CP/N and other BBC Micro CP/M systems; per-head sector bases
-(Kaypro 4 side 1); RM two-filesystem discs; TeleDisk 1.x LZW; DateStamper stamps; CP/M 3 passwords (kept, not
+(Kaypro 4 side 1); new discs with a filesystem per side; TeleDisk 1.x LZW; DateStamper stamps; CP/M 3 passwords (kept, not
 checked); an MBASIC detokeniser for the viewer; writing TeleDisk.

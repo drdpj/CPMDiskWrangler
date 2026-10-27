@@ -85,9 +85,11 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     QApplication::setOrganizationName("cpmdiskwrangler-test");
     QStringList a = app.arguments().mid(1);
-    QString adwDir;
+    QString adwDir, rmImage;
     int ai = a.indexOf("--adw");
     if (ai >= 0 && ai + 1 < a.size()) { adwDir = a[ai + 1]; a.removeAt(ai); a.removeAt(ai); }
+    ai = a.indexOf("--rm");
+    if (ai >= 0 && ai + 1 < a.size()) { rmImage = a[ai + 1]; a.removeAt(ai); a.removeAt(ai); }
     if (a.isEmpty()) { printf("usage: guitest <workdir> [osborne.imd [teledisk.td0]] [--adw dir]\n"); return 2; }
     QString wd = a[0];
     QDir(wd).removeRecursively();
@@ -137,7 +139,7 @@ int main(int argc, char **argv) {
     CHECK(va.rename(0, "NOTES.TXT", 7, "NOTES.TXT", &err), "move NOTES.TXT to user 7");
     A.refresh();
     QString e2;
-    CHECK(!A.deleteFiles({FileRef(3, "GAME.COM")}, &e2), "deleting a read-only file is refused: " + e2);
+    CHECK(!A.deleteFiles({FileRef(0, 3, "GAME.COM")}, &e2), "deleting a read-only file is refused: " + e2);
     CHECK(A.save(), "save disc A");
     CHECK(!A.image().hasPending(), "nothing pending after the save");
 
@@ -262,6 +264,53 @@ int main(int argc, char **argv) {
         MainWindow T2;
         CHECK(T2.openImage(wd + "/fromtd0.imd") && T2.volume().files().size() == before, "the converted image reads the same files");
         CHECK(T2.writable(), "and is writable: " + T2.readOnlyReason());
+    }
+    if (!rmImage.isEmpty()) {
+        printf("== a Research Machines raw image: FM track 0 on each side, a disc on each side\n");
+        QFile::copy(rmImage, wd + "/rm.img");
+        QFile orig(rmImage);
+        orig.open(QIODevice::ReadOnly);
+        QByteArray before = orig.readAll();
+        MainWindow R;
+        R.show();
+        CHECK(R.openImage(wd + "/rm.img"), "open the raw RM image");
+        CHECK(R.sides() == 2 && R.volume(0).format().name == "rm-qd", QString("two sides of rm-qd (%1 sides, %2)").arg(R.sides()).arg(R.volume(0).format().name));
+        CHECK(R.writable(), "writable: " + R.readOnlyReason());
+        CHECK(R.tree()->topLevelItemCount() == 2, "a root row per side");
+        int n0 = R.volume(0).files().size(), n1 = R.volume(1).files().size();
+        put("rmnote.txt", "added to side 1\r\n");
+        auto *rmm = new QMimeData;
+        rmm->setUrls({QUrl::fromLocalFile(wd + "/host/rmnote.txt")});
+        dropOn(R.tree(), findRow(R.tree(), RowRoot, -1) ? R.tree()->topLevelItem(1) : nullptr, rmm);
+        delete rmm;
+        CHECK(R.volume(1).indexOf(0, "RMNOTE.TXT") >= 0 && R.volume(0).indexOf(0, "RMNOTE.TXT") < 0, "a file dropped on side 1 goes to side 1 only");
+        // drag BASIC.COM from side 0 onto side 1 in the same window
+        R.tree()->clearSelection();
+        QTreeWidgetItem *basic = nullptr;
+        for (QTreeWidgetItem *it : R.tree()->findItems("BASIC.COM", Qt::MatchExactly | Qt::MatchRecursive))
+            if (it->data(0, RoleSide).toInt() == 0) basic = it;
+        CHECK(basic != nullptr, "BASIC.COM on side 0");
+        if (basic) {
+            basic->setSelected(true);
+            QMimeData *bm = R.tree()->makeMime(R.tree()->selectedItems());
+            dropOn(R.tree(), R.tree()->topLevelItem(1), bm);
+            delete bm;
+            pump();
+            CHECK(R.volume(1).indexOf(0, "BASIC.COM") >= 0 && fileData(R.volume(1), 0, "BASIC.COM") == fileData(R.volume(0), 0, "BASIC.COM"),
+                  "BASIC.COM copied from side 0 to side 1 within the window");
+        }
+        CHECK(R.volume(0).files().size() == n0, "side 0 unchanged");
+        CHECK(R.save(), "save");
+        QFile after(wd + "/rm.img");
+        after.open(QIODevice::ReadOnly);
+        QByteArray b = after.readAll();
+        const int side = 2048 + 79 * 4608;
+        CHECK(b.size() == before.size(), "the file is still 732160 bytes");
+        CHECK(b.left(2048) == before.left(2048) && b.mid(side, 2048) == before.mid(side, 2048), "both FM track 0s unchanged");
+        CHECK(b.left(side) == before.left(side), "side 0 byte-identical (nothing was written to it)");
+        MainWindow R2;
+        CHECK(R2.openImage(wd + "/rm.img") && R2.sides() == 2 && R2.volume(1).files().size() == n1 + 2, "reopened: side 1 has the two new files");
+        shot(&R2, wd + "/shots/rm.png");
     }
     shot(&A, wd + "/shots/pcw.png");
     shot(&B, wd + "/shots/ibm3740.png");

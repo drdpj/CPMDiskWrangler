@@ -215,7 +215,7 @@ end
 
 diskdef rm-qd
   desc "Research Machines 480Z quad density (MQ), 80 track: track 0 FM 16 x 128"
-  source "cpmtools rm-qd, plus the single-density track 0 described in Adam Sampson's RM archiving notes (offog.org)"
+  source "cpmtools rm-qd, plus the single-density track 0 described in Adam Sampson's RM archiving notes (offog.org). Checked against three real double-sided RM discs (raw images, side 0 then side 1, each side its own disc with an FM 16 x 128 boot track): every file matches cpmtools."
   seclen 512
   tracks 80
   heads 1

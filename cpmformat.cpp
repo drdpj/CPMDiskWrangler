@@ -49,9 +49,11 @@ bool Format::derive(QString *err) {
     if (blocksize < 1024 || blocksize > 16384 || (blocksize & (blocksize - 1))) { *err = "block size must be 1K, 2K, 4K, 8K or 16K"; return false; }
     if (maxdir < 1 || maxdir > 8192) { *err = "maxdir out of range"; return false; }
     physHeads = heads > 0 ? heads : (tracks > 86 && tracks % 2 == 0 ? 2 : 1);
+    if (separateSides) physHeads = 2;
     if (physHeads > 2) { *err = "more than two sides"; return false; }
     if (physHeads == 1 && sides != SideOrder::Alt) sides = SideOrder::Alt;
-    cylinders = (tracks + physHeads - 1) / physHeads;
+    cylinders = separateSides ? tracks : (tracks + physHeads - 1) / physHeads;
+    if (fixedHead < 0 || fixedHead > 1) fixedHead = 0;
     int reserved = bootsec >= 0 ? bootsec : boottrk * sectrk;
     if (reserved < 0 || reserved >= tracks * sectrk) { *err = "the boot area fills the disc"; return false; }
     if (t0sectrk > 0) {
@@ -104,7 +106,10 @@ bool Format::locate(int lsec, int *cyl, int *head, int *idx) const {
     int t = lsec / sectrk, s = lsec % sectrk;
     int offTracks = offsetSectors / sectrk;
     if (t >= tracks + offTracks + (offsetSectors % sectrk ? 1 : 0)) return false;
-    if (offsetSectors > 0 || sides == SideOrder::Alt || physHeads == 1) {
+    if (separateSides) {
+        *cyl = t;
+        *head = fixedHead;
+    } else if (offsetSectors > 0 || sides == SideOrder::Alt || physHeads == 1) {
         *cyl = t / physHeads;
         *head = t % physHeads;
     } else if (sides == SideOrder::OutBack) {
@@ -118,6 +123,7 @@ bool Format::locate(int lsec, int *cyl, int *head, int *idx) const {
 
 bool Format::sameLayout(const Format &o) const {
     return seclen == o.seclen && sectrk == o.sectrk && tracks == o.tracks && physHeads == o.physHeads &&
+           separateSides == o.separateSides &&
            (physHeads == 1 || sides == o.sides) && blocksize == o.blocksize && maxdir == o.maxdir &&
            dirBlocks == o.dirBlocks && dataStart == o.dataStart && xlat == o.xlat && dsm == o.dsm && exm == o.exm;
 }
@@ -133,7 +139,7 @@ QString Format::summary() const {
     if (!skewtab.isEmpty()) skewText = "skew table";
     else if (skew > 1) skewText = QString("skew %1").arg(skew);
     else skewText = "no skew";
-    QString sideText = physHeads == 1 ? "1 side" : QString("2 sides, %1").arg(sideOrderName(sides));
+    QString sideText = separateSides ? "per side; 2 sides, a disc on each" : physHeads == 1 ? "1 side" : QString("2 sides, %1").arg(sideOrderName(sides));
     QString boot = bootsec >= 0 ? QString("%1 boot sectors").arg(bootsec) : QString("%1 boot track%2").arg(boottrk).arg(boottrk == 1 ? "" : "s");
     QString t0 = t0sectrk > 0 ? QString(" (track 0: %1 x %2 %3)").arg(t0sectrk).arg(t0seclen).arg(t0fm ? "FM" : "MFM") : QString();
     return QString("%1 x %2 bytes/track, %3 tracks (%4), %5, %6, %7 blocks, %8 directory entries, CP/M %9, %10")
@@ -143,7 +149,7 @@ QString Format::summary() const {
 
 QString Format::shortSummary() const {
     QString sk = !skewtab.isEmpty() ? QString("skew table") : skew > 1 ? QString("skew %1").arg(skew) : QString("no skew");
-    QString sides = physHeads == 1 ? QString() : QString(" (2 sides %1)").arg(sideOrderName(this->sides));
+    QString sides = separateSides ? QString(" x 2 separate sides") : physHeads == 1 ? QString() : QString(" (2 sides %1)").arg(sideOrderName(this->sides));
     QString boot = bootsec >= 0 ? QString("%1 boot sec").arg(bootsec) : QString("boot %1").arg(boottrk);
     return QString("%1x%2, %3 trk%4, %5, %6, %7, %8 dir").arg(sectrk).arg(seclen).arg(tracks).arg(sides, sk, boot, kb(blocksize)).arg(maxdir);
 }
@@ -152,7 +158,8 @@ QString Format::toDiskdef() const {
     QStringList l;
     l << "diskdef " + (name.isEmpty() ? QString("detected") : name);
     l << QString("  seclen %1").arg(seclen) << QString("  tracks %1").arg(tracks);
-    if (physHeads == 2) l << "  sides " + sideOrderName(sides);
+    if (separateSides) l << "  separatesides yes";
+    else if (physHeads == 2) l << "  sides " + sideOrderName(sides);
     l << QString("  sectrk %1").arg(sectrk) << QString("  blocksize %1").arg(blocksize) << QString("  maxdir %1").arg(maxdir);
     if (dirblks > 0) l << QString("  dirblks %1").arg(dirblks);
     if (!skewtab.isEmpty()) {
@@ -273,6 +280,8 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
             else if (v == "p2dos") f.os = Os::P2dos;
             else if (v == "zsys") f.os = Os::Zsys;
             else ok = false;
+        } else if (key == "separatesides") {
+            f.separateSides = val.toLower().startsWith('y');
         } else if (key == "fm") {
             f.fm = val.toLower().startsWith('y');
         } else if (key == "datarate") {

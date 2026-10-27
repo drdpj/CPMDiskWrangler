@@ -83,10 +83,11 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
     QVector<FileRef> refs;
     for (QTreeWidgetItem *it : items) {
         int kind = it->data(0, RoleKind).toInt();
-        if (kind == RowFile) refs << FileRef(it->data(0, RoleUser).toInt(), it->data(0, RoleName).toString());
-        else                    // a user group or the root: every file in it
-            for (const Cpm::File &f : win->volume().files())
-                if (kind == RowRoot || f.user == it->data(0, RoleUser).toInt()) refs << FileRef(f.user, f.name);
+        int side = it->data(0, RoleSide).toInt();
+        if (kind == RowFile) refs << FileRef(side, it->data(0, RoleUser).toInt(), it->data(0, RoleName).toString());
+        else                    // a user group or a side's root: every file in it
+            for (const Cpm::File &f : win->volume(side).files())
+                if (kind == RowRoot || f.user == it->data(0, RoleUser).toInt()) refs << FileRef(side, f.user, f.name);
     }
     QVector<FileRef> unique;
     for (const FileRef &r : refs) if (!unique.contains(r)) unique << r;
@@ -94,7 +95,7 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
     QByteArray payload;
     QDataStream ds(&payload, QIODevice::WriteOnly);
     ds << quint64(m_owner) << qint32(unique.size());
-    for (const FileRef &r : unique) ds << qint32(r.first) << r.second;
+    for (const FileRef &r : unique) ds << qint32(r.side) << qint32(r.user) << r.name;
     QPointer<MainWindow> pw = win;
     RetroFiles::DragOutMime::Exporter exporter = [pw, unique](QVector<XItem> *out, QString *err) {
         if (!pw) { *err = "the disc's window was closed during the drag"; return false; }
@@ -127,7 +128,11 @@ void DropTree::startDrag(Qt::DropActions) {
 }
 
 bool DropTree::acceptable(const QMimeData *m) const {
-    if (fromThisProcess(m)) return m->data(CPMDW_MIME_SOURCE) != sourceTag(m_owner);   // not back onto itself
+    if (fromThisProcess(m)) {
+        if (m->data(CPMDW_MIME_SOURCE) != sourceTag(m_owner)) return true;
+        MainWindow *w = MainWindow::byId(m_owner);       // within one window: only between its two sides
+        return w && w->sides() > 1;
+    }
     return m->hasFormat(RetroFiles::MimeType) || m->hasUrls();
 }
 
@@ -291,7 +296,7 @@ void MainWindow::message(const QString &title, const QString &text, bool warning
 bool MainWindow::writable() const { return readOnlyReason().isEmpty(); }
 
 QString MainWindow::readOnlyReason() const {
-    if (!m_vol.attached()) return "no disc";
+    if (!m_nvols) return "no disc";
     if (m_img.readOnlyContainer()) return "TeleDisk images are read-only here: use Save As to make an ImageDisk or DSK copy";
     if (!m_checkOk) return "the directory has errors (Tools > Check disc)";
     if (!m_safe) return "the format isn't confirmed (Tools > Disc format)";
@@ -300,7 +305,18 @@ QString MainWindow::readOnlyReason() const {
 
 bool MainWindow::trimTextOnExtract() const { return m_optTrim->isChecked(); }
 
-int MainWindow::maxUser() const { return m_vol.format().os == Cpm::Os::V3 ? 15 : 31; }
+int MainWindow::maxUser() const { return m_vols[0].format().os == Cpm::Os::V3 ? 15 : 31; }
+
+void MainWindow::detachAll() {
+    m_vols[0].detach();
+    m_vols[1].detach();
+    m_nvols = 0;
+}
+
+int MainWindow::currentSide() const {
+    QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
+    return sel.isEmpty() ? 0 : qBound(0, sel.first()->data(0, RoleSide).toInt(), qMax(0, m_nvols - 1));
+}
 
 // ------------------------------------------------------------------------------------------- opening
 
@@ -314,19 +330,33 @@ QString MainWindow::rememberedFormat() const {
 }
 
 void MainWindow::rememberFormat() {
-    if (m_img.path().isEmpty() || !m_vol.attached()) return;
+    if (m_img.path().isEmpty() || !m_nvols) return;
     QSettings st;
     QString key = "formats/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
                                                         QCryptographicHash::Sha1).toHex();
-    Cpm::Format f = m_vol.format();
+    Cpm::Format f = m_vols[0].format();
     st.setValue(key, QString::number(QFileInfo(m_img.path()).size()) + "|" + f.toDiskdef());
 }
 
 bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
     if (m_img.kind() == Disk::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, err)) return false;
-    if (!m_vol.attach(&m_img, c.fmt, err)) return false;
+    detachAll();
+    int n = c.fmt.separateSides ? 2 : 1;
+    for (int side = 0; side < n; ++side) {
+        Cpm::Format f = c.fmt;
+        f.fixedHead = side;
+        f.derived = false;
+        if (!m_vols[side].attach(&m_img, f, err)) {
+            if (side == 0) { detachAll(); return false; }
+            *err = "side 1: " + *err;
+            detachAll();
+            return false;
+        }
+    }
+    m_nvols = n;
     m_current = c;
-    m_checkOk = m_vol.check().ok();
+    m_checkOk = true;
+    for (int side = 0; side < n; ++side) m_checkOk = m_checkOk && m_vols[side].check().ok();
     return true;
 }
 
@@ -335,7 +365,7 @@ bool MainWindow::openImage(const QString &path) {
     QString err;
     Disk::Image img;
     if (!img.open(path, &err)) { message("Open", QString("%1:\n%2").arg(path, err)); return false; }
-    m_vol.detach();
+    detachAll();
     m_img = img;
     QApplication::setOverrideCursor(Qt::WaitCursor);
     m_det = Detect::detect(m_img, rememberedFormat());
@@ -345,7 +375,7 @@ bool MainWindow::openImage(const QString &path) {
     m_safe = m_det.safeToWrite;
     m_detIndex = 0;
     if (m_det.ranked.isEmpty() || !attachFormat(m_det.ranked.first(), &err)) {
-        m_vol.detach();
+        detachAll();
         refresh();
         if (!autoAnswer) {
             QMessageBox box(QMessageBox::Warning, "Open", QString("%1\n\n%2\n%3").arg(QFileInfo(path).fileName(), m_det.physical, m_det.why),
@@ -368,7 +398,7 @@ bool MainWindow::newImage(const QString &path, Disk::Kind kind, const Cpm::Forma
         message("New disc image", err);
         return false;
     }
-    m_vol.detach();
+    detachAll();
     m_img = img;
     m_det = Detect::Result();
     Detect::Candidate c = Detect::evaluate(m_img, f, false);
@@ -464,10 +494,13 @@ bool MainWindow::save() {
     if (!m_img.isOpen() || !m_img.hasPending()) return true;
     if (m_img.readOnlyContainer()) { saveAsDialog(); return false; }
     if (!writable()) { message("Save", "The disc is read-only: " + readOnlyReason()); return false; }
-    Cpm::Report r = m_vol.check();
-    if (!r.ok()) {
-        message("Save", "Not saved: the directory would not be consistent.\n\n" + r.errors.mid(0, 10).join("\n"));
-        return false;
+    for (int side = 0; side < m_nvols; ++side) {
+        Cpm::Report r = m_vols[side].check();
+        if (!r.ok()) {
+            message("Save", QString("Not saved: the directory%1 would not be consistent.\n\n").arg(m_nvols > 1 ? QString(" on side %1").arg(side) : QString()) +
+                                r.errors.mid(0, 10).join("\n"));
+            return false;
+        }
     }
     QFileInfo fi(m_img.path());
     if (fi.exists() && (fi.lastModified() != m_fileTime || fi.size() != m_fileSize)) {
@@ -476,7 +509,7 @@ bool MainWindow::save() {
     }
     QString err;
     if (!m_img.commit(&err, m_optBackup->isChecked())) { message("Save", "Not saved: " + err); return false; }
-    m_vol.reload(&err);
+    for (int side = 0; side < m_nvols; ++side) m_vols[side].reload(&err);
     m_fileTime = QFileInfo(m_img.path()).lastModified();
     m_fileSize = QFileInfo(m_img.path()).size();
     rememberFormat();
@@ -487,15 +520,17 @@ bool MainWindow::save() {
 
 bool MainWindow::saveAs(const QString &path, Disk::Kind kind) {
     if (!m_img.isOpen()) return false;
-    if (!m_vol.check().ok() && !m_img.readOnlyContainer()) {
+    bool ok = true;
+    for (int side = 0; side < m_nvols; ++side) ok = ok && m_vols[side].check().ok();
+    if (!ok && !m_img.readOnlyContainer()) {
         message("Save As", "Not saved: the directory has errors (Tools > Check disc).");
         return false;
     }
     QString err;
-    Cpm::Format f = m_vol.format();
     if (!m_img.saveAs(path, kind, &err)) { message("Save As", "Not saved: " + err); return false; }
     m_current.raw = m_img.rawLayout();
-    if (!m_vol.attach(&m_img, f, &err)) { message("Save As", err); return false; }
+    for (int side = 0; side < m_nvols; ++side)
+        if (!m_vols[side].reload(&err)) { message("Save As", err); return false; }
     m_fileTime = QFileInfo(path).lastModified();
     m_fileSize = QFileInfo(path).size();
     if (writable() || m_safe) rememberFormat();
@@ -517,50 +552,60 @@ void MainWindow::saveAsDialog() {
 // ------------------------------------------------------------------------------------------- the tree
 
 void MainWindow::refresh() {
-    QSet<QString> sel, open;
+    QSet<QString> sel, closed;
     for (QTreeWidgetItem *it : m_tree->selectedItems())
-        sel << QString("%1:%2:%3").arg(it->data(0, RoleKind).toInt()).arg(it->data(0, RoleUser).toInt()).arg(it->data(0, RoleName).toString());
-    for (int i = 0; m_tree->topLevelItemCount() && i < m_tree->topLevelItem(0)->childCount(); ++i)
-        if (!m_tree->topLevelItem(0)->child(i)->isExpanded()) open << QString::number(m_tree->topLevelItem(0)->child(i)->data(0, RoleUser).toInt());
+        sel << QString("%1:%2:%3:%4").arg(it->data(0, RoleSide).toInt()).arg(it->data(0, RoleKind).toInt())
+                   .arg(it->data(0, RoleUser).toInt()).arg(it->data(0, RoleName).toString());
+    for (int r = 0; r < m_tree->topLevelItemCount(); ++r) {
+        QTreeWidgetItem *root = m_tree->topLevelItem(r);
+        if (!root->isExpanded()) closed << QString("root%1").arg(r);
+        for (int i = 0; i < root->childCount(); ++i)
+            if (!root->child(i)->isExpanded()) closed << QString("%1:%2").arg(r).arg(root->child(i)->data(0, RoleUser).toInt());
+    }
     m_tree->clear();
-    if (m_vol.attached()) {
+    for (int side = 0; side < m_nvols; ++side) {
+        const Cpm::Volume &v = m_vols[side];
         auto *root = new QTreeWidgetItem(m_tree);
-        root->setText(0, rootLabel("A:", m_vol.label().present ? m_vol.label().name : QFileInfo(m_img.path()).fileName()));
+        QString title = v.label().present ? v.label().name : (m_nvols == 1 ? QFileInfo(m_img.path()).fileName() : QString());
+        root->setText(0, rootLabel(m_nvols == 1 ? QString("A:") : QString("Side %1").arg(side), title));
         root->setData(0, RoleKind, RowRoot);
         root->setData(0, RoleUser, -1);
-        for (int u : m_vol.usersInUse()) {
+        root->setData(0, RoleSide, side);
+        for (int u : v.usersInUse()) {
             auto *g = new QTreeWidgetItem(root);
             int n = 0;
             qint64 total = 0;
-            for (const Cpm::File &f : m_vol.files()) if (f.user == u) { ++n; total += f.size; }
+            for (const Cpm::File &f : v.files()) if (f.user == u) { ++n; total += f.size; }
             g->setText(0, QString("User %1   (%2 file%3)").arg(u).arg(n).arg(n == 1 ? "" : "s"));
             g->setData(0, RoleKind, RowUser);
             g->setData(0, RoleUser, u);
+            g->setData(0, RoleSide, side);
             setNumCell(g, 2, QString::number(total));
-            for (const Cpm::File &f : m_vol.files()) {
+            for (const Cpm::File &f : v.files()) {
                 if (f.user != u) continue;
                 auto *it = new QTreeWidgetItem(g);
                 it->setText(0, f.name);
                 it->setData(0, RoleKind, RowFile);
                 it->setData(0, RoleUser, f.user);
                 it->setData(0, RoleName, f.name);
+                it->setData(0, RoleSide, side);
                 it->setText(1, Cpm::attrString(f.attrs));
-                setNumCell(it, 2, QString::number(f.size) + (f.exactSize || f.size == 0 ? "" : ""));
+                setNumCell(it, 2, QString::number(f.size));
                 setNumCell(it, 3, QString::number(f.blocks));
                 QDateTime d = f.updated.isValid() ? f.updated : f.created;
                 if (d.isValid()) it->setText(4, d.toString("yyyy-MM-dd HH:mm"));
                 if (!f.problem.isEmpty()) { it->setToolTip(0, f.problem); it->setForeground(0, QColor("#b00000")); }
-                if (sel.contains(QString("%1:%2:%3").arg(RowFile).arg(f.user).arg(f.name))) it->setSelected(true);
+                if (sel.contains(QString("%1:%2:%3:%4").arg(side).arg(RowFile).arg(f.user).arg(f.name))) it->setSelected(true);
             }
-            g->setExpanded(!open.contains(QString::number(u)));
+            g->setExpanded(!closed.contains(QString("%1:%2").arg(side).arg(u)));
         }
-        root->setExpanded(true);
+        root->setExpanded(!closed.contains(QString("root%1").arg(side)));
     }
     updateUi();
 }
 
 void MainWindow::updateUi() {
-    bool have = m_vol.attached();
+    bool have = m_nvols > 0;
     bool w = writable();
     QVector<FileRef> refs = have ? selectedRefs() : QVector<FileRef>();
     bool oneFile = m_tree->selectedItems().size() == 1 && m_tree->selectedItems().first()->data(0, RoleKind).toInt() == RowFile;
@@ -571,7 +616,7 @@ void MainWindow::updateUi() {
     m_actDelete->setEnabled(w && !refs.isEmpty());
     m_actProps->setEnabled(have && !refs.isEmpty());
     m_actRename->setEnabled(w && oneFile);
-    m_actLabel->setEnabled(w && m_vol.labelAllowed());
+    m_actLabel->setEnabled(w && m_vols[currentSide()].labelAllowed());
     m_actExtract->setEnabled(have && !refs.isEmpty());
     m_actView->setEnabled(have && oneFile);
     m_actCheck->setEnabled(have);
@@ -583,11 +628,18 @@ void MainWindow::updateUi() {
         m_status->setText(m_img.isOpen() ? "Not read as CP/M: " + m_det.why : "Open a disc image (File > Open), or drop one here.");
         return;
     }
-    const Cpm::Format &f = m_vol.format();
-    QString s = QString("%1 - %2 file%3, %4 free of %5")
-                    .arg(f.name == "detected" || f.name == "by-hand" ? QString("custom format") : f.name)
-                    .arg(m_vol.files().size()).arg(m_vol.files().size() == 1 ? "" : "s")
-                    .arg(fmtBytes(m_vol.freeBytes())).arg(fmtBytes(f.capacityBytes()));
+    const Cpm::Format &f = m_vols[0].format();
+    QString name = f.name == "detected" || f.name == "by-hand" ? QString("custom format") : f.name;
+    QString s;
+    if (m_nvols == 1) {
+        s = QString("%1 - %2 file%3, %4 free of %5").arg(name).arg(m_vols[0].files().size())
+                .arg(m_vols[0].files().size() == 1 ? "" : "s").arg(fmtBytes(m_vols[0].freeBytes())).arg(fmtBytes(f.capacityBytes()));
+    } else {
+        s = name + " (a disc on each side)";
+        for (int side = 0; side < m_nvols; ++side)
+            s += QString(" - side %1: %2 file%3, %4 free").arg(side).arg(m_vols[side].files().size())
+                     .arg(m_vols[side].files().size() == 1 ? "" : "s").arg(fmtBytes(m_vols[side].freeBytes()));
+    }
     if (!w) s += "  -  read-only: " + readOnlyReason();
     if (m_img.needsPadding()) s += "  -  the image file is short; it will be padded to full size when saved";
     m_status->setText(s);
@@ -597,10 +649,11 @@ QVector<FileRef> MainWindow::selectedRefs() const {
     QVector<FileRef> refs;
     for (QTreeWidgetItem *it : m_tree->selectedItems()) {
         int kind = it->data(0, RoleKind).toInt();
-        if (kind == RowFile) refs << FileRef(it->data(0, RoleUser).toInt(), it->data(0, RoleName).toString());
+        int side = qBound(0, it->data(0, RoleSide).toInt(), qMax(0, m_nvols - 1));
+        if (kind == RowFile) refs << FileRef(side, it->data(0, RoleUser).toInt(), it->data(0, RoleName).toString());
         else
-            for (const Cpm::File &f : m_vol.files())
-                if (kind == RowRoot || f.user == it->data(0, RoleUser).toInt()) refs << FileRef(f.user, f.name);
+            for (const Cpm::File &f : m_vols[side].files())
+                if (kind == RowRoot || f.user == it->data(0, RoleUser).toInt()) refs << FileRef(side, f.user, f.name);
     }
     QVector<FileRef> unique;
     for (const FileRef &r : refs) if (!unique.contains(r)) unique << r;
@@ -610,6 +663,10 @@ QVector<FileRef> MainWindow::selectedRefs() const {
 int MainWindow::targetUser(QTreeWidgetItem *it) const {
     if (!it || it->data(0, RoleKind).toInt() == RowRoot) return -1;
     return it->data(0, RoleUser).toInt();
+}
+
+int MainWindow::targetSide(QTreeWidgetItem *it) const {
+    return it ? qBound(0, it->data(0, RoleSide).toInt(), qMax(0, m_nvols - 1)) : 0;
 }
 
 void MainWindow::showContextMenu(const QPoint &pos) {
@@ -625,9 +682,10 @@ void MainWindow::showContextMenu(const QPoint &pos) {
 bool MainWindow::exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, QString *err) const {
     out->clear();
     for (const FileRef &r : refs) {
-        int i = m_vol.indexOf(r.first, r.second);
-        if (i < 0) { *err = QString("%1:%2 is no longer on the disc").arg(r.first).arg(r.second); return false; }
-        const Cpm::File &f = m_vol.files()[i];
+        const Cpm::Volume &v = m_vols[qBound(0, r.side, 1)];
+        int i = v.indexOf(r.user, r.name);
+        if (i < 0) { *err = QString("%1:%2 is no longer on the disc").arg(r.user).arg(r.name); return false; }
+        const Cpm::File &f = v.files()[i];
         XItem x;
         x.name = f.name;
         x.srcFs = "cpm";
@@ -637,7 +695,7 @@ bool MainWindow::exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, 
         x.archive = f.attrs & Cpm::AttrARC;
         x.interfaceAttrs = quint8((f.attrs >> 4) & 0x0F);
         x.when = f.updated.isValid() ? f.updated : f.created;
-        if (!m_vol.readFile(f, &x.data, err)) return false;
+        if (!v.readFile(f, &x.data, err)) return false;
         out->append(x);
     }
     return true;
@@ -667,7 +725,9 @@ void MainWindow::viewSelected() {
     QVector<XItem> items;
     QString err;
     if (!exportFiles(refs, &items, &err)) { message("View", err); return; }
-    auto *v = new ViewerDialog(QString("%1:%2").arg(refs[0].first).arg(refs[0].second), items[0].data, this);
+    QString t = QString("%1:%2").arg(refs[0].user).arg(refs[0].name);
+    if (m_nvols > 1) t = QString("side %1 ").arg(refs[0].side) + t;
+    auto *v = new ViewerDialog(t, items[0].data, this);
     v->show();
 }
 
@@ -675,41 +735,47 @@ void MainWindow::viewSelected() {
 
 void MainWindow::onPathsDropped(const QStringList &paths, QTreeWidgetItem *target) {
     QStringList p = paths;
-    int u = targetUser(target);
-    QTimer::singleShot(0, this, [this, p, u] { importPaths(p, u); });       // no dialogs inside the drop handler
+    int u = targetUser(target), side = targetSide(target);
+    QTimer::singleShot(0, this, [this, p, u, side] { importPaths(p, u, side); });   // no dialogs inside the drop handler
 }
 
 void MainWindow::onRetroFilesDropped(const QByteArray &json, QTreeWidgetItem *target) {
-    int u = targetUser(target);
-    QTimer::singleShot(0, this, [this, json, u] { importRetroFiles(json, u); });
+    int u = targetUser(target), side = targetSide(target);
+    QTimer::singleShot(0, this, [this, json, u, side] { importRetroFiles(json, u, side); });
 }
 
 void MainWindow::onInternalDrop(const QByteArray &payload, QTreeWidgetItem *target) {
-    int u = targetUser(target);
-    QTimer::singleShot(0, this, [this, payload, u] {
+    int u = targetUser(target), side = targetSide(target);
+    QTimer::singleShot(0, this, [this, payload, u, side] {
         QDataStream ds(payload);
         quint64 src;
         qint32 n;
         ds >> src >> n;
         QVector<FileRef> refs;
-        for (int i = 0; i < n; ++i) { qint32 user; QString name; ds >> user >> name; refs << FileRef(user, name); }
+        for (int i = 0; i < n; ++i) {
+            qint32 s, user;
+            QString name;
+            ds >> s >> user >> name;
+            if (src == id() && s == side) continue;        // within one window: only from one side to the other
+            refs << FileRef(s, user, name);
+        }
         MainWindow *w = byId(src);
-        if (!w) return;
+        if (!w || refs.isEmpty()) return;
         QVector<XItem> items;
         QString err;
         if (!w->exportFiles(refs, &items, &err)) { message("Copy", err); return; }
         ImportCtx c;
-        importItems(items, u, c);
+        importItems(items, u, side, c);
         importSummary(c);
     });
 }
 
-bool MainWindow::importRetroFiles(const QByteArray &json, int user) {
+bool MainWindow::importRetroFiles(const QByteArray &json, int user, int side) {
     QVector<XItem> items;
     QString err;
     if (!RetroFiles::readJson(json, &items, &err)) { message("Drop", err); return false; }
     ImportCtx c;
-    importItems(items, user, c);
+    importItems(items, user, side, c);
     importSummary(c);
     return c.errors.isEmpty();
 }
@@ -734,7 +800,7 @@ static XItem hostItem(const QString &path, QStringList *errors, int depth = 0) {
     return x;
 }
 
-void MainWindow::importPaths(const QStringList &paths, int user) {
+void MainWindow::importPaths(const QStringList &paths, int user, int side) {
     if (!writable()) { message("Add files", "The disc is read-only: " + readOnlyReason()); return; }
     ImportCtx c;
     QVector<XItem> items;
@@ -742,11 +808,12 @@ void MainWindow::importPaths(const QStringList &paths, int user) {
         if (QFileInfo(p).fileName().endsWith(".inf", Qt::CaseInsensitive)) continue;   // Acorn sidecars: not CP/M files
         items << hostItem(p, &c.errors);
     }
-    importItems(items, user, c);
+    importItems(items, user, side, c);
     importSummary(c);
 }
 
-void MainWindow::importItems(const QVector<XItem> &items, int user, ImportCtx &c) {
+void MainWindow::importItems(const QVector<XItem> &items, int user, int side, ImportCtx &c) {
+    side = qBound(0, side, qMax(0, m_nvols - 1));
     if (!writable()) { c.errors << "The disc is read-only: " + readOnlyReason(); return; }
     for (const XItem &x : items) {
         if (c.cancelled) return;
@@ -754,14 +821,15 @@ void MainWindow::importItems(const QVector<XItem> &items, int user, ImportCtx &c
             int u = userFromFolderName(x.name);
             if (u > maxUser()) u = -1;
             if (u < 0 && !x.kids.isEmpty()) c.flattened++;
-            importItems(x.kids, u >= 0 ? u : user, c);
+            importItems(x.kids, u >= 0 ? u : user, side, c);
             continue;
         }
-        importOne(x, user, c);
+        importOne(x, user, side, c);
     }
 }
 
-void MainWindow::importOne(const XItem &x, int targetUser, ImportCtx &c) {
+void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &c) {
+    Cpm::Volume &vol = m_vols[side];
     int user = targetUser >= 0 ? targetUser : (x.user >= 0 ? x.user : 0);
     if (user > maxUser()) user = 0;
     QString why, name = x.name.toUpper();
@@ -772,13 +840,13 @@ void MainWindow::importOne(const XItem &x, int targetUser, ImportCtx &c) {
     quint16 attrs = quint16((x.readOnly ? Cpm::AttrRO : 0) | (x.system ? Cpm::AttrSYS : 0) | (x.archive ? Cpm::AttrARC : 0) |
                             (x.interfaceAttrs & 0x0F) << 4);
     bool replace = false;
-    int ix = m_vol.indexOf(user, name);
+    int ix = vol.indexOf(user, name);
     if (ix >= 0) {
         int choice = c.policy;
         if (choice == 0) {
             if (autoAnswer) choice = 1;
             else {
-                QMessageBox box(QMessageBox::Question, "File exists", QString("%1 already exists in user %2. Replace it?").arg(name).arg(user),
+                QMessageBox box(QMessageBox::Question, "File exists", QString("%1 already exists in user %2%3. Replace it?").arg(name).arg(user).arg(m_nvols > 1 ? QString(" on side %1").arg(side) : QString()),
                                 QMessageBox::NoButton, this);
                 QPushButton *rep = box.addButton("Replace", QMessageBox::AcceptRole);
                 QPushButton *repAll = box.addButton("Replace all", QMessageBox::AcceptRole);
@@ -795,13 +863,13 @@ void MainWindow::importOne(const XItem &x, int targetUser, ImportCtx &c) {
         }
         if (choice == 2) { c.skipped++; return; }
         replace = true;
-        if (m_vol.files()[ix].attrs & Cpm::AttrRO) {      // the user chose to replace a read-only file: clear R/O first
+        if (vol.files()[ix].attrs & Cpm::AttrRO) {      // the user chose to replace a read-only file: clear R/O first
             QString e;
-            if (!m_vol.setAttrs(user, name, m_vol.files()[ix].attrs & ~Cpm::AttrRO, &e)) { c.errors << e; return; }
+            if (!vol.setAttrs(user, name, vol.files()[ix].attrs & ~Cpm::AttrRO, &e)) { c.errors << e; return; }
         }
     }
     QString err;
-    if (!m_vol.addFile(user, name, x.data, attrs, x.when, replace, &err)) { c.errors << err; return; }
+    if (!vol.addFile(user, name, x.data, attrs, x.when, replace, &err)) { c.errors << err; return; }
     c.files++;
     if (replace) c.replaced++;
 }
@@ -824,7 +892,7 @@ void MainWindow::addFilesDialog() {
     if (p.isEmpty()) return;
     QSettings().setValue("addDir", QFileInfo(p.first()).absolutePath());
     QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
-    importPaths(p, sel.isEmpty() ? -1 : targetUser(sel.first()));
+    importPaths(p, sel.isEmpty() ? -1 : targetUser(sel.first()), sel.isEmpty() ? 0 : targetSide(sel.first()));
 }
 
 // ------------------------------------------------------------------------------------------- changing files
@@ -833,9 +901,11 @@ bool MainWindow::deleteFiles(const QVector<FileRef> &refs, QString *err) {
     if (!writable()) { *err = "read-only: " + readOnlyReason(); return false; }
     auto snap = m_img.snapshot();
     for (const FileRef &r : refs) {
-        int i = m_vol.indexOf(r.first, r.second);
-        if (i >= 0 && (m_vol.files()[i].attrs & Cpm::AttrRO)) { *err = r.second + " is read-only"; m_img.restore(snap); m_vol.reload(); return false; }
-        if (!m_vol.deleteFile(r.first, r.second, err)) { m_img.restore(snap); m_vol.reload(); return false; }
+        Cpm::Volume &v = m_vols[qBound(0, r.side, 1)];
+        auto undo = [&] { m_img.restore(snap); for (int k = 0; k < m_nvols; ++k) m_vols[k].reload(); };
+        int i = v.indexOf(r.user, r.name);
+        if (i >= 0 && (v.files()[i].attrs & Cpm::AttrRO)) { *err = r.name + " is read-only"; undo(); return false; }
+        if (!v.deleteFile(r.user, r.name, err)) { undo(); return false; }
     }
     return true;
 }
@@ -844,7 +914,7 @@ void MainWindow::deleteSelected() {
     QVector<FileRef> refs = selectedRefs();
     if (refs.isEmpty()) return;
     if (!autoAnswer &&
-        QMessageBox::question(this, "Delete", refs.size() == 1 ? QString("Delete %1:%2?").arg(refs[0].first).arg(refs[0].second)
+        QMessageBox::question(this, "Delete", refs.size() == 1 ? QString("Delete %1:%2?").arg(refs[0].user).arg(refs[0].name)
                                                                : QString("Delete %1 files?").arg(refs.size())) != QMessageBox::Yes)
         return;
     QString err;
@@ -856,10 +926,10 @@ void MainWindow::renameSelected() {
     QVector<FileRef> refs = selectedRefs();
     if (refs.size() != 1) return;
     bool ok;
-    QString n = QInputDialog::getText(this, "Rename", QString("New name for %1 (8.3):").arg(refs[0].second), QLineEdit::Normal, refs[0].second, &ok);
+    QString n = QInputDialog::getText(this, "Rename", QString("New name for %1 (8.3):").arg(refs[0].name), QLineEdit::Normal, refs[0].name, &ok);
     if (!ok || n.trimmed().isEmpty()) return;
     QString err;
-    if (!m_vol.rename(refs[0].first, refs[0].second, refs[0].first, n.trimmed(), &err)) message("Rename", err);
+    if (!m_vols[refs[0].side].rename(refs[0].user, refs[0].name, refs[0].user, n.trimmed(), &err)) message("Rename", err);
     refresh();
 }
 
@@ -867,9 +937,9 @@ void MainWindow::editProperties() {
     QVector<FileRef> refs = selectedRefs();
     if (refs.isEmpty()) return;
     QDialog d(this);
-    d.setWindowTitle(refs.size() == 1 ? "Properties - " + refs[0].second : QString("Properties - %1 files").arg(refs.size()));
+    d.setWindowTitle(refs.size() == 1 ? "Properties - " + refs[0].name : QString("Properties - %1 files").arg(refs.size()));
     auto *fl = new QFormLayout;
-    const Cpm::File *one = refs.size() == 1 ? &m_vol.files()[m_vol.indexOf(refs[0].first, refs[0].second)] : nullptr;
+    const Cpm::File *one = refs.size() == 1 ? &m_vols[refs[0].side].files()[m_vols[refs[0].side].indexOf(refs[0].user, refs[0].name)] : nullptr;
     QLineEdit *name = nullptr;
     if (one) {
         name = new QLineEdit(one->name);
@@ -895,7 +965,7 @@ void MainWindow::editProperties() {
     for (Box &b : boxes) {
         b.cb = new QCheckBox(b.label);
         int on = 0;
-        for (const FileRef &r : refs) if (m_vol.files()[m_vol.indexOf(r.first, r.second)].attrs & b.bit) ++on;
+        for (const FileRef &r : refs) if (m_vols[r.side].files()[m_vols[r.side].indexOf(r.user, r.name)].attrs & b.bit) ++on;
         if (on == 0) b.cb->setCheckState(Qt::Unchecked);
         else if (on == refs.size()) b.cb->setCheckState(Qt::Checked);
         else { b.cb->setTristate(true); b.cb->setCheckState(Qt::PartiallyChecked); }
@@ -913,42 +983,50 @@ void MainWindow::editProperties() {
     QString err;
     bool ok = true;
     for (const FileRef &r : refs) {
-        int i = m_vol.indexOf(r.first, r.second);
+        Cpm::Volume &v = m_vols[r.side];
+        int i = v.indexOf(r.user, r.name);
         if (i < 0) continue;
-        quint16 a = m_vol.files()[i].attrs;
+        quint16 a = v.files()[i].attrs;
         for (const Box &b : boxes) {
             if (b.cb->checkState() == Qt::Checked) a |= b.bit;
             else if (b.cb->checkState() == Qt::Unchecked) a &= quint16(~b.bit);
         }
-        if (ok && a != m_vol.files()[i].attrs) ok = m_vol.setAttrs(r.first, r.second, a, &err);
-        QString newName = name ? name->text().trimmed().toUpper() : r.second;
-        int newUser = user->value() >= 0 ? user->value() : r.first;
-        if (ok && (newName != r.second || newUser != r.first)) ok = m_vol.rename(r.first, r.second, newUser, newName, &err);
+        if (ok && a != v.files()[i].attrs) ok = v.setAttrs(r.user, r.name, a, &err);
+        QString newName = name ? name->text().trimmed().toUpper() : r.name;
+        int newUser = user->value() >= 0 ? user->value() : r.user;
+        if (ok && (newName != r.name || newUser != r.user)) ok = v.rename(r.user, r.name, newUser, newName, &err);
     }
-    if (!ok) { m_img.restore(snap); m_vol.reload(); message("Properties", "Nothing was changed: " + err); }
+    if (!ok) { m_img.restore(snap); for (int k = 0; k < m_nvols; ++k) m_vols[k].reload(); message("Properties", "Nothing was changed: " + err); }
     refresh();
 }
 
 void MainWindow::setLabelDialog() {
     bool ok;
-    QString n = QInputDialog::getText(this, "Disc label", "Label (CP/M 3, 8.3 characters):", QLineEdit::Normal, m_vol.label().name, &ok);
+    QString n = QInputDialog::getText(this, "Disc label", "Label (CP/M 3, 8.3 characters):", QLineEdit::Normal, m_vols[currentSide()].label().name, &ok);
     if (!ok) return;
     QString err;
-    if (!m_vol.setLabel(n, &err)) message("Disc label", err);
+    if (!m_vols[currentSide()].setLabel(n, &err)) message("Disc label", err);
     refresh();
 }
 
 // ------------------------------------------------------------------------------------------- tools
 
 void MainWindow::checkDisc() {
-    Cpm::Report r = m_vol.check();
-    QString s = r.ok() && r.warnings.isEmpty() ? "No problems found." : QString();
-    if (!r.errors.isEmpty()) s += "Errors:\n" + r.errors.join("\n") + "\n\n";
-    if (!r.warnings.isEmpty()) s += "Warnings:\n" + r.warnings.join("\n");
-    s += QString("\n\n%1 files in %2 directory entries; %3 of %4 entries free; %5 of %6 blocks free.")
-             .arg(m_vol.files().size()).arg(m_vol.usedEntries()).arg(m_vol.freeEntries()).arg(m_vol.format().maxdir)
-             .arg(m_vol.freeBlocks()).arg(m_vol.format().dsm + 1);
-    message("Check disc", s.trimmed(), !r.ok());
+    QString s;
+    bool allOk = true;
+    for (int side = 0; side < m_nvols; ++side) {
+        const Cpm::Volume &v = m_vols[side];
+        Cpm::Report r = v.check();
+        allOk = allOk && r.ok();
+        if (m_nvols > 1) s += QString("Side %1:\n").arg(side);
+        if (r.ok() && r.warnings.isEmpty()) s += "No problems found.\n";
+        if (!r.errors.isEmpty()) s += "Errors:\n" + r.errors.join("\n") + "\n";
+        if (!r.warnings.isEmpty()) s += "Warnings:\n" + r.warnings.join("\n") + "\n";
+        s += QString("%1 files in %2 directory entries; %3 of %4 entries free; %5 of %6 blocks free.\n\n")
+                 .arg(v.files().size()).arg(v.usedEntries()).arg(v.freeEntries()).arg(v.format().maxdir)
+                 .arg(v.freeBlocks()).arg(v.format().dsm + 1);
+    }
+    message("Check disc", s.trimmed(), !allOk);
 }
 
 void MainWindow::discInfo() {
@@ -963,8 +1041,8 @@ void MainWindow::discInfo() {
     if (sh.oddTracks) l << QString("&nbsp;&nbsp;%1 track(s) of another shape (often a single-density boot track)").arg(sh.oddTracks);
     if (sh.badSectors) l << QString("&nbsp;&nbsp;%1 bad, missing or duplicated sector(s)").arg(sh.badSectors);
     if (m_img.kind() == Disk::Kind::Raw) l << QString("<b>Raw file size:</b> %1 bytes").arg(m_img.rawFileSize());
-    if (m_vol.attached()) {
-        const Cpm::Format &f = m_vol.format();
+    if (m_nvols) {
+        const Cpm::Format &f = m_vols[0].format();
         l << "<b>Format:</b> " + f.displayName().toHtmlEscaped() + " (" + f.origin.toHtmlEscaped() + ")";
         l << "&nbsp;&nbsp;" + f.summary().toHtmlEscaped();
         if (!f.source.isEmpty()) l << "&nbsp;&nbsp;Source: " + f.source.toHtmlEscaped();
@@ -978,9 +1056,13 @@ void MainWindow::discInfo() {
         QString xl;
         for (int v : f.xlat) xl += QString::number(v + 1) + " ";
         l << "<b>Sector order on a track:</b> " + xl;
-        l << QString("<b>Directory:</b> %1 of %2 entries used; %3; label %4")
-                 .arg(m_vol.usedEntries()).arg(f.maxdir).arg(m_vol.hasStamps() ? "time stamps: " + m_vol.stampKinds() : QString("no time stamps"))
-                 .arg(m_vol.label().present ? "'" + m_vol.label().name.toHtmlEscaped() + "'" : QString("none"));
+        for (int side = 0; side < m_nvols; ++side) {
+            const Cpm::Volume &v = m_vols[side];
+            l << QString("<b>Directory%5:</b> %1 of %2 entries used; %3; label %4")
+                     .arg(v.usedEntries()).arg(f.maxdir).arg(v.hasStamps() ? "time stamps: " + v.stampKinds() : QString("no time stamps"))
+                     .arg(v.label().present ? "'" + v.label().name.toHtmlEscaped() + "'" : QString("none"))
+                     .arg(m_nvols > 1 ? QString(" (side %1)").arg(side) : QString());
+        }
         l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, m_det.why.toHtmlEscaped());
         l << "<b>As a cpmtools definition:</b><pre>" + f.toDiskdef().toHtmlEscaped() + "</pre>";
     }
@@ -1006,7 +1088,7 @@ void MainWindow::formatDialog() {
     int r = d.exec();
     QString err;
     if (m_img.kind() == Disk::Kind::Raw && before.valid()) m_img.setRawLayout(before, &err);   // previews may change it
-    if (r != QDialog::Accepted) { if (m_vol.attached()) m_vol.reload(); return; }
+    if (r != QDialog::Accepted) { for (int side = 0; side < m_nvols; ++side) m_vols[side].reload(); return; }
     Detect::Candidate c = d.chosen();
     if (!c.fmt.derived) return;
     useFormat(c, d.allowChanges());

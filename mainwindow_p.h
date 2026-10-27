@@ -32,7 +32,7 @@
 #include <initializer_list>
 
 // Tree item roles. Every row carries what it is; nothing is ever parsed back from the cell text.
-enum Roles { RoleKind = Qt::UserRole, RoleUser, RoleName };
+enum Roles { RoleKind = Qt::UserRole, RoleUser, RoleName, RoleSide };
 enum RowKind { RowRoot = 0, RowUser = 1, RowFile = 2 };
 
 #define CPMDW_MIME_ITEMS  "application/x-cpmdiskwrangler-items"

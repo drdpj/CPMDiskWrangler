@@ -68,8 +68,22 @@ struct RawLayout {
     int seclen = 0, sectrk = 0, cyls = 0, heads = 1;
     int firstId = 1;                     // sector IDs given to the sectors (only matters for Save As)
     int mode = -1;                       // IMD mode for Save As
+    int t0sectrk = 0, t0seclen = 0;      // cylinder 0 (on each side) has its own shape, e.g. FM 16 x 128
+    bool sideBySide = false;             // the file holds all of side 0, then all of side 1
     bool valid() const { return seclen > 0 && sectrk > 0 && cyls > 0 && heads > 0; }
-    qint64 bytes() const { return qint64(seclen) * sectrk * cyls * heads; }
+    qint64 trackBytes() const { return qint64(seclen) * sectrk; }
+    qint64 track0Bytes() const { return t0sectrk > 0 ? qint64(t0sectrk) * t0seclen : trackBytes(); }
+    qint64 sideBytes() const { return track0Bytes() + (cyls - 1) * trackBytes(); }
+    qint64 bytes() const { return sideBytes() * heads; }
+    // where track (cyl, head) starts in the file
+    qint64 trackOffset(int c, int h) const {
+        if (sideBySide) return h * sideBytes() + (c == 0 ? 0 : track0Bytes() + (c - 1) * trackBytes());
+        return c == 0 ? h * track0Bytes() : heads * track0Bytes() + (qint64(c - 1) * heads + h) * trackBytes();
+    }
+    bool sameShape(const RawLayout &o) const {
+        return seclen == o.seclen && sectrk == o.sectrk && cyls == o.cyls && heads == o.heads && t0sectrk == o.t0sectrk &&
+               t0seclen == o.t0seclen && sideBySide == o.sideBySide;
+    }
 };
 
 // A summary of the physical shape, for detection and the Disc info box.
