@@ -1,3 +1,5 @@
+<!-- CP/M Disk Wrangler - Copyright (C) 2026 Daniel Jameson - GPL v3 or later.
+     cpmtools-diskdefs: from cpmtools 2.23, Michael Haardt and contributors, GPL v3 or later (THIRD-PARTY-NOTICES.md). -->
 <RCC>
     <qresource prefix="/diskdefs">
         <file alias="builtin">resources/builtin-diskdefs</file>

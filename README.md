@@ -19,7 +19,21 @@ Exactly as for Acorn Disk Wrangler: in the **MSYS2 MINGW64** shell,
     qmake ../cpmdiskwrangler.pro CONFIG+=release CONFIG-=debug_and_release
     mingw32-make -j$(nproc)
 
-then deploy with `windeployqt` and the `ldd` loop from Acorn Disk Wrangler's README (replace the program name).
+Deploy, so it runs anywhere, **with the licences of everything it ships**:
+
+    mkdir deploy deploy/licenses
+    cp cpmdiskwrangler.exe ../LICENSE ../THIRD-PARTY-NOTICES.md deploy/
+    windeployqt --release --compiler-runtime --no-translations \
+        --no-system-d3d-compiler --no-opengl-sw --no-angle deploy/cpmdiskwrangler.exe
+    for f in deploy/cpmdiskwrangler.exe deploy/platforms/*.dll deploy/styles/*.dll; do
+        ldd "$f" | awk '/\/mingw64\// {print $3}'
+    done | sort -u | xargs -r cp -n -t deploy/
+    # the licence texts of the MSYS2 packages those DLLs come from (Qt, GCC runtime, ICU, HarfBuzz, ...)
+    for f in deploy/*.dll; do pacman -Qqo "/mingw64/bin/$(basename "$f")" 2>/dev/null; done | sort -u |
+        while read p; do [ -d "/mingw64/share/licenses/$p" ] && cp -r "/mingw64/share/licenses/$p" deploy/licenses/; done
+
+Zip the `deploy` folder to distribute it, and publish the matching source with it (the repository link or a
+source zip): the GPL requires that for this program, and the LGPL lets recipients swap in their own Qt DLLs.
 
 ## Image containers
 | Container | Read | Write | Notes |
@@ -106,7 +120,10 @@ existing image), copy-protected tracks
 
 ## Licence
 Copyright (C) 2026 Daniel Jameson. Licensed under the GNU General Public License v3.0 or later - see LICENSE.
-Includes cpmtools' diskdefs (Michael Haardt and contributors, GPL v3 or later). Requires Qt 5 (LGPLv3/GPLv3).
+Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later), unchanged in
+`resources/cpmtools-diskdefs`. The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura.
+Uses Qt 5 under the LGPL v3. Everything third-party, and its terms, is listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## For developers / agents
 See [AGENTS.md](AGENTS.md) (design rules, format notes, detection, how to test, pitfalls).

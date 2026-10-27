@@ -10,7 +10,10 @@ It works out each disc's logical format, then lists, adds, extracts, renames and
 user numbers and CP/M 3 labels, and makes new discs. One disc per window; drag and drop between windows, the
 desktop and other programs via the `retro-files` format shared with Acorn Disk Wrangler. GPLv3-or-later; the
 copyright line in every header is `Copyright (C) 2026 Daniel Jameson`; put the same header on any new source file
-(`#` comments for scripts). The notice also appears in Help > About, `QMAKE_TARGET_COPYRIGHT` and the `.rc`.
+(`#` comments for scripts and build files). The notice also appears in Help > About, `QMAKE_TARGET_COPYRIGHT` and
+the `.rc`. **Anything taken from or closely modelled on someone else's work goes in `THIRD-PARTY-NOTICES.md`**
+with its terms (and in About if it ships in the program); material only consulted for facts goes in its
+"Consulted" table. Never commit third-party disc images: the tests read them from outside the repo.
 
 ## Source map
 | File | Role |
@@ -21,7 +24,7 @@ copyright line in every header is `Copyright (C) 2026 Daniel Jameson`; put the s
 | `cpmfs.h/.cpp` | `Cpm::Volume`: directory, files, extents, CP/M 3 / P2DOS stamps and labels, add/delete/rename/attrs, `check()`, `makeBlank()` |
 | `detect.h/.cpp` | working out the format: candidates, scoring, ranking, confidence, `safeToWrite` |
 | `resources/builtin-diskdefs` | this program's definitions (Acorn Z80, Amstrad, Kaypro) and descriptions for cpmtools' ones |
-| `resources/cpmtools-diskdefs` | cpmtools' diskdefs file, unchanged (GPL v3) |
+| `resources/cpmtools-diskdefs` | cpmtools 2.23's diskdefs file, unchanged (Michael Haardt and contributors, GPL v3+; see THIRD-PARTY-NOTICES.md) |
 | `mainwindow.*`, `mainwindow_p.h` | window, `DropTree`, importing/exporting, menus; `mainwindow_p.h` has the shared tree helpers (same as Acorn Disk Wrangler's) and `XItem` |
 | `formatdialog.*` | Tools > Disc format (ranked readings, evidence, preview, try a format by hand) |
 | `newdisc.*` | File > New disc image |

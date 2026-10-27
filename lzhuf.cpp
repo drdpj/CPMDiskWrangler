@@ -17,8 +17,12 @@
  */
 // lzhuf.cpp - the decoder for TeleDisk 2.x "advanced compression": LZSS with a 4096-byte window and a 60-byte
 // look-ahead, whose literals and match lengths are coded with an adaptive Huffman tree and whose match positions
-// use a fixed prefix code for the top 6 bits (Haruhiko Okumura's LZHUF, 1988). Everything after the 12-byte
-// TeleDisk header is one stream.
+// use a fixed prefix code for the top 6 bits. Everything after the 12-byte TeleDisk header is one stream.
+//
+// This is the LZHUF algorithm, and the code follows the structure of LZHUF.C by Haruyasu Yoshizaki (1988, English
+// comments by Haruhiko Okumura, 1989), which builds on Okumura's public-domain LZSS. LZHUF.C carries no licence
+// statement and has long been reused freely; this implementation was written for this program (the position-code
+// tables are generated rather than copied) and is distributed under the GPL with it. See THIRD-PARTY-NOTICES.md.
 #include "diskimage.h"
 
 #include <vector>

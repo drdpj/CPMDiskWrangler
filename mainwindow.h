@@ -96,7 +96,8 @@ public:
 
     Disk::Image &image() { return m_img; }
     Cpm::Volume &volume(int side = 0) { return m_vols[side]; }
-    int sides() const { return m_nvols; }               // filesystems shown: 1, or 2 for a disc on each side
+    int sides() const { return m_nvols; }
+    bool dropOpensImage() const { return m_nvols == 0; }   // nothing read as CP/M here: a drop opens an image               // filesystems shown: 1, or 2 for a disc on each side
     const Detect::Result &detection() const { return m_det; }
     DropTree *tree() { return m_tree; }
     bool writable() const;

@@ -128,6 +128,9 @@ void DropTree::startDrag(Qt::DropActions) {
 }
 
 bool DropTree::acceptable(const QMimeData *m) const {
+    MainWindow *win = MainWindow::byId(m_owner);
+    if (win && win->dropOpensImage()) return m->hasUrls();     // an empty window: a dropped file is opened
+    if (!win || !win->writable()) return false;
     if (fromThisProcess(m)) {
         if (m->data(CPMDW_MIME_SOURCE) != sourceTag(m_owner)) return true;
         MainWindow *w = MainWindow::byId(m_owner);       // within one window: only between its two sides
@@ -254,13 +257,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_optBackup, &QAction::toggled, [](bool on) { QSettings().setValue("backup", on); });
 
     QMenu *help = menuBar()->addMenu("&Help");
-    help->addAction("&About", this, &MainWindow::about);
+    help->addAction("&About CP/M Disk Wrangler...", this, &MainWindow::about);
+    help->addAction("About &Qt...", qApp, &QApplication::aboutQt);
 
     QToolBar *tb = addToolBar("Main");
     tb->setToolButtonStyle(Qt::ToolButtonTextOnly);
     tb->setMovable(false);
-    for (QAction *a : {aNew, aOpen, m_actSave}) tb->addAction(a);
-    tb->addSeparator();
     for (QAction *a : {m_actAdd, m_actExtract, m_actView, m_actProps, m_actDelete}) tb->addAction(a);
     tb->addSeparator();
     tb->addAction(m_actFormat);
@@ -622,10 +624,10 @@ void MainWindow::updateUi() {
     m_actCheck->setEnabled(have);
     m_actInfo->setEnabled(m_img.isOpen());
     m_actFormat->setEnabled(m_img.isOpen());
-    m_tree->setAcceptDrops(w);
     setWindowTitle(title());
     if (!have) {
-        m_status->setText(m_img.isOpen() ? "Not read as CP/M: " + m_det.why : "Open a disc image (File > Open), or drop one here.");
+        m_status->setText(m_img.isOpen() ? "Not read as CP/M: " + m_det.why + " Drop another image here to open it."
+                                         : "Open a disc image (File > Open), or drop one here.");
         return;
     }
     const Cpm::Format &f = m_vols[0].format();
@@ -735,6 +737,19 @@ void MainWindow::viewSelected() {
 
 void MainWindow::onPathsDropped(const QStringList &paths, QTreeWidgetItem *target) {
     QStringList p = paths;
+    if (dropOpensImage()) {                       // no disc here yet: open the first, the rest in new windows
+        QTimer::singleShot(0, this, [this, p] {
+            for (int i = 0; i < p.size(); ++i) {
+                if (QFileInfo(p[i]).isDir()) continue;
+                if (dropOpensImage()) { openImage(p[i]); continue; }
+                auto *w = new MainWindow;
+                w->setAttribute(Qt::WA_DeleteOnClose);
+                w->show();
+                w->openImage(p[i]);
+            }
+        });
+        return;
+    }
     int u = targetUser(target), side = targetSide(target);
     QTimer::singleShot(0, this, [this, p, u, side] { importPaths(p, u, side); });   // no dialogs inside the drop handler
 }
@@ -1113,5 +1128,7 @@ void MainWindow::about() {
                        "CPCEMU and extended DSK, and TeleDisk (.TD0, read-only). Works out each disc's format from its contents, "
                        "and exchanges files with Acorn Disk Wrangler and other tools by drag and drop (retro-files format).<br><br>"
                        "Copyright &copy; 2026 Daniel Jameson.<br>Licensed under the GNU General Public License v3 or later.<br><br>"
-                       "Disc definitions include cpmtools' diskdefs (Michael Haardt and contributors, GPL v3 or later).");
+                       "Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later). "
+                       "The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura. Uses Qt 5 under the LGPL v3. "
+                       "See THIRD-PARTY-NOTICES.md for details.");
 }
