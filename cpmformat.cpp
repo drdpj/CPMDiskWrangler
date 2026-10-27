@@ -54,6 +54,10 @@ bool Format::derive(QString *err) {
     cylinders = (tracks + physHeads - 1) / physHeads;
     int reserved = bootsec >= 0 ? bootsec : boottrk * sectrk;
     if (reserved < 0 || reserved >= tracks * sectrk) { *err = "the boot area fills the disc"; return false; }
+    if (t0sectrk > 0) {
+        if (reserved < sectrk) { *err = "a track 0 of its own shape must be in the boot area (boottrk 1 or more)"; return false; }
+        if (t0seclen < 128 || t0seclen > 8192 || (t0seclen & (t0seclen - 1)) || t0sectrk > 255) { *err = "track0: bad sector size or count"; return false; }
+    }
     dataStart = offsetSectors + reserved;
     qint64 dataBytes = qint64(tracks * sectrk - reserved) * seclen;
     dsm = int(dataBytes / blocksize) - 1;
@@ -131,8 +135,9 @@ QString Format::summary() const {
     else skewText = "no skew";
     QString sideText = physHeads == 1 ? "1 side" : QString("2 sides, %1").arg(sideOrderName(sides));
     QString boot = bootsec >= 0 ? QString("%1 boot sectors").arg(bootsec) : QString("%1 boot track%2").arg(boottrk).arg(boottrk == 1 ? "" : "s");
+    QString t0 = t0sectrk > 0 ? QString(" (track 0: %1 x %2 %3)").arg(t0sectrk).arg(t0seclen).arg(t0fm ? "FM" : "MFM") : QString();
     return QString("%1 x %2 bytes/track, %3 tracks (%4), %5, %6, %7 blocks, %8 directory entries, CP/M %9, %10")
-        .arg(sectrk).arg(seclen).arg(tracks).arg(sideText, skewText, boot, kb(blocksize)).arg(maxdir)
+        .arg(sectrk).arg(seclen).arg(tracks).arg(sideText, skewText, boot + t0, kb(blocksize)).arg(maxdir)
         .arg(osName(os), kb(capacityBytes()));
 }
 
@@ -157,6 +162,9 @@ QString Format::toDiskdef() const {
     } else {
         l << QString("  skew %1").arg(skew);
     }
+    if (t0sectrk > 0)
+        l << QString("  track0 %1 %2 %3%4").arg(t0sectrk).arg(t0seclen).arg(t0fm ? "fm" : "mfm")
+                 .arg(t0firstId >= 0 ? QString(" %1").arg(t0firstId) : QString());
     if (bootsec >= 0) l << QString("  bootsec %1").arg(bootsec);
     else l << QString("  boottrk %1").arg(boottrk);
     if (offsetSectors > 0) l << QString("  offset %1").arg(qint64(offsetSectors) * seclen);
@@ -236,6 +244,14 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
         else if (key == "imdmode") num(&f.imdMode);
         else if (key == "logicalextents") num(&f.logicalExtents);
         else if (key == "offset") offsetText = val;
+        else if (key == "track0") {
+            QStringList p = val.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+            bool a = false, b = false;
+            if (p.size() >= 3) { f.t0sectrk = p[0].toInt(&a); f.t0seclen = p[1].toInt(&b); }
+            ok = a && b && (p.size() >= 3) && (p[2].toLower() == "fm" || p[2].toLower() == "mfm");
+            if (ok) f.t0fm = p[2].toLower() == "fm";
+            if (ok && p.size() >= 4) f.t0firstId = p[3].toInt(&ok, 0);
+        }
         else if (key == "skewtab") {
             f.skewtab.clear();
             for (const QString &p : val.split(',', Qt::SkipEmptyParts)) {

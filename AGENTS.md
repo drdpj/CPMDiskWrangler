@@ -73,6 +73,8 @@ copyright line in every header is `Copyright (C) 2026 Daniel Jameson`; put the s
 - **cpmtools definitions don't state the number of sides.** We infer 2 when tracks > 86, and detection tries a
   definition both ways when the inferred count doesn't fit the image (that is how a 40-cylinder double-sided
   Kaypro 4 disc is matched to `kpiv`, "tracks 80"). For new discs the built-in definitions say it explicitly.
+- **Editing a real mixed-density IMD** (`fstest addto --force` on an Osborne 8" disc): track 0 stays
+  byte-identical, every track keeps its mode, only the directory and data tracks change.
 - **Kaypro** (`kpii`, `kpiv`): sector IDs from 0; `dirblks 4` / `dirblks 2` (the Kaypro reserves 4K for a 2K
   directory). Real Kaypro 4 discs number side 1's sectors 10-19; a new disc made here uses 0-9 on both sides
   (**unverified on a real Kaypro**; per-head sector bases are not modelled).
@@ -87,6 +89,19 @@ copyright line in every header is `Copyright (C) 2026 Daniel Jameson`; put the s
   map), count, size code (0xFF: a table of sizes), sector numbering map, records 0-8 (0 missing, even =
   compressed, 3/4 deleted, 5-8 with data error). Checked against an independent Python parser
   (`tests/decode_container.py`) and libdsk.
+- **Mixed density / track 0 of its own shape**: each `Track` keeps its sectors and IMD mode; `Image::shape()` takes
+  the most common shape **by bytes** (not by track count) and counts heads only where that shape occurs. A format
+  may declare `track0 SECTRK SECLEN fm|mfm [FIRSTID]` (cpmtools ignores the key); it must be inside the boot area,
+  so the filesystem never reads it. `makeBlank` reshapes cylinder 0 head 0 (FM at the same data rate as the
+  other tracks: IMD mode 0/1/2 for 3/4/5) and refuses raw containers. Detection: +3 when the disc's track 0
+  matches a format's `track0`, -3 when it doesn't. `sameLayout` ignores it (it doesn't affect the filesystem).
+  - `osborne-8dd`: worked out by detection from 7 real Osborne 8-inch discs (track 0 FM 26 x 128, then MFM
+    8 x 1024, skew 3, 2 boot tracks, 2K blocks); directory size 128 is the whole-block reading (96 would read
+    the same discs). New discs made here have the same track structure as the real ones (checked with
+    `tests/decode_container.py` and the IMD dumper).
+  - `rm-dd`, `rm-qd`: cpmtools' layouts plus track 0 FM 16 x 128 from Adam Sampson's RM archiving notes
+    (offog.org); **not checked against a real RM disc**.
+  - On double-sided discs only cylinder 0 head 0 gets the track 0 shape (no example of the other case yet).
 - **TeleDisk**: 12-byte header (`TD` normal, `td` advanced), optional comment block, tracks (count, cylinder,
   head, crc), sectors (C H R N flags crc; data block with length and encoding 0 raw / 1 repeated pair /
   2 RLE). Checked against MAME's reader and on real Kaypro and Zorba images. 1.x advanced compression (LZW) is

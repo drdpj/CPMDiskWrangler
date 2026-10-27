@@ -660,7 +660,19 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
     l.cyls = f.cylinders;
     l.firstId = f.secbase >= 0 ? f.secbase : 1;
     l.mode = defaultImdMode(f);
+    if (f.t0sectrk > 0 && kind == Disk::Kind::Raw) {
+        *err = QString("%1 has a track 0 of its own shape (%2 x %3 %4), which a raw image can't hold: make it as ImageDisk or DSK")
+                   .arg(f.name).arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM");
+        return false;
+    }
     img->createBlank(kind, l, QString("Made by CP/M Disk Wrangler, format %1").arg(f.name));
+    if (f.t0sectrk > 0) {
+        // the same data rate as the other tracks, in FM or MFM (ImageDisk modes 0-2 FM, 3-5 MFM)
+        int rate = l.mode % 3;
+        int mode = f.t0fm ? rate : 3 + rate;
+        int first = f.t0firstId >= 0 ? f.t0firstId : l.firstId;
+        if (!img->reshapeTrack(0, 0, f.t0sectrk, f.t0seclen, first, mode, err)) return false;
+    }
     Volume v;
     // attach reads an all-E5 directory; then write the empty directory properly (stamps, label)
     if (!v.attach(img, f, err)) return false;

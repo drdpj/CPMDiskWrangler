@@ -58,6 +58,10 @@ struct Format {
     bool fm = false;              // single density (cpmtools "fm yes")
     QString datarate;             // cpmtools "datarate" (SD, DD, HD, ED)
     int logicalExtents = 0;       // cpmtools "logicalextents" (rarely needed)
+    // "track0 SECTRK SECLEN fm|mfm [FIRSTID]": track 0 has its own shape, e.g. a single-density boot track on a
+    // double-density disc. It must lie in the boot area (the filesystem never reads it). 0 = like the others.
+    int t0sectrk = 0, t0seclen = 0, t0firstId = -1;
+    bool t0fm = false;
 
     // ----- derived by derive()
     int physHeads = 1;            // heads the format uses

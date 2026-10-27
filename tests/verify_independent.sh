@@ -22,8 +22,14 @@ for dir in "$@"; do
         it=imd; [ "${img##*.}" = dsk ] && it=edsk
         heads=$(grep -A30 "^diskdef $name\$" /home/claude/CPMDiskWrangler/resources/builtin-diskdefs | awk '/^ *heads/{print $2; exit}')
         [ -z "$heads" ] && { [ "$tracks" -gt 86 ] && heads=2 || heads=1; }
-        if ! python3 "$(dirname "$0")"/decode_container.py "$img" $t/py.logical "$tracks" "$sectrk" "$seclen" "${real_sides:-alt}" "$heads" 2>$t/err; then
+        boot=$(awk '/^ *boottrk/{print $2}' "$dd")
+        if ! python3 "$(dirname "$0")"/decode_container.py "$img" $t/py.logical "$tracks" "$sectrk" "$seclen" "${real_sides:-alt}" "$heads" "${boot:-0}" >$t/t0 2>$t/err; then
           echo "FAIL $name: the Python decoder could not read the $it file: $(tail -1 $t/err)"; fail=1; rm -rf $t; continue; fi
+        want=$(awk '/^ *track0/{print "track0", $2, $3, ($4=="fm" && "'$it'"=="imd") ? "fm" : "-"}' "$dd")
+        if [ -n "$want" ]; then
+          got=$(cat $t/t0); [ "$it" = edsk ] && got=$(echo "$got" | awk '{print $1,$2,$3,"-"}')
+          [ "$got" = "$want" ] && echo "ok   $name: track 0 is $(cat $t/t0 | cut -d' ' -f2-) in the $it file" || { echo "FAIL $name: track 0 is '$got', expected '$want'"; fail=1; }
+        fi
         if cmp -s $t/py.logical "$base".logical; then echo "ok   $name: an independent decoder reads the same sectors from the $it file"; else echo "FAIL $name: the independent decoder's reading of the $it file differs"; fail=1; fi
         # libdsk too, when its geometry probe gets this disc right (it guesses some layouts wrongly)
         geo=$(dskid -type $it "$img" 2>/dev/null | awk '/Cylinders:/{c=$2}/Heads:/{h=$2}/Sectors:/{s=$2}/Sector size:/{z=$3}END{print c"/"h"/"s"/"z}')

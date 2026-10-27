@@ -4,6 +4,8 @@
 # places each track's sectors in ascending sector-ID order, and writes the logical tracks in order.
 import sys
 
+modes = {}
+
 def imd_tracks(b):
     i = b.index(0x1a) + 1
     t = {}
@@ -24,6 +26,7 @@ def imd_tracks(b):
             else: data = b[i:i + sizes[k]]; i += sizes[k]
             secs[smap[k]] = data
         t[(cyl, head & 0x3f)] = [secs[r] for r in sorted(secs)]
+        modes[(cyl, head & 0x3f)] = mode
     return t
 
 def dsk_tracks(b):
@@ -50,6 +53,7 @@ def dsk_tracks(b):
 
 src, dst = sys.argv[1], sys.argv[2]
 tracks, spt, sl, order, heads = int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), sys.argv[6], int(sys.argv[7])
+boot = int(sys.argv[8]) if len(sys.argv) > 8 else 0
 b = open(src, 'rb').read()
 t = imd_tracks(b) if b.startswith(b'IMD ') else dsk_tracks(b)
 cyls = (tracks + heads - 1) // heads
@@ -60,6 +64,12 @@ for lt in range(tracks):
     elif order == 'outback': c, h = 2 * cyls - 1 - lt, 1
     else: c, h = lt - cyls, 1
     secs = t[(c, h)]
+    if lt < boot and not (len(secs) == spt and all(s is not None and len(s) == sl for s in secs)):
+        out += b'\xe5' * (spt * sl)          # a boot track of another shape (e.g. FM track 0): not part of the filesystem
+        continue
     assert len(secs) == spt and all(s is not None and len(s) == sl for s in secs), 'track %d/%d has the wrong shape' % (c, h)
     out += b''.join(secs)
 open(dst, 'wb').write(out)
+t0 = t[(0, 0)]
+print('track0 %d %d %s' % (len(t0), len(t0[0]) if t0 and t0[0] else 0,
+      {None: '-', 0: 'fm', 1: 'fm', 2: 'fm'}.get(modes.get((0, 0)), 'mfm')))

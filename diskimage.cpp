@@ -122,6 +122,27 @@ void Image::createBlank(Kind kind, const RawLayout &l, const QString &comment) {
     m_forceSave = true;
 }
 
+bool Image::reshapeTrack(int cyl, int head, int sectrk, int seclen, int firstId, int mode, QString *err) {
+    if (m_kind == Kind::Raw) { *err = "a raw image can't hold tracks of different shapes: use ImageDisk or DSK"; return false; }
+    auto it = m_trackIndex.find(key(cyl, head, 0));
+    if (it == m_trackIndex.end()) { *err = "no such track"; return false; }
+    Track &t = m_tracks[it.value()];
+    t.secs.clear();
+    t.imdRaw.clear();
+    t.mode = mode;
+    for (int s = 0; s < sectrk; ++s) {
+        Sector x;
+        x.c = quint8(cyl); x.h = quint8(head); x.r = quint8(firstId + s); x.n = quint8(qMax(0, sizeCode(seclen)));
+        x.size = seclen;
+        x.data = QByteArray(seclen, char(0xE5));
+        x.imdType = 2;
+        t.secs.append(x);
+    }
+    index();
+    m_forceSave = true;
+    return true;
+}
+
 bool Image::setRawLayout(const RawLayout &l, QString *err) {
     if (m_kind != Kind::Raw) { *err = "not a raw image"; return false; }
     if (!l.valid()) { *err = "invalid geometry"; return false; }

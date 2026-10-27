@@ -129,8 +129,6 @@ describe bw14 "Bondwell 14"
 describe v1050 "Visual 1050"
 describe microbee40 "Microbee 40 track"
 describe rm-sd "Research Machines single density"
-describe rm-dd "Research Machines double density"
-describe rm-qd "Research Machines quad density"
 describe myz80 "MYZ80 hard disc"
 describe mds-dd "Intel MDS double density"
 describe mds-sd "Intel MDS single density"
@@ -179,5 +177,54 @@ diskdef kpiv
   skew 0
   boottrk 1
   secbase 0
+  os 2.2
+end
+
+diskdef osborne-8dd
+  desc "Osborne 8-inch double density (OCC development discs), 600K: track 0 FM 26 x 128"
+  source "Worked out by detection from 7 real Osborne 8-inch source discs (o1next repository; files match that project's own extraction byte for byte). The directory size (128) is the whole-block reading; 96 would read the same discs."
+  seclen 1024
+  tracks 77
+  heads 1
+  sectrk 8
+  blocksize 2048
+  maxdir 128
+  skew 3
+  boottrk 2
+  track0 26 128 fm
+  secbase 1
+  imdmode 3
+  os 2.2
+end
+
+diskdef rm-dd
+  desc "Research Machines 480Z double density (MD), 40 track: track 0 FM 16 x 128"
+  source "cpmtools rm-dd, plus the single-density track 0 described in Adam Sampson's RM archiving notes (offog.org)"
+  seclen 512
+  tracks 40
+  heads 1
+  sectrk 9
+  blocksize 1024
+  maxdir 64
+  skew 5
+  boottrk 3
+  track0 16 128 fm
+  imdmode 5
+  os 2.2
+end
+
+diskdef rm-qd
+  desc "Research Machines 480Z quad density (MQ), 80 track: track 0 FM 16 x 128"
+  source "cpmtools rm-qd, plus the single-density track 0 described in Adam Sampson's RM archiving notes (offog.org)"
+  seclen 512
+  tracks 80
+  heads 1
+  sectrk 9
+  blocksize 2048
+  maxdir 128
+  skew 5
+  boottrk 3
+  track0 16 128 fm
+  imdmode 5
   os 2.2
 end

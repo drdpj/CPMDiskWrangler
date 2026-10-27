@@ -128,7 +128,9 @@ public:
     void discardPending() { m_pending.clear(); m_forceSave = false; }
     QMap<quint32, QByteArray> snapshot() const { return m_pending; }
     void restore(const QMap<quint32, QByteArray> &s) { m_pending = s; }
-    void markForSave() { m_forceSave = true; }      // e.g. a truncated raw image that must be padded on disc
+    void markForSave() { m_forceSave = true; }
+    // New discs only: give one track another shape (e.g. a single-density track 0), filled with E5.
+    bool reshapeTrack(int cyl, int head, int sectrk, int seclen, int firstId, int mode, QString *err);      // e.g. a truncated raw image that must be padded on disc
 
     // Builds the file contents with the staged writes applied, in this image's own container (or another, for
     // Save As). Unchanged tracks of an IMD file and every byte outside changed sectors of a DSK/raw file are

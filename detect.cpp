@@ -447,6 +447,13 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             c.fromLibrary = true;
             c.score += 3;
             c.evidence << "a known format (" + f.origin + ")";
+            if (f.t0sectrk > 0 && haveIds) {
+                const Disk::Track *t0 = img.track(0, 0);
+                bool same = t0 && t0->secs.size() == f.t0sectrk && !t0->secs.isEmpty() && t0->secs[0].size == f.t0seclen &&
+                            (t0->mode < 0 || (t0->mode <= 2) == f.t0fm);
+                if (same) { c.score += 3; c.evidence << QString("track 0 is %1 x %2 %3, as this format's is").arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM"); }
+                else { c.score -= 3; c.evidence << "track 0 is not the shape this format gives it"; }
+            }
             if (haveIds && f.secbase >= 0) {
                 if (f.secbase == sh.firstId) { c.score += 4; c.evidence << QString("sector IDs start at %1, as this format's do").arg(f.secbase); }
                 else { c.score -= 6; c.evidence << QString("sector IDs start at %1, this format's at %2").arg(sh.firstId).arg(f.secbase); }

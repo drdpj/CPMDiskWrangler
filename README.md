@@ -32,6 +32,12 @@ then deploy with `windeployqt` and the `ldd` loop from Acorn Disk Wrangler's REA
 Sectors are always found by their **sector ID**, never by their position in the file, so rotated or
 interleaved tracks (common in ImageDisk and TeleDisk files) read correctly.
 
+**Mixed density** (a single-density FM track 0 on an otherwise double-density MFM disc, as on Osborne 8-inch and
+Research Machines 480Z discs) is handled: each track keeps its own shape and recording mode, the filesystem only
+uses tracks of the main shape, and editing leaves track 0 exactly as it was. Formats can say what their track 0
+looks like (`track0 26 128 fm` in a disc definition), so new discs are made with it - as ImageDisk (which records
+FM/MFM per track) or DSK; a raw image can't hold tracks of different shapes, so it is refused there.
+
 ## How the format is worked out
 A CP/M disc doesn't say what its layout is, so the program tries them and keeps the one that makes sense:
 
@@ -81,8 +87,9 @@ changed by something else, keeps a `.bak` (option), and writes atomically.
 ## The format library
 `resources/builtin-diskdefs` (this program's, including the **Acorn Z80 second processor** 400K format from
 Acorn Application Note 007, the Amstrad formats with their sector IDs, and the Kaypros with their sides made
-explicit) and `resources/cpmtools-diskdefs` (cpmtools' file, GPL v3). Both use cpmtools' syntax; the built-in
-one adds a few keys (`heads`, `secbase`, `imdmode`, `desc`, `source`) that cpmtools ignores.
+explicit, the Osborne 8-inch double-density format and Research Machines 480Z MD/MQ with their FM track 0) and
+`resources/cpmtools-diskdefs` (cpmtools' file, GPL v3). Both use cpmtools' syntax; the built-in
+one adds a few keys (`heads`, `secbase`, `imdmode`, `track0`, `desc`, `source`) that cpmtools ignores.
 
 ## Not supported
 Discs with two separate filesystems (one per side, as some Research Machines discs), copy-protected tracks

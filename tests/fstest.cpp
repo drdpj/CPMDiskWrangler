@@ -86,12 +86,21 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     printf("== %s as %s: %s\n", qPrintable(fname), qPrintable(kname), qPrintable(f.summary()));
     bool stamps = f.os == Cpm::Os::V3;
     Disk::Image img;
-    if (!Cpm::makeBlank(&img, kind, f, stamps, "TESTDISC", &err)) { printf("  FAIL makeBlank: %s\n", qPrintable(err)); return 1; }
+    if (!Cpm::makeBlank(&img, kind, f, stamps, "TESTDISC", &err)) {
+        if (f.t0sectrk > 0 && kind == Disk::Kind::Raw) { printf("  refused as raw, as it should be: %s\nok\n", qPrintable(err)); return 0; }
+        printf("  FAIL makeBlank: %s\n", qPrintable(err));
+        return 1;
+    }
     if (!img.saveAs(path, kind, &err)) { printf("  FAIL saveAs: %s\n", qPrintable(err)); return 1; }
 
     // reopen with the named format
     Disk::Image im2;
     CHECK(im2.open(path, &err), "open: " + err);
+    if (f.t0sectrk > 0) {
+        const Disk::Track *t0 = im2.track(0, 0), *t1 = im2.track(1, 0);
+        CHECK(t0 && t0->secs.size() == f.t0sectrk && t0->secs[0].size == f.t0seclen, "track 0 has its own shape");
+        if (kind == Disk::Kind::Imd) CHECK(t0 && t1 && (t0->mode <= 2) == f.t0fm && t1->mode >= 3, QString("track 0 mode %1, track 1 mode %2").arg(t0 ? t0->mode : -1).arg(t1 ? t1->mode : -1));
+    }
     if (kind == Disk::Kind::Raw) {
         Disk::RawLayout l;
         l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
@@ -173,7 +182,8 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
                 noSkew.derive(&err);
                 noSkew.locate(t * f.sectrk + s, &c, &h, &i);
                 QByteArray b;
-                im3.read(c, h, i, &b);
+                if (im3.sectorCount(c, h) != f.sectrk || !im3.read(c, h, i, &b) || b.size() != f.seclen)
+                    b = QByteArray(f.seclen, char(0xE5));      // a track of another shape (boot area): filler
                 lg.write(b);
             }
     }
@@ -237,13 +247,14 @@ int main(int argc, char **argv) {
         for (const QString &p : a.mid(1)) rc |= roundtrip(p);
         return rc;
     }
+    bool force = a.removeAll("--force") > 0;      // addto: write with the best reading even if not confirmed
     if (a.size() == 4 && a[0] == "addto") {
         // addto <image> <NAME.EXT> <size>: detect, add a file, save; writes <image>.added (the content) beside it
         Disk::Image img;
         QString err;
         if (!img.open(a[1], &err)) { printf("FAIL open: %s\n", qPrintable(err)); return 1; }
         Detect::Result r = Detect::detect(img);
-        if (r.ranked.isEmpty() || !r.safeToWrite) { printf("FAIL: detection not confident enough to write (%s)\n", qPrintable(r.why)); return 1; }
+        if (r.ranked.isEmpty() || (!r.safeToWrite && !force)) { printf("FAIL: detection not confident enough to write (%s)\n", qPrintable(r.why)); return 1; }
         Cpm::Volume v;
         if (!v.attach(&img, r.ranked.first().fmt, &err)) { printf("FAIL attach: %s\n", qPrintable(err)); return 1; }
         QByteArray d = content(a[3].toInt(), 4242, true);
