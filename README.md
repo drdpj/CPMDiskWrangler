@@ -1,154 +1,105 @@
 # CP/M Disk Wrangler
 
-Qt 6 (C++) tool for CP/M disc images: it reads raw sector dumps, ImageDisk (`.IMD`), CPCEMU and extended `.DSK`
-and TeleDisk (`.TD0`, read-only), **works out the disc's format from its contents**, and lets you add, extract,
-view, rename and delete files, change attributes and user numbers, set CP/M 3 labels, and make new discs in any
-of about 140 formats. Each disc opens in its own window; files can be dragged between windows, to and from the
-desktop, and to and from [Acorn Disk Wrangler](https://github.com/drdpj/AcornDiskWrangler), using the same
-`retro-files` drag format ([docs/retro-files-format.md](docs/retro-files-format.md)).
+View and edit CP/M disc images. It reads raw sector dumps, ImageDisk, CPCEMU and extended DSK, and TeleDisk images,
+**works out the disc's format from its contents**, and lets you add, extract, view, rename and delete files, change
+user numbers and attributes, set CP/M 3 labels, convert between image types, and make new discs in about 140
+formats. Files can be dragged between discs, to and from your desktop, and to and from
+[Acorn Disk Wrangler](https://github.com/drdpj/AcornDiskWrangler) and other tools that support the
+[retro-files](docs/retro-files-format.md) drag-and-drop format.
 
-Build:  `qmake cpmdiskwrangler.pro && make`      (or: `cmake -S . -B build && cmake --build build`)
-Needs:  Qt 6 widgets dev package (Ubuntu: `qt6-base-dev`), or Qt 5.15 (`qtbase5-dev`; CMake: `-DUSE_QT5=ON`)
-Run:    `./cpmdiskwrangler [image ...]`          (each image gets its own window)
+## Download
+Get the latest build for Windows, macOS or Linux from the
+[Releases page](https://github.com/drdpj/CPMDiskWrangler/releases).
 
-## Building on Windows (MSYS2 / UCRT64)
-Exactly as for Acorn Disk Wrangler: in the **MSYS2 UCRT64** shell, install the tools, then from the source
-folder build and deploy, collect the licences of everything it ships, and build again with them compiled in:
+* **Windows** (10 or later, 64-bit): unzip anywhere and run `cpmdiskwrangler.exe`.
+* **macOS** (12 or later, Intel or Apple Silicon): open the `.dmg` and drag the app to Applications. It isn't
+  signed by Apple, so the first time, right-click it and choose **Open**.
+* **Linux** (x86_64): the `.AppImage` runs as it is - make it executable (`chmod +x`) and start it.
 
-    pacman -S --needed mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-qt6-base
-    bash ci/build.sh windows
-    bash ci/collect-licences.sh windows deploy
-    bash ci/build.sh windows
-    cp -r LICENSE THIRD-PARTY-NOTICES.md licences deploy/
+Help > About shows the version, and Help > Licences the licences of the program and everything distributed with it.
 
-For Qt 5 instead, install `mingw-w64-ucrt-x86_64-qt5-base mingw-w64-ucrt-x86_64-qt5-tools` and run
-`QT=5 bash ci/build.sh windows` both times.
-
-Zip the `deploy` folder to distribute it, and publish the matching source with it (the repository link or a
-source zip): the GPL requires that for this program, and the LGPL lets recipients swap in their own Qt DLLs.
-
-## Release builds (Windows, macOS, Linux)
-`.github/workflows/build.yml` builds all three on GitHub on every push and pull request (the packages are kept
-as the run's artifacts), and pushing a tag `v*` publishes them as a release:
-
-| Platform | Built with | Package |
+## What it opens
+| Image type | Read | Write |
 |---|---|---|
-| Windows x64 (10 and later) | MSYS2 UCRT64 Qt 6, `windeployqt6` | `.zip` of the program, its DLLs and plugins |
-| macOS 12 and later, Intel and Apple Silicon | Qt's official Qt 6.8 LTS (universal), `macdeployqt` | `.dmg`; signed ad hoc only, so the first time it must be opened with right-click > Open |
-| Linux x86_64 | Ubuntu 22.04 Qt 6, `linuxdeploy` | AppImage |
+| Raw sector image (`.img`, `.dsk`, `.h8d`, ...) | yes | yes |
+| ImageDisk (`.imd`) | yes | yes - everything it doesn't change is kept exactly |
+| CPCEMU and extended DSK (`.dsk`) | yes | yes - only the changed sectors are rewritten |
+| TeleDisk (`.td0`) | yes | no - use Save As to make an ImageDisk, DSK or raw copy, then edit that |
 
-They use Qt 6. To build with Qt 5.15 instead, run the workflow by hand (Actions > Build > Run workflow, Qt
-major version 5): its packages are named `...-qt5`, and on macOS that one comes from Homebrew's `qt@5`, so it
-is for Apple Silicon only (Homebrew is dropping `qt@5` in May 2027). By hand, put `QT=5` in front of
-`ci/build.sh`. Qt's official Mac build has no package manager behind it, so `ci/collect-licences.sh` takes its
-licences from Qt's own source at the same version: Qt's LGPL and GPL texts, and every third-party component Qt
-records (`ci/qt-attributions.py`).
+It copes with interleaved and rotated tracks, with discs whose track 0 is single density (FM) and the rest
+double density (Osborne, Research Machines 480Z), and with double-sided discs that hold a separate filesystem on
+each side (shown as **Side 0** and **Side 1**).
 
-Help > About shows the version it was built from: the tag for a release (`v1.0.0`), or the tag, commits since and
-commit for anything else (`v1.0.0-3-gabc1234`), from `git describe` (see `version.pri`).
+## How it finds the format
+A CP/M disc doesn't record its own layout, so the program tries the possibilities - block size, directory size,
+reserved tracks, skew, side order - and keeps the reading that makes sense of the directory and the files. Known
+formats count for more: about 140 are built in, including cpmtools' library, the Amstrad CPC, PCW and +3, Kaypro,
+Osborne, Research Machines 480Z and Acorn's Z80 second processor.
 
-Every build links to Qt's **shared** libraries, as the LGPL expects (people can replace them with their own),
-and carries the licence of everything it ships twice over: compiled into the program (**Help > Licences**) and
-as files beside it (`LICENSE`, `THIRD-PARTY-NOTICES.md`, `licences/`). To make that work each platform is built
-twice - the first build is deployed to find out which libraries ship, `ci/collect-licences.sh` gathers those
-libraries' licences from the packages they came from (it fails if one can't be traced), and the second build
-compiles them in. The same scripts work by hand, from the source root:
+**Tools > Disc format** shows the ranked readings and their evidence, lets you pick one yourself (it's remembered
+for that file), and copies any of them as a cpmtools `diskdef`. Tools > Add a diskdefs file adds your own
+definitions.
 
-    bash ci/build.sh windows                       # or macos / linux: build and deploy
-    bash ci/collect-licences.sh windows deploy     # macos: build/<app>.app   linux: build/AppDir
-    bash ci/build.sh windows                       # again, with the licences compiled in
-
-`ci/`, `licences.cpp/.h`, `licences.qrc`, `licences/` and the workflow are shared, unchanged, with [Acorn Disk Wrangler](https://github.com/drdpj/AcornDiskWrangler).
-
-## Image containers
-| Container | Read | Write | Notes |
-|---|---|---|---|
-| Raw sector image (`.img`, `.dsk`, `.h8d`, ...) | yes | yes | geometry from the format (detected or chosen); a short image is padded in memory and saved full size |
-| ImageDisk `.IMD` | yes | yes | header, comment, sector numbering (interleave), cylinder/head maps, deleted/error marks and modes are kept; unchanged tracks are written back byte for byte |
-| CPCEMU `.DSK` and extended `.DSK` | yes | yes | written back in place: only changed sectors' bytes change |
-| TeleDisk `.TD0` (2.x, normal and "advanced" compression) | yes | Save As only | Save As ImageDisk/DSK/raw to edit |
-
-Sectors are always found by their **sector ID**, never by their position in the file, so rotated or
-interleaved tracks (common in ImageDisk and TeleDisk files) read correctly.
-
-**Mixed density** (a single-density FM track 0 on an otherwise double-density MFM disc, as on Osborne 8-inch and
-Research Machines 480Z discs) is handled: each track keeps its own shape and recording mode, the filesystem only
-uses tracks of the main shape, and editing leaves track 0 exactly as it was. Formats can say what their track 0
-looks like (`track0 26 128 fm` in a disc definition), so new discs are made with it - as ImageDisk (which records
-FM/MFM per track) or DSK; a raw image can't hold tracks of different shapes, so it is refused there.
-
-## How the format is worked out
-A CP/M disc doesn't say what its layout is, so the program tries them and keeps the one that makes sense:
-
-1. The **physical shape** comes from the container (sector size, sectors per track, sides, sector IDs). For a raw
-   image, every known format with that file size and every common geometry that divides it are candidates.
-2. For each combination of **reserved (boot) tracks, skew and side order**, it reads where the directory would be
-   and checks every 32-byte entry: user number, name characters, extent and record counts.
-3. For each **block size and directory size**, it checks the block pointers: two-byte or one-byte, in range, not
-   in the directory, not shared between files, and the number of blocks in each extent matches its record count.
-   Files on a well-used disc start right after the directory, which settles the directory size.
-4. The best readings are checked on **content**: text files must stay text up to their `^Z`, `.COM` files
-   should start with a plausible instruction, and no file should start in never-written (E5) space.
-5. **Known formats** (built-in and cpmtools' diskdefs, about 140) score extra, as do physical clues: a format's
-   sector-ID base (Amstrad's C1 and 41), and the Amstrad PCW/+3 boot-sector spec.
-
-**Tools > Disc format** shows the ranked readings with their evidence and a preview of what each would list,
-lets you try a format by hand, and copies any of them as a cpmtools `diskdef`. A format you confirm there is
-remembered for that file.
-
-### When changes are allowed
-A disc can be changed only when the reading is safe: a known format that nothing else competes with, a format
-you confirmed, or a disc made by this program. Otherwise it opens **read-only** and says why in the status bar:
-
-* the best reading isn't a known format (it was found by searching), or another reading comes close;
-* the directory has errors (Tools > Check disc);
-* the image is a TeleDisk file (Save As first).
-
-Everything is staged in memory until **Save**, which re-checks the directory first, refuses if the file was
-changed by something else, keeps a `.bak` (option), and writes atomically.
+To keep a wrong guess from damaging a disc, a disc can only be changed when the reading is certain: a known
+format with no close rival, one you've confirmed, or a disc made by this program. Otherwise it opens
+**read-only** and the status bar says why.
 
 ## Using it
-* **Files are grouped by user number.** Drop files on a *User N* row to put them in that user number; dropping on
-  the disc row keeps a CP/M file's own user number (0 for other files). Host folders called `user3`, `user 3`,
-  `u3` or `3` go to that user number; other folders are flattened.
-* Names are converted to CP/M 8.3 (upper case; invalid characters become `-`). Exact file sizes are kept where the
-  disc can record them (the last-record byte count that CP/M 3 and cpmtools use).
-* **Drag files out** to the desktop or another program: plain files plus the `retro-files` JSON with the
-  user number and attributes. From Acorn Disk Wrangler: locked → read-only, DOS R/S/H/A → R/O, SYS, ARC.
-* F3 / double-click: view as text (up to the `^Z`, optionally ignoring WordStar's bit 7) or hex.
-* Alt+Enter: attributes (R/O, SYS, ARC, F1'-F4') and user number, for one or many files. F2: rename.
-* Edit > Disc label (CP/M 3). Tools > Check disc, Disc information (geometry, DPB values, the format as a diskdef).
-* File > New disc image: any format in the library, as ImageDisk, extended DSK or raw, optionally with CP/M 3
-  time stamps and a label.
-* File > Save As converts between containers (e.g. TeleDisk → ImageDisk).
-* Tools > Add a diskdefs file: extend the format library with your own cpmtools-style definitions.
+* **One disc per window.** File > Open opens a new window if this one already has a disc in it. Dropping disc
+  images on an empty window opens them; dropped on a window with a disc, they're copied onto it as files.
+* **Files are grouped by user number.** Drop files on a *User N* row to put them in that user number. Host
+  folders named `user3`, `user 3`, `u3` or `3` go to that user number; other folders are flattened.
+* **Add files** by dropping them from your file manager. Names become CP/M 8.3 (upper case; characters CP/M can't
+  use become `-`).
+* **Extract files** by dragging them out to your desktop or another program. Dragged to a tool that supports
+  retro-files, they keep their user number and attributes (see below).
+* **View** (double-click, F3): text up to the end-of-file mark (optionally ignoring WordStar's high bit), or hex.
+* **Rename** (F2), **Properties** (Alt+Enter) for attributes (R/O, SYS, ARC, F1'-F4') and user number, for one
+  file or many. Edit > Disc label for CP/M 3 discs.
+* **Tools > Check disc** checks the directory; **Disc information** shows the geometry and format.
+* **File > New disc image**: any format in the library, as ImageDisk, extended DSK or raw, optionally with CP/M 3
+  time stamps and a label. **File > Save As** converts between image types (e.g. TeleDisk to ImageDisk).
+* **Save** (Ctrl+S). Nothing is written until you save; the directory is checked first, it won't save if the
+  file was changed by something else meanwhile, and a `.bak` copy is kept if you choose.
 
-## The format library
-`resources/builtin-diskdefs` (this program's, including the **Acorn Z80 second processor** 400K format from
-Acorn Application Note 007, the Amstrad formats with their sector IDs, and the Kaypros with their sides made
-explicit, the Osborne 8-inch double-density format and Research Machines 480Z MD/MQ with their FM track 0) and
-`resources/cpmtools-diskdefs` (cpmtools' file, GPL v3). Both use cpmtools' syntax; the built-in
-one adds a few keys (`heads`, `secbase`, `imdmode`, `track0`, `desc`, `source`) that cpmtools ignores.
+## Drag and drop between disc tools
+Both Wranglers implement **[retro-files](docs/retro-files-format.md)** (`application/x-retro-files+json`), an open
+format for dragging files out of disc images and into other programs. An ordinary drag between programs carries
+only a file's name and contents, but a file on a retro disc has more than that, and it matters: an Acorn file's
+load and execution addresses (without them a program may not run, and they also hold its type and date), access
+bits, a DFS directory letter, DOS attributes, a CP/M user number. retro-files carries those too. That means:
 
-### A separate disc on each side
-Some double-sided discs hold two filesystems, one per side (Research Machines 480Z, for example). Detection tries
-a single-sided format on each side of a two-sided disc; when that reads best, the window shows **Side 0** and
-**Side 1**, each with its own user numbers, label and free space. Drop files on a side's rows to put them there;
-drag files from one side to the other to copy them. Raw images of these discs (side 0 then side 1, or cylinder by
-cylinder, each side with its own FM track 0 - 732,160 bytes for an RM 480Z MQ disc) open directly.
+* **Files move between disc tools without losing anything.** Drag a file from a disc in one program that
+  supports the format to a disc in another - between Acorn Disk Wrangler and CP/M Disk Wrangler, between two
+  copies of either, or to any other tool that adopts it - and its attributes go with it. The receiving program
+  converts what the destination disc can hold (for example, an Acorn file's lock becomes CP/M's read-only flag)
+  instead of guessing from a bare file.
+* **Nothing else breaks.** The same drag also carries ordinary files, so dropping on your desktop, a file
+  manager or any other program works as usual.
+* **Any tool can join in.** It is a small, versioned JSON document, with attributes grouped by filesystem
+  (`acorn`, `fat`, `cpm`): a tool for another kind of disc adds its own group and reads the groups it
+  understands. The [specification](docs/retro-files-format.md) explains the format and why it exists.
 
-## Not supported
-Making a new disc with a separate filesystem on each side (open a blank one-sided format twice, or copy an
-existing image), copy-protected tracks
-(duplicate sector IDs; read but never written), TeleDisk 1.x "advanced compression", DateStamper's
-`!!!TIME&.DAT` stamps (the file is kept, just not interpreted), CP/M 3 passwords (kept, not checked).
+## Limitations
+* TeleDisk images can't be saved back as TeleDisk, and TeleDisk 1.x "advanced compression" isn't supported.
+* A raw image can't hold a disc whose track 0 differs from the rest; use ImageDisk or DSK for those.
+* New discs with a separate filesystem on each side can't be made (copy an existing image instead).
+* Copy-protected tracks (duplicate sector numbers) are read but never written.
+* DateStamper's `!!!TIME&.DAT` time stamps are kept but not shown; CP/M 3 passwords are kept but not checked.
+
+## Building from source
+Needs Qt 6 (or Qt 5.15) with its widgets module, and a C++17 compiler.
+
+    qmake cpmdiskwrangler.pro && make              # or: cmake -S . -B build && cmake --build build
+    ./cpmdiskwrangler [image ...]                  # each image opens in its own window
+
+See [docs/building.md](docs/building.md) for Windows, macOS, Qt 5, the release builds and how they carry their
+licences.
 
 ## Licence
-Copyright (C) 2026 Daniel Jameson. Licensed under the GNU General Public License v3.0 or later - see LICENSE.
-Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later), unchanged in
-`resources/cpmtools-diskdefs`. The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura.
-Uses Qt (6, or 5.15) under the LGPL v3. Everything third-party, and its terms, is listed in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Copyright (C) 2026 Daniel Jameson. Licensed under the GNU General Public License v3.0 or later - see
+[LICENSE](LICENSE). Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or
+later); the TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura. Uses Qt under the LGPL
+v3. Everything third-party, and its terms, is listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-## For developers / agents
-See [AGENTS.md](AGENTS.md) (design rules, format notes, detection, how to test, pitfalls).
+Working on the code? See [AGENTS.md](AGENTS.md): design rules, format notes, detection, tests and pitfalls.

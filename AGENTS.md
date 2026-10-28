@@ -125,6 +125,11 @@ with its terms (and in About if it ships in the program); material only consulte
 - **DSK / EDSK**: standard (fixed track size) and extended (track size table); sector data in recorded order;
   weak or short sectors (stored length != nominal) are read but never written.
 
+## Behaviour details (moved from the README)
+* Exact file sizes are kept where the disc can record them: the last-record byte count used by CP/M 3 and
+  cpmtools.
+* A short raw image is padded in memory and saved full size.
+
 ## How detection works (detect.cpp)
 1. Physical layouts: the container's own; for raw images every library format whose size fits (exactly, or
    a truncated image at least 60% of it) and every factorisation into 128-1024-byte sectors, common sectors per
@@ -154,6 +159,8 @@ correctly not read as CP/M (an MS-DOS boot sector gets a hint pointing at Acorn 
 as APP_VERSION, shown in Help > About; "unknown" without git, or set it with `qmake APP_VERSION=...` /
 `-DAPP_VERSION=...`. It is read when qmake/CMake runs, so re-run them after a new commit or tag. Both files are
 shared with the other wrangler.
+
+How to build on each platform and how releases work, for people: `docs/building.md` (shared).
 
 **Release builds and licences.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages, linked to
 Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each is built twice: `ci/build.sh`
