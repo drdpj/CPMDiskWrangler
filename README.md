@@ -44,6 +44,9 @@ is for Apple Silicon only (Homebrew is dropping `qt@5` in May 2027). By hand, pu
 licences from Qt's own source at the same version: Qt's LGPL and GPL texts, and every third-party component Qt
 records (`ci/qt-attributions.py`).
 
+Help > About shows the version it was built from: the tag for a release (`v1.0.0`), or the tag, commits since and
+commit for anything else (`v1.0.0-3-gabc1234`), from `git describe` (see `version.pri`).
+
 Every build links to Qt's **shared** libraries, as the LGPL expects (people can replace them with their own),
 and carries the licence of everything it ships twice over: compiled into the program (**Help > Licences**) and
 as files beside it (`LICENSE`, `THIRD-PARTY-NOTICES.md`, `licences/`). To make that work each platform is built

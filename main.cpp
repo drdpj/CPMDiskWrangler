@@ -22,10 +22,15 @@
 #include "icon.h"
 #include "mainwindow.h"
 
+#ifndef APP_VERSION                // set by version.pri / version.cmake from git describe
+#define APP_VERSION "unknown"
+#endif
+
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QApplication::setOrganizationName("cpmdiskwrangler");
     QApplication::setApplicationName("cpmdiskwrangler");
+    QApplication::setApplicationVersion(APP_VERSION);
     QGuiApplication::setDesktopFileName("cpmdiskwrangler");
     QApplication::setWindowIcon(appIcon());
     RetroFiles::cleanStale();

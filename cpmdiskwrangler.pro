@@ -31,3 +31,4 @@ HEADERS += mainwindow.h mainwindow_p.h formatdialog.h newdisc.h viewer.h viewtex
 RESOURCES += resources.qrc
 RESOURCES += licences.qrc                          # Help > Licences: LICENSE, notices, the LGPL for Qt
 exists(licences-bundled.qrc): RESOURCES += licences-bundled.qrc   # a release build's library licences (ci/)
+include(version.pri)                              # APP_VERSION from git describe (Help > About)

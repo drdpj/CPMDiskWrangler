@@ -1139,7 +1139,8 @@ void MainWindow::addDiskdefsDialog() {
 
 void MainWindow::about() {
     QMessageBox::about(this, "About CP/M Disk Wrangler",
-                       "<b>CP/M Disk Wrangler</b><br>View and edit CP/M disc images: raw sector dumps, ImageDisk (.IMD), "
+                       "<b>CP/M Disk Wrangler</b><br>Version " + QApplication::applicationVersion().toHtmlEscaped() +
+                       "<br><br>View and edit CP/M disc images: raw sector dumps, ImageDisk (.IMD), "
                        "CPCEMU and extended DSK, and TeleDisk (.TD0, read-only). Works out each disc's format from its contents, "
                        "and exchanges files with Acorn Disk Wrangler and other tools by drag and drop (retro-files format).<br><br>"
                        "Copyright &copy; 2026 Daniel Jameson.<br>Licensed under the GNU General Public License v3 or later.<br><br>"

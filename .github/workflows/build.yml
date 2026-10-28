@@ -7,6 +7,8 @@
 # v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks); a tag with a
 # suffix, such as v1.0.0-beta.1, makes it a pre-release.
 #
+# The version shown in Help > About is git describe's (version.pri), so a tagged build shows the tag.
+#
 # Each platform builds twice (ci/build.sh): the first build is deployed to find out which libraries ship, then
 # ci/collect-licences.sh gathers their licences into licences-bundled.qrc and the second build compiles them in.
 
@@ -54,6 +56,9 @@ jobs:
           pacman -S --noconfirm --needed "${pkgs[@]/#/$MINGW_PACKAGE_PREFIX-}"
       - name: Identify
         run: |
+          # MSYS2's git may call a checkout made by another git "dubious" and refuse it; qmake's git describe
+          # (the version shown in Help > About) needs it too
+          git config --global --add safe.directory "$(pwd)"
           app=$(basename "$(ls ./*.pro)" .pro)
           {
             echo "APP=$app"

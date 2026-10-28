@@ -150,6 +150,11 @@ correctly not read as CP/M (an MS-DOS boot sector gets a hint pointing at Acorn 
 
 ## Build and test
 
+**Version.** `version.pri` (qmake) and `version.cmake` (CMake) compile in `git describe --tags --always --dirty`
+as APP_VERSION, shown in Help > About; "unknown" without git, or set it with `qmake APP_VERSION=...` /
+`-DAPP_VERSION=...`. It is read when qmake/CMake runs, so re-run them after a new commit or tag. Both files are
+shared with the other wrangler.
+
 **Release builds and licences.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages, linked to
 Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each is built twice: `ci/build.sh`
 builds and deploys, `ci/collect-licences.sh` gathers the licences of every shipped library into
