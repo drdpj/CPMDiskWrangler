@@ -1,7 +1,7 @@
 # Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root.
 #
 # Builds Windows (x64 zip), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
-# AppImage), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
+# AppImage, and a .deb that uses the system's Qt for Ubuntu 22.04+ / Debian 12+), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
 # program (Help > Licences) and copied beside it. Qt 6 by default; "Run workflow" (Actions tab) can build with
 # Qt 5.15 instead, whose packages are named ...-qt5 (on macOS that one is Apple Silicon only, from Homebrew). Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
 # v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks); a tag with a
@@ -172,7 +172,7 @@ jobs:
           if [ "$QT" = 6 ]; then pkgs=(qt6-base-dev qt6-base-dev-tools qmake6 qt6-qpa-plugins libgl-dev)
           else pkgs=(qtbase5-dev qt5-qmake); fi
           sudo apt-get update -qq
-          sudo apt-get install -y -qq "${pkgs[@]}" build-essential xvfb
+          sudo apt-get install -y -qq "${pkgs[@]}" build-essential dpkg-dev xvfb
           echo "QMAKE=$(command -v "$([ "$QT" = 6 ] && echo qmake6 || echo qmake)")" >> "$GITHUB_ENV"
           mkdir -p "$HOME/tools"
           for t in linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
@@ -208,6 +208,14 @@ jobs:
           set +e
           timeout 8 xvfb-run -a "dist/$APP-$VERSION-linux-x86_64.AppImage"
           [ $? = 124 ] || { echo "::error::$APP exited before the timeout"; exit 1; }
+      - name: Package the .deb (the system's Qt)
+        run: bash ci/make-deb.sh build dist
+      - name: Check the .deb installs and starts
+        run: |
+          sudo apt-get install -y -qq "./dist/$APP-$VERSION-linux-amd64.deb"
+          set +e
+          timeout 8 xvfb-run -a "$APP"
+          [ $? = 124 ] || { echo "::error::the installed $APP exited before the timeout"; exit 1; }
       - uses: actions/upload-artifact@v7
         with:
           name: linux

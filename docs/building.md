@@ -65,7 +65,8 @@ For Qt 5, use Homebrew's `qt@5` (Apple Silicon only, and Homebrew drops it in Ma
 |---|---|---|
 | Windows 10+, x64 | MSYS2 UCRT64, Qt 6 | `.zip` of the program with its DLLs and plugins |
 | macOS 12+, Intel and Apple Silicon | Qt's official Qt 6.8 LTS (universal) | `.dmg`, signed ad hoc only (right-click > Open the first time) |
-| Linux x86_64 | Ubuntu 22.04, Qt 6, linuxdeploy | AppImage |
+| Linux x86_64 | Ubuntu 22.04, Qt 6, linuxdeploy | AppImage (carries its own Qt) |
+| Ubuntu 22.04+ / Debian 12+, amd64 | the same build, `ci/make-deb.sh` | `.deb` using the system's Qt (about 300 KB) |
 
 * **Every push to `main` and every pull request** builds all three; the packages are kept for 90 days as the
   run's artifacts (at the bottom of the run's summary page).

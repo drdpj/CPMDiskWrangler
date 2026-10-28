@@ -193,7 +193,10 @@ How to build on each platform and how releases work, for people: `docs/building.
 **Release builds and licences.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages, linked to
 Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each is built twice: `ci/build.sh`
 builds and deploys, `ci/collect-licences.sh` gathers the licences of every shipped library into
-`licences-bundled.qrc`, and `ci/build.sh` again compiles them in (Help > Licences, `licences.cpp`). A new source
+`licences-bundled.qrc`, and `ci/build.sh` again compiles them in (Help > Licences, `licences.cpp`). On Linux, `ci/make-deb.sh` then packages the same build as a `.deb` that depends on the system's Qt
+(dpkg-shlibdeps; built on 22.04 against Qt 6.2, it installs on Ubuntu 22.04+ and Debian 12+ - the t64-renamed
+libraries of 24.04 provide the old names; checked in clean 22.04-built / 24.04-installed chroots, Qt 6 and Qt 5),
+and the workflow installs it and starts it. A new source
 file in the .pro also goes in CMakeLists.txt and any `tests/*.pro` that build `mainwindow.cpp` (they need
 `../licences.cpp`). `ci/`, `licences.*`, `licences/`, `buttonbar.h`, `appsettings.h` and the workflow are shared with Acorn Disk Wrangler: keep them
 identical.

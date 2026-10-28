@@ -14,7 +14,14 @@ Get the latest build for Windows, macOS or Linux from the
 * **Windows** (10 or later, 64-bit): unzip anywhere and run `cpmdiskwrangler.exe`.
 * **macOS** (12 or later, Intel or Apple Silicon): open the `.dmg` and drag the app to Applications. It isn't
   signed by Apple, so the first time, right-click it and choose **Open**.
-* **Linux** (x86_64): the `.AppImage` runs as it is - make it executable (`chmod +x`) and start it.
+* **Linux** (x86_64):
+  * **Ubuntu 22.04 or later, Debian 12 or later:** install the `.deb`, which uses the system's Qt and puts the
+    program in the applications menu with its icon:
+    `sudo apt install ./cpmdiskwrangler-<version>-linux-amd64.deb` (the `./` matters; Ubuntu's App Center may not
+    open a downloaded `.deb`). Remove it with `sudo apt remove cpmdiskwrangler`.
+  * **Any other Linux:** the `.AppImage` runs as it is - make it executable (`chmod +x`) and start it. It
+    doesn't add itself to the applications menu, so docks show a generic icon for it unless a tool such as
+    Gear Lever or AppImageLauncher integrates it.
 
 Help > About shows the version, and Help > Licences the licences of the program and everything distributed with it.
 
