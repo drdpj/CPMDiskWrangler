@@ -45,8 +45,10 @@ windows)
     find "$deployed" -type f -iname '*.dll' | sort | while read -r f; do
         name=$(basename "$f")
         orig="$prefix/bin/$name"
+        # only one of the two plugin folders exists, and find fails on the other: "|| true", or set -e ends the
+        # script here without a word
         [ -f "$orig" ] || orig=$(find "$prefix/share/qt6/plugins" "$prefix/share/qt5/plugins" -type f -name "$name" \
-                                      2>/dev/null | head -n 1)
+                                      2>/dev/null | head -n 1 || true)
         # shellcheck disable=SC2015   # "|| true" covers either part failing
         pkg=$([ -n "$orig" ] && pacman -Qqo "$orig" 2>/dev/null || true)
         printf '%s\t%s\n' "$name" "${pkg:-?}" >> "$work/map"
@@ -79,7 +81,7 @@ linux)
         # The AppDir's copy came from the system; dpkg knows which package installed a file of that name.
         pkg=$(dpkg -S "*/$name" 2>/dev/null | awk -F': ' -v n="$name" '
                   { k = split($2, p, "/") } p[k] == n && $2 ~ /^\/(usr\/)?lib/ { print $1; exit }' |
-              cut -d, -f1 | cut -d: -f1)
+              cut -d, -f1 | cut -d: -f1 || true)      # not found: reported below as untraced
         printf '%s\t%s\n' "$name" "${pkg:-?}" >> "$work/map"
     done
     ;;

@@ -47,7 +47,7 @@ jobs:
           msystem: UCRT64
           update: true
           pacboy: gcc:p make:p
-          install: zip
+          install: zip git      # git: the version in the package names comes from git describe
       - name: Install Qt ${{ env.QT }}
         run: |
           if [ "$QT" = 6 ]; then pkgs=(qt6-base); else pkgs=(qt5-base qt5-tools); fi
