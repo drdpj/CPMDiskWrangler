@@ -130,6 +130,7 @@ private:
     bool writeStamps(int entry, const QDateTime &first, const QDateTime &update, QString *err);
     bool freeSlot(int index) const;
     bool isFileEntry(quint8 st) const;
+    bool inertEntry(const QByteArray &e) const;     // a user entry that holds nothing and isn't a file name
 
     Disk::Image *m_img = nullptr;
     Format m_fmt;

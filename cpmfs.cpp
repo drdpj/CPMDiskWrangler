@@ -178,6 +178,16 @@ bool Volume::reload(QString *err) {
 
 bool Volume::isFileEntry(quint8 st) const { return st <= 15 || (st <= 31 && m_fmt.os != Os::V3); }
 
+// An entry with a user number but a name no CP/M could have made (control characters) and nothing in it - no
+// records, no blocks. Seen as the first entry of a real Acorn Z80 disc (Colossal Cave), perhaps a disc identity
+// written by Acorn's tools. It isn't listed as a file, its slot is never reused, and it is left exactly as it is.
+bool Volume::inertEntry(const QByteArray &e) const {
+    if (!isFileEntry(quint8(e[0])) || quint8(e[15]) != 0) return false;
+    for (int k = 16; k < 32; ++k) if (e[k]) return false;
+    for (int k = 1; k <= 11; ++k) if ((quint8(e[k]) & 0x7F) < 0x20) return true;
+    return false;
+}
+
 int Volume::logicalExtent(const QByteArray &e) const { return (quint8(e[14]) & 0x3F) * 32 + (quint8(e[12]) & 0x1F); }
 
 int Volume::recordsIn(const QByteArray &e) const {
@@ -227,7 +237,7 @@ bool Volume::parse(QString *err) {
     for (int i = 0; i < m_dir.size(); ++i) {
         const QByteArray &e = m_dir[i];
         quint8 st = quint8(e[0]);
-        if (!isFileEntry(st)) continue;
+        if (!isFileEntry(st) || inertEntry(e)) continue;
         QByteArray n = e.mid(1, 11);
         for (char &c : n) c = char(c & 0x7F);
         QByteArray k = QByteArray(1, char(st)) + n;
@@ -385,6 +395,10 @@ Report Volume::check() const {
         if (!isFileEntry(st)) {
             if (st >= 16 && st <= 31 && m_fmt.os == Os::V3) continue;    // CP/M 3 password entry
             r.errors << QString("entry %1: status byte %2 is not a user number, label, stamp or free entry").arg(i).arg(st, 2, 16, QChar('0'));
+            continue;
+        }
+        if (inertEntry(e)) {
+            r.warnings << QString("entry %1 is not a file (a name with control characters and no data): left as it is").arg(i);
             continue;
         }
         QByteArray n = e.mid(1, 11), masked = n;
@@ -677,6 +691,10 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
     // attach reads an all-E5 directory; then write the empty directory properly (stamps, label)
     if (!v.attach(img, f, err)) return false;
     if (stamps && !v.initDirectory(true, label, err)) return false;
+    if (f.acornDfs) {
+        QByteArray cat = acornDfsCatalogue(f.cylinders * f.sectrk);
+        if (!img->write(0, 0, 0, cat.left(256), err) || !img->write(0, 0, 1, cat.mid(256), err)) return false;
+    }
     img->markForSave();
     return true;
 }

@@ -88,7 +88,19 @@ with its terms (and in About if it ships in the program); material only consulte
 - **Acorn Z80 second processor**: from Acorn Application Note 007: 80 track double-sided, 10 x 256-byte sectors
   (FM), side 1 runs back from track 79, 3 reserved tracks, 128 entries, logical 512-byte sectors from physical
   pairs 0/1 4/5 8/9 2/3 6/7 (skew table `0,1,4,5,8,9,2,3,6,7`), sector IDs 0-9. The 2K block size is inferred from
-  the 388K the note states. **Not yet checked against a real disc** - ask the owner for one.
+  the 388K the note states. **Checked on one real disc** (the owner's Colossal Cave `cave.dsd`, raw, interleaved,
+  409,600 bytes; not in the repo): detected as acorn-z80 with no rival, all 12 files identical to
+  `tests/acornz80_check.py`'s (an independent reader written from the note alone), an added file reads back with
+  it, and tracks 0-2 of side 0 and the odd entry below are left untouched. The real disc also has:
+  - **an Acorn DFS catalogue on track 0** (sectors 0-1, in the boot area): title "Acorn CP/M", one locked file
+    `$.CPMDISC` from sector 2 to 800, so the BBC's DFS sees a full disc. The rest of tracks 0-2 is E5. Format key
+    `acorndfs yes`: new discs get it (track 0 byte-identical to the real one), detection gives +6 for it and does
+    not take it as a foreign filesystem.
+  - **directory entry 0 that is not a file**: user 0, name bytes `fe bd ee 29 00 30 db 29 3f 1f 1d`, S2 0x39, RC 0,
+    no blocks. Meaning unknown (a disc identity written by Acorn's tools?). Handled generally as an *inert* entry
+    (`Volume::inertEntry`: a user entry with control characters in its name, no records, no blocks): not listed,
+    its slot never reused, a warning (not an error) in Check; detection tolerates one (`KInert`), and an all-zero
+    entry is never inert. More real discs would show whether every Acorn disc has it and what it holds.
 - **ImageDisk**: header line + comment up to 0x1A; per track mode, cylinder, head (bit 7 cylinder map, bit 6 head
   map), count, size code (0xFF: a table of sizes), sector numbering map, records 0-8 (0 missing, even =
   compressed, 3/4 deleted, 5-8 with data error). Checked against an independent Python parser
@@ -197,6 +209,7 @@ Each test is its own `.pro` in `tests/`:
 | `tests/verify_independent.sh <fstest outdirs>` | **independent**: Python IMD/DSK decoder + libdsk (where its geometry probe is right) must see the same sectors; cpmtools must read every file exactly and `fsck.cpm` must be clean |
 | `guitest <dir> [osborne.imd [teledisk.td0]] [--adw dir]` | offscreen GUI: host drops (userN folders, flattening, .inf skipped), real drag events between windows, drag-out JSON, drops made by Acorn Disk Wrangler's code, read-only rules, format dialog, TeleDisk Save As; screenshots in `<dir>/shots` |
 | `tests/interop_adw` (qmake `ADW=<Acorn Disk Wrangler source>`) | built from **Acorn Disk Wrangler's own dragout.cpp**: `make <dir>` writes its drags (ADFS, DFS, FAT) for guitest; `read <json>` reads ours |
+| `tests/acornz80_check.py <dsd> <outdir>` | **independent** Acorn Z80 reader (from Application Note 007 only); `run_all.sh` compares its files with ours for every `<real>/acorn/*.dsd` (the owner's discs, not in the repo) |
 | `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
 | `mkicon <dir>` | the PNG icons |
 
@@ -230,6 +243,6 @@ for the directory) that every self-test had passed.
 (8" CP/M 1.3-3, MP/M, 4MB hard discs, UCSD and FLP-80DOS negatives), lesbird/H89 and FujiNetWIFI (Heathkit H8D).
 
 ## Known gaps / ideas
-Acorn Z80 format unverified on a real disc; Torch CP/N and other BBC Micro CP/M systems; per-head sector bases
+Acorn Z80 checked on only one real disc (what entry 0 holds; whether new discs need it); Torch CP/N and other BBC Micro CP/M systems; per-head sector bases
 (Kaypro 4 side 1); new discs with a filesystem per side; TeleDisk 1.x LZW; DateStamper stamps; CP/M 3 passwords (kept, not
 checked); an MBASIC detokeniser for the viewer; writing TeleDisk.

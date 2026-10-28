@@ -43,6 +43,14 @@ $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0
   grep -q 'check: [1-9][0-9]* errors' "$W/detect.log" && fail=1
   (cd "$W" && "$src/tests/cmp_cpmtools.sh" "$b/detecttest/detecttest" ibm-3740 "$Z"/cpm1*.dsk "$Z"/cpm22-2.dsk "$Z"/cpm22-62khd.dsk "$Z"/cpm3-2.dsk "$Z"/mpm*.dsk "$Z"/*tests.dsk) | tee "$W/cmp.log"
   grep -q "[1-9][0-9]* differ" "$W/cmp.log" && fail=1
+  for z in $(ls "$real"/acorn/*.dsd 2>/dev/null); do
+    n=$(basename "$z"); rm -rf "$W/az"; mkdir -p "$W/az/py"
+    "$b/detecttest/detecttest" -x "$W/az" "$z" > "$W/az.log" 2>&1
+    grep -q "confidence high; writable" "$W/az.log" && grep -q "acorn-z80" "$W/az.log" || { echo "FAIL $n: not detected as acorn-z80, high, writable"; fail=1; }
+    python3 "$src/tests/acornz80_check.py" "$z" "$W/az/py" > /dev/null
+    d=0; for f in "$W/az/py"/*; do l=$(basename "$f" | tr A-Z a-z); cmp -s "$f" "$W/az/$n/0/$l" || { echo "FAIL $n: $l differs"; d=1; }; done
+    [ $d -eq 0 ] && echo "$n: $(ls "$W/az/py" | wc -l) files match the independent Acorn Z80 reader" || fail=1
+  done
   step "GUI"
   adwdir=""
   if [ -n "$adw" ]; then "$b/interop/interop_adw" make "$W/adw" >/dev/null; adwdir="--adw $W/adw"; fi

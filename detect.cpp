@@ -51,7 +51,9 @@ bool readLogical(const Disk::Image &img, const Cpm::Format &f, qint64 off, int l
 
 // ------------------------------------------------------------------------------------------- entries
 
-enum Kind { KEmpty, KFile, KOther, KLabel, KStamp, KBad };
+// KInert: a user entry that holds nothing and has a name no CP/M could have made (see Cpm::Volume::inertEntry);
+// one is tolerated (a real Acorn Z80 disc has one), more count as nonsense.
+enum Kind { KEmpty, KFile, KOther, KLabel, KStamp, KBad, KInert };
 
 struct EInfo {
     Kind k = KEmpty;
@@ -78,7 +80,19 @@ EInfo classify(const unsigned char *e, int index) {
     if (st == 0x21) { x.k = (index & 3) == 3 ? KStamp : KBad; return x; }
     if (st == 0x20) { x.k = nameOk(e) && (e[12] & 0x0E) == 0 ? KLabel : KBad; return x; }
     if (st > 31) { x.k = KBad; return x; }
-    if (!nameOk(e) || e[15] > 0x80 || (e[12] & 0xE0) || (e[14] & 0xC0) || e[13] > 0x80) { x.k = KBad; return x; }
+    if (!nameOk(e) || e[15] > 0x80 || (e[12] & 0xE0) || (e[14] & 0xC0) || e[13] > 0x80) {
+        x.k = KBad;
+        if (st <= 15 && e[15] == 0) {
+            bool empty = true, control = false, anyName = false;
+            for (int k = 16; k < 32; ++k) if (e[k]) empty = false;
+            for (int k = 1; k <= 11; ++k) {
+                if ((e[k] & 0x7F) < 0x20) control = true;
+                if (e[k]) anyName = true;
+            }
+            if (empty && control && anyName) x.k = KInert;      // (an all-zero entry is not: zeroed sectors stay bad)
+        }
+        return x;
+    }
     x.k = st <= 15 ? KFile : KOther;
     x.user = st;
     x.ex = e[12];
@@ -91,7 +105,7 @@ EInfo classify(const unsigned char *e, int index) {
 
 struct DirScore {
     double score = 0;
-    int fileEntries = 0, bad = 0, badPtr = 0, cross = 0, exact = 0, mismatch = 0, labels = 0, stamps = 0;
+    int fileEntries = 0, bad = 0, badPtr = 0, cross = 0, exact = 0, mismatch = 0, labels = 0, stamps = 0, inert = 0;
     int files = 0, lowest = INT_MAX;
 };
 
@@ -106,6 +120,7 @@ DirScore scoreDir(const Cpm::Format &f, const QVector<EInfo> &ent) {
         switch (x.k) {
         case KEmpty: break;
         case KBad: d.bad++; break;
+        case KInert: if (++d.inert > 1) d.bad++; break;
         case KOther: d.score += 1; break;
         case KLabel: if (++d.labels > 1) d.bad++; break;
         case KStamp: d.stamps++; break;
@@ -363,8 +378,8 @@ QString foreignFilesystem(const Disk::Image &img) {
     auto fatSig = [&](int off) { int m = u8(off); return (m == 0xF0 || m >= 0xF8) && u8(off + 1) == 0xFF && u8(off + 2) == 0xFF; };
     if (b.size() >= 515 && (fatSig(0) || fatSig(512)))
         return "an MS-DOS (FAT) disc (it starts with a FAT)";
-    // Acorn DFS: a catalogue in the first two sectors
-    if ((seclen == 0 || seclen == 256) && dfsCatalogue(b))
+    // Acorn DFS: a catalogue in the first two sectors - unless it is the one Acorn's CP/M writes ($.CPMDISC)
+    if ((seclen == 0 || seclen == 256) && dfsCatalogue(b) && !Cpm::isAcornDfsCatalogue(b))
         return "an Acorn DFS disc (a DFS catalogue fills its first two sectors)";
     return QString();
 }
@@ -467,6 +482,8 @@ Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
     if (d.cross) c.evidence << QString("%1 blocks claimed twice").arg(d.cross);
     if (d.fileEntries) c.evidence << QString("block counts match record counts in %1 of %2 entries").arg(d.exact).arg(d.fileEntries);
     if (d.fileEntries && d.lowest == c.fmt.dirBlocks) c.evidence << "the first file block follows the directory";
+    if (d.inert) c.evidence << QString("%1 directory entr%2 holding nothing, with a name no CP/M would make (not a file)")
+                                   .arg(d.inert).arg(d.inert == 1 ? "y" : "ies");
     if (d.labels) c.evidence << "has a CP/M 3 disc label";
     if (d.stamps) {
         c.evidence << "has CP/M 3 / P2DOS time stamp entries";
@@ -653,6 +670,13 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
                             (t0->mode < 0 || (t0->mode <= 2) == f.t0fm);
                 if (same) { c.score += 3; c.evidence << QString("track 0 is %1 x %2 %3, as this format's is").arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM"); }
                 else { c.score -= 3; c.evidence << "track 0 is not the shape this format gives it"; }
+            }
+            if (f.acornDfs) {
+                int sl = 0;
+                if (Cpm::isAcornDfsCatalogue(discStart(img, 512, &sl))) {
+                    c.score += 6;
+                    c.evidence << "track 0 holds the DFS catalogue Acorn's CP/M writes ($.CPMDISC)";
+                }
             }
             if (haveIds && f.secbase >= 0) {
                 if (f.secbase == sh.firstId) { c.score += 4; c.evidence << QString("sector IDs start at %1, as this format's do").arg(f.secbase); }

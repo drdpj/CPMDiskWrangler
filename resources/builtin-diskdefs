@@ -14,7 +14,7 @@
 
 diskdef acorn-z80
   desc "Acorn Z80 second processor, CP/M 2.2, 400K (80 track double-sided, FM)"
-  source "Acorn Application Note 007: 3 reserved tracks, 128 entries, side 1 runs back from track 79, 512-byte logical sectors from pairs 0/1 4/5 8/9 2/3 6/7. Block size inferred from the 388K stated. Not yet checked against a real disc."
+  source "Acorn Application Note 007: 3 reserved tracks, 128 entries, side 1 runs back from track 79, 512-byte logical sectors from pairs 0/1 4/5 8/9 2/3 6/7. Block size inferred from the 388K stated. Checked on a real disc (Colossal Cave), which also has the DFS catalogue on track 0."
   seclen 256
   tracks 160
   heads 2
@@ -24,6 +24,7 @@ diskdef acorn-z80
   blocksize 2048
   maxdir 128
   boottrk 3
+  acorndfs yes
   secbase 0
   imdmode 2
   os 2.2

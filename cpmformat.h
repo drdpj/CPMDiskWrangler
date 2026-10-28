@@ -66,6 +66,10 @@ struct Format {
     // double-sided discs do); tracks etc. describe one side. fixedHead (not in the file) picks the side read.
     bool separateSides = false;
     int fixedHead = 0;
+    // "acorndfs yes": side 0's track 0 holds the Acorn DFS catalogue Acorn's CP/M writes ("Acorn CP/M", one
+    // locked file $.CPMDISC covering the side) so the BBC's DFS sees the disc as full. In the boot area, so the
+    // filesystem never reads it; new discs get it; detection takes it as evidence. cpmtools ignores the key.
+    bool acornDfs = false;
 
     // ----- derived by derive()
     int physHeads = 1;            // heads the format uses
@@ -103,5 +107,12 @@ const QVector<Format> &library();
 void setExtraDiskdefFiles(const QStringList &paths, QStringList *warnings);
 QStringList extraDiskdefFiles();
 const Format *findFormat(const QString &name);
+
+// The Acorn DFS catalogue Acorn's CP/M puts in the first two sectors of side 0 (format key "acorndfs"): title
+// "Acorn CP/M", one locked file $.CPMDISC from sector 2 to the end of the side, so DFS never writes on the disc.
+// Taken from a real Acorn Z80 disc (Colossal Cave); sectorsPerSide is 800 on an 80-track disc.
+QByteArray acornDfsCatalogue(int sectorsPerSide);
+// True if these (at least 512) bytes are that catalogue (any side size).
+bool isAcornDfsCatalogue(const QByteArray &first512);
 
 } // namespace Cpm

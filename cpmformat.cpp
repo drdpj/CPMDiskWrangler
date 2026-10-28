@@ -56,6 +56,10 @@ bool Format::derive(QString *err) {
     if (fixedHead < 0 || fixedHead > 1) fixedHead = 0;
     int reserved = bootsec >= 0 ? bootsec : boottrk * sectrk;
     if (reserved < 0 || reserved >= tracks * sectrk) { *err = "the boot area fills the disc"; return false; }
+    if (acornDfs && (seclen != 256 || reserved < 2 || offsetSectors || separateSides)) {
+        *err = "acorndfs needs 256-byte sectors and a boot area holding track 0's first two sectors";
+        return false;
+    }
     if (t0sectrk > 0) {
         if (reserved < sectrk) { *err = "a track 0 of its own shape must be in the boot area (boottrk 1 or more)"; return false; }
         if (t0seclen < 128 || t0seclen > 8192 || (t0seclen & (t0seclen - 1)) || t0sectrk > 255) { *err = "track0: bad sector size or count"; return false; }
@@ -172,6 +176,7 @@ QString Format::toDiskdef() const {
     if (t0sectrk > 0)
         l << QString("  track0 %1 %2 %3%4").arg(t0sectrk).arg(t0seclen).arg(t0fm ? "fm" : "mfm")
                  .arg(t0firstId >= 0 ? QString(" %1").arg(t0firstId) : QString());
+    if (acornDfs) l << "  acorndfs yes";
     if (bootsec >= 0) l << QString("  bootsec %1").arg(bootsec);
     else l << QString("  boottrk %1").arg(boottrk);
     if (offsetSectors > 0) l << QString("  offset %1").arg(qint64(offsetSectors) * seclen);
@@ -282,6 +287,8 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
             else ok = false;
         } else if (key == "separatesides") {
             f.separateSides = val.toLower().startsWith('y');
+        } else if (key == "acorndfs") {
+            f.acornDfs = val.toLower().startsWith('y');
         } else if (key == "fm") {
             f.fm = val.toLower().startsWith('y');
         } else if (key == "datarate") {
@@ -359,6 +366,29 @@ const Format *findFormat(const QString &name) {
     for (const Format &f : library())
         if (f.name.compare(name, Qt::CaseInsensitive) == 0) return &f;
     return nullptr;
+}
+
+QByteArray acornDfsCatalogue(int sectorsPerSide) {
+    QByteArray c(512, '\0');
+    c.replace(0, 8, "Acorn CP");                 // title, first 8 characters (sector 0)
+    c.replace(8, 7, "CPMDISC");
+    c[15] = char('$' | 0x80);                    // directory $, locked
+    c.replace(256, 4, "/M  ");                   // title, last 4 characters (sector 1)
+    c[256 + 5] = 8;                              // one file
+    c[256 + 6] = char((sectorsPerSide >> 8) & 3);   // boot option 0, sector count high bits
+    c[256 + 7] = char(sectorsPerSide & 0xFF);
+    const int start = 2, len = (sectorsPerSide - start) * 256;
+    c[256 + 12] = char(len & 0xFF);              // load and exec 0
+    c[256 + 13] = char((len >> 8) & 0xFF);
+    c[256 + 14] = char(((len >> 16) & 3) << 4 | ((start >> 8) & 3));
+    c[256 + 15] = char(start & 0xFF);
+    return c;
+}
+
+bool isAcornDfsCatalogue(const QByteArray &b) {
+    if (b.size() < 512 || quint8(b[256 + 5]) != 8 || b.mid(8, 7) != "CPMDISC" || (quint8(b[15]) & 0x7F) != '$') return false;
+    int sectors = (quint8(b[256 + 6]) & 3) << 8 | quint8(b[256 + 7]);
+    return sectors > 2;
 }
 
 } // namespace Cpm
