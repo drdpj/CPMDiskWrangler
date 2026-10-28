@@ -69,7 +69,20 @@ DropTree::DropTree(QWidget *parent) : QTreeWidget(parent) {
 
 QStringList DropTree::mimeTypes() const { return {CPMDW_MIME_ITEMS, RetroFiles::MimeType, "text/uri-list"}; }
 Qt::DropActions DropTree::supportedDropActions() const { return Qt::CopyAction; }
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+QMimeData *DropTree::mimeData(const QList<QTreeWidgetItem *> &items) const { return makeMime(items); }
+#else
 QMimeData *DropTree::mimeData(const QList<QTreeWidgetItem *> items) const { return makeMime(items); }
+#endif
+
+// Where a drag is over the tree: QDropEvent::pos() is deprecated in Qt 6 and position() is new in it.
+static QPoint dropPos(const QDropEvent *e) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    return e->position().toPoint();
+#else
+    return e->pos();
+#endif
+}
 
 bool DropTree::fromThisProcess(const QMimeData *m) {
     if (!m->hasFormat(CPMDW_MIME_SOURCE) || !m->hasFormat(CPMDW_MIME_ITEMS)) return false;
@@ -155,7 +168,7 @@ void DropTree::dropEvent(QDropEvent *e) {
     if (fromThisProcess(e->mimeData())) {
         e->setDropAction(Qt::CopyAction);
         e->accept();
-        emit internalDrop(e->mimeData()->data(CPMDW_MIME_ITEMS), itemAt(e->pos()));
+        emit internalDrop(e->mimeData()->data(CPMDW_MIME_ITEMS), itemAt(dropPos(e)));
         return;
     }
     if (e->mimeData()->hasFormat(RetroFiles::MimeType)) {
@@ -163,7 +176,7 @@ void DropTree::dropEvent(QDropEvent *e) {
         if (!json.isEmpty()) {
             e->setDropAction(Qt::CopyAction);
             e->accept();
-            emit retroFilesDropped(json, itemAt(e->pos()));
+            emit retroFilesDropped(json, itemAt(dropPos(e)));
             return;
         }
     }
@@ -172,7 +185,7 @@ void DropTree::dropEvent(QDropEvent *e) {
         if (u.isLocalFile()) paths << u.toLocalFile();
     if (paths.isEmpty()) return;
     e->acceptProposedAction();
-    emit pathsDropped(paths, itemAt(e->pos()));
+    emit pathsDropped(paths, itemAt(dropPos(e)));
 }
 
 // ================================================================================================ the window
@@ -1131,6 +1144,6 @@ void MainWindow::about() {
                        "and exchanges files with Acorn Disk Wrangler and other tools by drag and drop (retro-files format).<br><br>"
                        "Copyright &copy; 2026 Daniel Jameson.<br>Licensed under the GNU General Public License v3 or later.<br><br>"
                        "Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later). "
-                       "The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura. Uses Qt 5 under the LGPL v3. "
+                       "The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura. Uses Qt under the LGPL v3. "
                        "Help &gt; Licences shows the full licence texts and notices, including those of the libraries distributed with it.");
 }

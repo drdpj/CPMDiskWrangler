@@ -5,7 +5,7 @@ each), how detection works and why, how to build and test, and the mistakes alre
 of Acorn Disk Wrangler (github.com/drdpj/AcornDiskWrangler) and follows the same rules and style.
 
 ## What this is
-A Qt 5 (C++11) desktop tool for CP/M disc images: raw, ImageDisk, CPCEMU DSK / extended DSK, TeleDisk (read).
+A Qt 6 / Qt 5.15 (C++17) desktop tool for CP/M disc images: raw, ImageDisk, CPCEMU DSK / extended DSK, TeleDisk (read).
 It works out each disc's logical format, then lists, adds, extracts, renames and deletes files, sets attributes,
 user numbers and CP/M 3 labels, and makes new discs. One disc per window; drag and drop between windows, the
 desktop and other programs via the `retro-files` format shared with Acorn Disk Wrangler. GPLv3-or-later; the
@@ -161,7 +161,8 @@ identical.
 qmake cpmdiskwrangler.pro && make          # or CMake
 tests/run_all.sh <build dir> [<real image dir from tests/fetch_real_images.sh>] [<Acorn Disk Wrangler source>]
 ```
-Needs Qt 5 widgets; the independent checks need **cpmtools** and **libdsk-utils** (Ubuntu packages) and Python 3.
+Needs Qt 6 or Qt 5.15 widgets, and both must keep building (see Acorn Disk Wrangler's AGENTS.md for the
+`#if QT_VERSION` places, the same here); the independent checks need **cpmtools** and **libdsk-utils** (Ubuntu packages) and Python 3.
 Each test is its own `.pro` in `tests/`:
 
 | Test | What |

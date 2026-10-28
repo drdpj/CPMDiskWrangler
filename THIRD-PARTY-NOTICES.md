@@ -54,16 +54,20 @@ These were read for facts about formats. No code or text was copied from them.
   They belong to their owners and are not part of this repository; the tests read them where they are.
 
 ## Linked at run time / bundled in binary releases
-* **Qt 5** (The Qt Company and contributors), used under the **GNU LGPL v3** (also available under GPL v2/v3).
+* **Qt 6** (or Qt 5.15 in a Qt 5 build; The Qt Company and contributors), used under the **GNU LGPL v3** (also
+  available under GPL v2/v3).
   The program links to Qt's shared libraries; it does not modify Qt.
 * A binary release also ships the libraries Qt needs on that platform. Which ones depends on the platform and
   the packages it was built from, so they are not listed here: `ci/collect-licences.sh` traces each one to its
-  package (MSYS2 on Windows, Homebrew on macOS, Ubuntu for the Linux AppImage) and gathers that package's licence
+  package (MSYS2 on Windows, Ubuntu for the Linux AppImage, Homebrew for a Qt 5 Mac build) and gathers that
+  package's licence
   texts. A release build compiles them into the program - **Help > Licences**, with an index of which library
   came from which package and its stated licence - and also ships them as files in `licences/bundled`. On
   Windows they include the GCC runtime (`libgcc_s_seh-1.dll`, `libstdc++-6.dll`; GPL v3 with the GCC Runtime
   Library Exception) and `libwinpthread-1.dll` (MIT and BSD-style); on every platform, things like ICU (Unicode
   licence), HarfBuzz (MIT), FreeType (FreeType Licence), zlib, libpng, PCRE2 and zstd (BSD-style).
+  The Mac build uses Qt's official binaries, which contain their own copies of such libraries; their licences
+  come from Qt's source at the same version, where Qt records each one (`ci/qt-attributions.py`).
   Under the LGPL, Qt's own licence text accompanies it (compiled in, and as `licences/LGPL-3.0.txt`), and
   recipients must be able to replace the Qt libraries with their own builds (they can: every build links to
   Qt's ordinary shared libraries) and to obtain this program's source (each GitHub release carries it).

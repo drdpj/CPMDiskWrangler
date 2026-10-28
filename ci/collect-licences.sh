@@ -6,7 +6,7 @@
 # program (Help > Licences) and copied next to it.
 #
 #   ci/collect-licences.sh windows <deploy-dir>     MSYS2 MINGW64/UCRT64 shell, after windeployqt
-#   ci/collect-licences.sh macos   <App.app>        Homebrew, after macdeployqt
+#   ci/collect-licences.sh macos   <App.app>        Qt's official build or Homebrew's, after macdeployqt
 #   ci/collect-licences.sh linux   <AppDir>         Debian/Ubuntu, after linuxdeploy
 #
 # Run from the source root. Writes:
@@ -14,6 +14,10 @@
 #   licences/bundled/INDEX.txt                       which file came from which package, and its stated licence
 #   licences-bundled.qrc                             the above as resources under :/licences/Bundled/
 # Then re-run qmake (or cmake) and build again: the build files pick up licences-bundled.qrc when it exists.
+#
+# Qt's official build has no package manager behind it: its frameworks are traced to "qt-<version>", whose
+# licences come from Qt's own source at that version (Qt's LGPL/GPL texts, and every third-party component
+# Qt records in a qt_attribution.json - see ci/qt-attributions.py). That needs git and network access.
 #
 # It fails if any shipped library cannot be traced to a package with a licence text, so a release can't go
 # out with one missing. Kept to bash 3.2 (macOS's /bin/bash): no associative arrays, no mapfile.
@@ -41,23 +45,30 @@ windows)
     find "$deployed" -type f -iname '*.dll' | sort | while read -r f; do
         name=$(basename "$f")
         orig="$prefix/bin/$name"
-        [ -f "$orig" ] || orig=$(find "$prefix/share/qt5/plugins" -type f -name "$name" 2>/dev/null | head -n 1)
+        [ -f "$orig" ] || orig=$(find "$prefix/share/qt6/plugins" "$prefix/share/qt5/plugins" -type f -name "$name" \
+                                      2>/dev/null | head -n 1)
         # shellcheck disable=SC2015   # "|| true" covers either part failing
         pkg=$([ -n "$orig" ] && pacman -Qqo "$orig" 2>/dev/null || true)
         printf '%s\t%s\n' "$name" "${pkg:-?}" >> "$work/map"
     done
     ;;
 macos)
-    brew=$(brew --prefix)
+    brew=$(brew --prefix 2>/dev/null || echo /opt/homebrew)
+    qtprefix=$(qmake -query QT_INSTALL_PREFIX)
+    qtplugins=$(qmake -query QT_INSTALL_PLUGINS)
+    qtversion=$(qmake -query QT_VERSION)
     { find "$deployed/Contents/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) 2>/dev/null
       find "$deployed/Contents/PlugIns" -type f -name '*.dylib' 2>/dev/null; } | sort | while read -r f; do
         name=$(basename "$f")
         # shellcheck disable=SC2012   # Homebrew paths have no odd characters
-        orig=$(ls -d "$brew"/opt/*/lib/"$name" "$brew"/opt/*/plugins/*/"$name" 2>/dev/null | head -n 1 || true)
+        orig=$(ls -d "$brew"/opt/*/lib/"$name" "$brew"/opt/*/plugins/*/"$name" "$brew"/opt/*/share/qt/plugins/*/"$name" \
+               2>/dev/null | head -n 1 || true)
         pkg=""
         if [ -n "$orig" ]; then                      # .../Cellar/<formula>/<version>/... -> <formula>
             real=$(cd "$(dirname "$orig")" && pwd -P)
             pkg=$(printf '%s\n' "$real" | sed -n 's|.*/Cellar/\([^/]*\)/.*|\1|p')
+        elif [ -e "$qtprefix/lib/$name" ] || ls "$qtplugins"/*/"$name" > /dev/null 2>&1; then
+            pkg="qt-$qtversion"                      # Qt's official build
         fi
         printf '%s\t%s\n' "$name" "${pkg:-?}" >> "$work/map"
     done
@@ -123,6 +134,19 @@ while read -r pkg; do
         declared=$(pacman -Qi "$pkg" < /dev/null | sed -n 's/^Licenses *: *//p')
         ;;
     macos)
+      case "$pkg" in
+      qt-*)                                          # Qt's official build: licences from Qt's own source
+        v=${pkg#qt-}
+        git -c advice.detachedHead=false clone -q --depth 1 --branch "v$v" https://github.com/qt/qtbase.git "$work/qtbase" < /dev/null
+        mkdir -p "$work/qt"
+        for l in LGPL-3.0-only GPL-2.0-only GPL-3.0-only; do
+            cp "$work/qtbase/LICENSES/$l.txt" "$work/qt/Qt $v - $l.txt"
+        done
+        python3 -I ci/qt-attributions.py "$work/qtbase" "$work/qt/third-party" >&2
+        find "$work/qt" -type f | sort > "$work/files"
+        declared="LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only, with the third-party code Qt contains"
+        ;;
+      *)
         keg=$(brew --prefix "$pkg" < /dev/null)
         find -L "$keg" -maxdepth 1 -type f \( -iname 'licen[cs]e*' -o -iname 'copying*' -o -iname 'copyright*' \
              -o -iname 'notice*' \) > "$work/files" 2>/dev/null || true
@@ -136,6 +160,8 @@ def expr(x):
         if k in x: return "(" + op.join(expr(i) for i in x[k]) + ")"
     return " AND ".join(k + (" WITH " + v["with"] if isinstance(v, dict) and "with" in v else "") for k, v in x.items())
 print(expr(json.load(sys.stdin)["formulae"][0].get("license") or ""))')
+        ;;
+      esac
         ;;
     linux)
         [ -e "/usr/share/doc/$pkg/copyright" ] && echo "/usr/share/doc/$pkg/copyright" > "$work/files"

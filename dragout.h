@@ -74,7 +74,11 @@ public:
     bool hasFormat(const QString &mimeType) const override;
     std::shared_ptr<DragState> state() const { return m_state; }
 protected:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)               // Qt 6 passes a QMetaType, Qt 5 a QVariant::Type
+    QVariant retrieveData(const QString &mimeType, QMetaType type) const override;
+#else
     QVariant retrieveData(const QString &mimeType, QVariant::Type type) const override;
+#endif
 private:
     void extract() const;
     Exporter m_exporter;

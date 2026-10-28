@@ -1,7 +1,7 @@
 # CP/M Disk Wrangler - Copyright (C) 2026 Daniel Jameson
 # Licensed under the GNU General Public License v3 or later (see LICENSE).
 QT += widgets
-CONFIG += c++11 console
+CONFIG += c++17 console
 CONFIG -= app_bundle
 TARGET = guitest
 SOURCES += guitest.cpp ../mainwindow.cpp ../licences.cpp ../formatdialog.cpp ../newdisc.cpp ../viewer.cpp ../viewtext.cpp ../icon.cpp \

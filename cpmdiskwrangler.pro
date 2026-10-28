@@ -1,5 +1,5 @@
 QT += widgets
-CONFIG += c++11
+CONFIG += c++17
 TARGET = cpmdiskwrangler
 TEMPLATE = app
 win32:RC_ICONS = icons/cpmdiskwrangler.ico      # qmake generates the .rc for us

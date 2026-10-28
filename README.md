@@ -1,6 +1,6 @@
 # CP/M Disk Wrangler
 
-Qt5 (C++) tool for CP/M disc images: it reads raw sector dumps, ImageDisk (`.IMD`), CPCEMU and extended `.DSK`
+Qt 6 (C++) tool for CP/M disc images: it reads raw sector dumps, ImageDisk (`.IMD`), CPCEMU and extended `.DSK`
 and TeleDisk (`.TD0`, read-only), **works out the disc's format from its contents**, and lets you add, extract,
 view, rename and delete files, change attributes and user numbers, set CP/M 3 labels, and make new discs in any
 of about 140 formats. Each disc opens in its own window; files can be dragged between windows, to and from the
@@ -8,18 +8,21 @@ desktop, and to and from [Acorn Disk Wrangler](https://github.com/drdpj/AcornDis
 `retro-files` drag format ([docs/retro-files-format.md](docs/retro-files-format.md)).
 
 Build:  `qmake cpmdiskwrangler.pro && make`      (or: `cmake -S . -B build && cmake --build build`)
-Needs:  Qt 5 widgets dev package (Ubuntu: `qtbase5-dev`)
+Needs:  Qt 6 widgets dev package (Ubuntu: `qt6-base-dev`), or Qt 5.15 (`qtbase5-dev`; CMake: `-DUSE_QT5=ON`)
 Run:    `./cpmdiskwrangler [image ...]`          (each image gets its own window)
 
-## Building on Windows (MSYS2 / MinGW64)
-Exactly as for Acorn Disk Wrangler: in the **MSYS2 MINGW64** shell, install the tools, then from the source
+## Building on Windows (MSYS2 / UCRT64)
+Exactly as for Acorn Disk Wrangler: in the **MSYS2 UCRT64** shell, install the tools, then from the source
 folder build and deploy, collect the licences of everything it ships, and build again with them compiled in:
 
-    pacman -S --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools
+    pacman -S --needed mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-qt6-base
     bash ci/build.sh windows
     bash ci/collect-licences.sh windows deploy
     bash ci/build.sh windows
     cp -r LICENSE THIRD-PARTY-NOTICES.md licences deploy/
+
+For Qt 5 instead, install `mingw-w64-ucrt-x86_64-qt5-base mingw-w64-ucrt-x86_64-qt5-tools` and run
+`QT=5 bash ci/build.sh windows` both times.
 
 Zip the `deploy` folder to distribute it, and publish the matching source with it (the repository link or a
 source zip): the GPL requires that for this program, and the LGPL lets recipients swap in their own Qt DLLs.
@@ -30,9 +33,16 @@ as the run's artifacts), and pushing a tag `v*` publishes them as a release:
 
 | Platform | Built with | Package |
 |---|---|---|
-| Windows x64 | MSYS2 MINGW64, `windeployqt-qt5` | `.zip` of the program, its DLLs and plugins |
-| macOS (Apple Silicon) | Homebrew `qt@5`, `macdeployqt` | `.dmg`; signed ad hoc only, so the first time it must be opened with right-click > Open |
-| Linux x86_64 | Ubuntu 22.04, `linuxdeploy` | AppImage |
+| Windows x64 (10 and later) | MSYS2 UCRT64 Qt 6, `windeployqt6` | `.zip` of the program, its DLLs and plugins |
+| macOS 12 and later, Intel and Apple Silicon | Qt's official Qt 6.8 LTS (universal), `macdeployqt` | `.dmg`; signed ad hoc only, so the first time it must be opened with right-click > Open |
+| Linux x86_64 | Ubuntu 22.04 Qt 6, `linuxdeploy` | AppImage |
+
+They use Qt 6. To build with Qt 5.15 instead, run the workflow by hand (Actions > Build > Run workflow, Qt
+major version 5): its packages are named `...-qt5`, and on macOS that one comes from Homebrew's `qt@5`, so it
+is for Apple Silicon only (Homebrew is dropping `qt@5` in May 2027). By hand, put `QT=5` in front of
+`ci/build.sh`. Qt's official Mac build has no package manager behind it, so `ci/collect-licences.sh` takes its
+licences from Qt's own source at the same version: Qt's LGPL and GPL texts, and every third-party component Qt
+records (`ci/qt-attributions.py`).
 
 Every build links to Qt's **shared** libraries, as the LGPL expects (people can replace them with their own),
 and carries the licence of everything it ships twice over: compiled into the program (**Help > Licences**) and
@@ -134,7 +144,7 @@ existing image), copy-protected tracks
 Copyright (C) 2026 Daniel Jameson. Licensed under the GNU General Public License v3.0 or later - see LICENSE.
 Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later), unchanged in
 `resources/cpmtools-diskdefs`. The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura.
-Uses Qt 5 under the LGPL v3. Everything third-party, and its terms, is listed in
+Uses Qt (6, or 5.15) under the LGPL v3. Everything third-party, and its terms, is listed in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## For developers / agents
