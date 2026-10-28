@@ -12,28 +12,40 @@ Needs:  Qt 5 widgets dev package (Ubuntu: `qtbase5-dev`)
 Run:    `./cpmdiskwrangler [image ...]`          (each image gets its own window)
 
 ## Building on Windows (MSYS2 / MinGW64)
-Exactly as for Acorn Disk Wrangler: in the **MSYS2 MINGW64** shell,
+Exactly as for Acorn Disk Wrangler: in the **MSYS2 MINGW64** shell, install the tools, then from the source
+folder build and deploy, collect the licences of everything it ships, and build again with them compiled in:
 
-    pacman -S --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base
-    mkdir build && cd build
-    qmake ../cpmdiskwrangler.pro CONFIG+=release CONFIG-=debug_and_release
-    mingw32-make -j$(nproc)
-
-Deploy, so it runs anywhere, **with the licences of everything it ships**:
-
-    mkdir deploy deploy/licenses
-    cp cpmdiskwrangler.exe ../LICENSE ../THIRD-PARTY-NOTICES.md deploy/
-    windeployqt --release --compiler-runtime --no-translations \
-        --no-system-d3d-compiler --no-opengl-sw --no-angle deploy/cpmdiskwrangler.exe
-    for f in deploy/cpmdiskwrangler.exe deploy/platforms/*.dll deploy/styles/*.dll; do
-        ldd "$f" | awk '/\/mingw64\// {print $3}'
-    done | sort -u | xargs -r cp -n -t deploy/
-    # the licence texts of the MSYS2 packages those DLLs come from (Qt, GCC runtime, ICU, HarfBuzz, ...)
-    for f in deploy/*.dll; do pacman -Qqo "/mingw64/bin/$(basename "$f")" 2>/dev/null; done | sort -u |
-        while read p; do [ -d "/mingw64/share/licenses/$p" ] && cp -r "/mingw64/share/licenses/$p" deploy/licenses/; done
+    pacman -S --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools
+    bash ci/build.sh windows
+    bash ci/collect-licences.sh windows deploy
+    bash ci/build.sh windows
+    cp -r LICENSE THIRD-PARTY-NOTICES.md licences deploy/
 
 Zip the `deploy` folder to distribute it, and publish the matching source with it (the repository link or a
 source zip): the GPL requires that for this program, and the LGPL lets recipients swap in their own Qt DLLs.
+
+## Release builds (Windows, macOS, Linux)
+`.github/workflows/build.yml` builds all three on GitHub on every push and pull request (the packages are kept
+as the run's artifacts), and pushing a tag `v*` publishes them as a release:
+
+| Platform | Built with | Package |
+|---|---|---|
+| Windows x64 | MSYS2 MINGW64, `windeployqt-qt5` | `.zip` of the program, its DLLs and plugins |
+| macOS (Apple Silicon) | Homebrew `qt@5`, `macdeployqt` | `.dmg`; signed ad hoc only, so the first time it must be opened with right-click > Open |
+| Linux x86_64 | Ubuntu 22.04, `linuxdeploy` | AppImage |
+
+Every build links to Qt's **shared** libraries, as the LGPL expects (people can replace them with their own),
+and carries the licence of everything it ships twice over: compiled into the program (**Help > Licences**) and
+as files beside it (`LICENSE`, `THIRD-PARTY-NOTICES.md`, `licences/`). To make that work each platform is built
+twice - the first build is deployed to find out which libraries ship, `ci/collect-licences.sh` gathers those
+libraries' licences from the packages they came from (it fails if one can't be traced), and the second build
+compiles them in. The same scripts work by hand, from the source root:
+
+    bash ci/build.sh windows                       # or macos / linux: build and deploy
+    bash ci/collect-licences.sh windows deploy     # macos: build/<app>.app   linux: build/AppDir
+    bash ci/build.sh windows                       # again, with the licences compiled in
+
+`ci/`, `licences.cpp/.h`, `licences.qrc`, `licences/` and the workflow are shared, unchanged, with [Acorn Disk Wrangler](https://github.com/drdpj/AcornDiskWrangler).
 
 ## Image containers
 | Container | Read | Write | Notes |

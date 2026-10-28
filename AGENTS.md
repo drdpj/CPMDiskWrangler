@@ -149,6 +149,14 @@ TeleDisk (search), Heathkit H8D (search), z80pack 8" and 4MB hard discs; MS-DOS 
 correctly not read as CP/M (an MS-DOS boot sector gets a hint pointing at Acorn Disk Wrangler).
 
 ## Build and test
+
+**Release builds and licences.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages, linked to
+Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each is built twice: `ci/build.sh`
+builds and deploys, `ci/collect-licences.sh` gathers the licences of every shipped library into
+`licences-bundled.qrc`, and `ci/build.sh` again compiles them in (Help > Licences, `licences.cpp`). A new source
+file in the .pro also goes in CMakeLists.txt and any `tests/*.pro` that build `mainwindow.cpp` (they need
+`../licences.cpp`). `ci/`, `licences.*`, `licences/` and the workflow are shared with Acorn Disk Wrangler: keep them
+identical.
 ```
 qmake cpmdiskwrangler.pro && make          # or CMake
 tests/run_all.sh <build dir> [<real image dir from tests/fetch_real_images.sh>] [<Acorn Disk Wrangler source>]
