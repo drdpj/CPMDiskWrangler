@@ -110,7 +110,7 @@ const Format *findFormat(const QString &name);
 
 // The Acorn DFS catalogue Acorn's CP/M puts in the first two sectors of side 0 (format key "acorndfs"): title
 // "Acorn CP/M", one locked file $.CPMDISC from sector 2 to the end of the side, so DFS never writes on the disc.
-// Taken from a real Acorn Z80 disc (Colossal Cave); sectorsPerSide is 800 on an 80-track disc.
+// The same on three real Acorn Z80 discs (Colossal Cave, installation discs 1 and 2); sectorsPerSide is 800 on an 80-track disc.
 QByteArray acornDfsCatalogue(int sectorsPerSide);
 // True if these (at least 512) bytes are that catalogue (any side size).
 bool isAcornDfsCatalogue(const QByteArray &first512);

@@ -88,16 +88,22 @@ with its terms (and in About if it ships in the program); material only consulte
 - **Acorn Z80 second processor**: from Acorn Application Note 007: 80 track double-sided, 10 x 256-byte sectors
   (FM), side 1 runs back from track 79, 3 reserved tracks, 128 entries, logical 512-byte sectors from physical
   pairs 0/1 4/5 8/9 2/3 6/7 (skew table `0,1,4,5,8,9,2,3,6,7`), sector IDs 0-9. The 2K block size is inferred from
-  the 388K the note states. **Checked on one real disc** (the owner's Colossal Cave `cave.dsd`, raw, interleaved,
-  409,600 bytes; not in the repo): detected as acorn-z80 with no rival, all 12 files identical to
-  `tests/acornz80_check.py`'s (an independent reader written from the note alone), an added file reads back with
-  it, and tracks 0-2 of side 0 and the odd entry below are left untouched. The real disc also has:
+  the 388K the note states. **Checked on three real discs** (the owner's, raw, interleaved, 409,600 bytes, not in
+  the repo: Colossal Cave `cave.dsd`, CP/M installation discs 1 and 2 `cpm1.dsd`, `cpm2.dsd`): each detected as
+  acorn-z80 with no rival and a clean Check, every file (12, 48, 47) identical to `tests/acornz80_check.py`'s (an
+  independent reader written from the note alone); an added file reads back with it, and tracks 0-2 of side 0
+  and the odd entry below are left untouched. Disc 1 holds the CP/M system in tracks 0-2 and is full (0 blocks
+  free). The real discs also have:
   - **an Acorn DFS catalogue on track 0** (sectors 0-1, in the boot area): title "Acorn CP/M", one locked file
-    `$.CPMDISC` from sector 2 to 800, so the BBC's DFS sees a full disc. The rest of tracks 0-2 is E5. Format key
+    `$.CPMDISC` from sector 2 to 800, so the BBC's DFS sees a full disc; byte-identical on all three. On `cpm2.dsd`
+    the same catalogue is also on side 1's cylinder 0 (DFS drive 2) - but that is CP/M's last data track, which a
+    full disc overwrites (`cpm1.dsd`) and `cave.dsd` has blank, so it is formatter leftover, not reserved, and new
+    discs don't get it. Tracks 0-2 are otherwise E5 unless the CP/M system is on them. Format key
     `acorndfs yes`: new discs get it (track 0 byte-identical to the real one), detection gives +6 for it and does
     not take it as a foreign filesystem.
   - **directory entry 0 that is not a file**: user 0, name bytes `fe bd ee 29 00 30 db 29 3f 1f 1d`, S2 0x39, RC 0,
-    no blocks. Meaning unknown (a disc identity written by Acorn's tools?). Handled generally as an *inert* entry
+    no blocks - only on `cave.dsd` (entry 0 is an ordinary file on the installation discs), so it is not part of
+    the format: probably leftover junk. Handled generally as an *inert* entry
     (`Volume::inertEntry`: a user entry with control characters in its name, no records, no blocks): not listed,
     its slot never reused, a warning (not an error) in Check; detection tolerates one (`KInert`), and an all-zero
     entry is never inert. More real discs would show whether every Acorn disc has it and what it holds.
@@ -243,6 +249,6 @@ for the directory) that every self-test had passed.
 (8" CP/M 1.3-3, MP/M, 4MB hard discs, UCSD and FLP-80DOS negatives), lesbird/H89 and FujiNetWIFI (Heathkit H8D).
 
 ## Known gaps / ideas
-Acorn Z80 checked on only one real disc (what entry 0 holds; whether new discs need it); Torch CP/N and other BBC Micro CP/M systems; per-head sector bases
+Torch CP/N and other BBC Micro CP/M systems; per-head sector bases
 (Kaypro 4 side 1); new discs with a filesystem per side; TeleDisk 1.x LZW; DateStamper stamps; CP/M 3 passwords (kept, not
 checked); an MBASIC detokeniser for the viewer; writing TeleDisk.

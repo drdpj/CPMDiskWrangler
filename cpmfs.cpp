@@ -179,8 +179,8 @@ bool Volume::reload(QString *err) {
 bool Volume::isFileEntry(quint8 st) const { return st <= 15 || (st <= 31 && m_fmt.os != Os::V3); }
 
 // An entry with a user number but a name no CP/M could have made (control characters) and nothing in it - no
-// records, no blocks. Seen as the first entry of a real Acorn Z80 disc (Colossal Cave), perhaps a disc identity
-// written by Acorn's tools. It isn't listed as a file, its slot is never reused, and it is left exactly as it is.
+// records, no blocks. Seen as the first entry of one real Acorn Z80 disc (Colossal Cave; not on Acorn's own
+// discs), probably leftover junk. It isn't listed as a file, its slot is never reused, and it is left as it is.
 bool Volume::inertEntry(const QByteArray &e) const {
     if (!isFileEntry(quint8(e[0])) || quint8(e[15]) != 0) return false;
     for (int k = 16; k < 32; ++k) if (e[k]) return false;
