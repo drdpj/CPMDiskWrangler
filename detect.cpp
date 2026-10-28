@@ -295,6 +295,128 @@ bool physicallyFits(const Cpm::Format &f, const Disk::Image &img, const Disk::Sh
     return f.cylinders <= sh.cyls + 1 && f.cylinders >= sh.cyls - 4;
 }
 
+// ------------------------------------------------------------------------------------------- not CP/M at all
+
+// An empty CP/M directory says nothing about the format, so every layout of the right shape reads one on a blank
+// disc - and on any disc whose directory area happens to be E5 (an Acorn DFS disc formatted by Acorn's FORM, for
+// one). Two checks stop such a disc being read as an empty CP/M disc: the data area must not hold data that no
+// directory entry accounts for, and the disc must not carry another filesystem's own structures.
+
+// The disc's first n bytes: a raw file's start, or cylinder 0 head 0's sectors in ID order.
+QByteArray discStart(const Disk::Image &img, int n, int *seclen) {
+    QByteArray out, s;
+    *seclen = 0;
+    if (img.kind() == Disk::Kind::Raw) return img.rawBytes().left(int(qMin<qint64>(n, img.rawFileSize())));
+    const Disk::Track *t = img.track(0, 0);
+    if (!t || t->secs.isEmpty()) return out;
+    *seclen = t->secs[t->byId.value(0)].size;
+    for (int i = 0; i < t->byId.size() && out.size() < n; ++i) {
+        if (!img.read(0, 0, i, &s)) break;
+        out += s;
+    }
+    return out.left(n);
+}
+
+// An Acorn DFS catalogue in the first two 256-byte sectors (the same tests as Acorn Disk Wrangler's, a little
+// stricter: unused bits clear, a printable or NUL title, and a standard disc size when there are no files).
+bool dfsCatalogue(const QByteArray &b) {
+    if (b.size() < 512) return false;
+    const unsigned char *s0 = reinterpret_cast<const unsigned char *>(b.constData()), *s1 = s0 + 256;
+    int cnt = s1[5];
+    if (cnt % 8 || cnt > 31 * 8 || (s1[6] & 0xCC)) return false;
+    int sec = (s1[6] & 3) << 8 | s1[7];
+    if (sec < 2 || sec > 800 || (cnt == 0 && sec != 400 && sec != 800)) return false;
+    for (int k = 0; k < 12; ++k) {
+        int c = (k < 8 ? s0[k] : s1[k - 8]) & 0x7F;
+        if (c && (c < 0x20 || c > 0x7E)) return false;
+    }
+    for (int i = 1; i <= cnt / 8; ++i) {
+        for (int k = 0; k < 8; ++k) {
+            int c = s0[i * 8 + k] & 0x7F;
+            if (c < 0x20 || c > 0x7E) return false;
+        }
+        int hi = s1[i * 8 + 6];
+        int start = (hi & 3) << 8 | s1[i * 8 + 7];
+        int len = s1[i * 8 + 4] | s1[i * 8 + 5] << 8 | ((hi >> 4) & 3) << 16;
+        if (start < 2 || start + (len + 255) / 256 > sec) return false;
+    }
+    return true;
+}
+
+// Another filesystem the disc plainly carries, in words, or empty.
+QString foreignFilesystem(const Disk::Image &img) {
+    int seclen = 0;
+    QByteArray b = discStart(img, 4096, &seclen);
+    auto at = [&](int off, const char *magic) { return b.size() >= off + 4 && b.mid(off, 4) == magic; };
+    auto hugo = [&](int off) { return at(off, "Hugo") || at(off, "Nick"); };
+    const qint64 size = img.kind() == Disk::Kind::Raw ? img.rawFileSize() : 0;
+    // ADFS old map: the root directory (sector 2, five sectors) starts and ends with Hugo / Nick
+    if ((seclen == 0 || seclen == 256) && hugo(0x201) && hugo(0x6FB))
+        return "an Acorn ADFS disc (its root directory is where ADFS keeps it)";
+    // ADFS new map (D/E floppies): recognised by the root directory's name
+    if ((seclen == 0 || seclen == 1024) && (size == 0 || size == 819200 || size == 1638400) && (hugo(0x401) || hugo(0x801)))
+        return "an Acorn ADFS D/E disc";
+    // PC FAT: a boot record with a BPB, or (DOS 1.x, Acorn DOS Plus 800K) a FAT starting with its media byte
+    auto u8 = [&](int i) { return i < b.size() ? quint8(b[i]) : 0; };
+    if (b.size() >= 512 && (u8(11) | u8(12) << 8) == 512 && u8(21) >= 0xF0 && u8(13) && !(u8(13) & (u8(13) - 1)))
+        return "an MS-DOS (FAT) disc (its first sector holds a FAT boot record)";
+    auto fatSig = [&](int off) { int m = u8(off); return (m == 0xF0 || m >= 0xF8) && u8(off + 1) == 0xFF && u8(off + 2) == 0xFF; };
+    if (b.size() >= 515 && (fatSig(0) || fatSig(512)))
+        return "an MS-DOS (FAT) disc (it starts with a FAT)";
+    // Acorn DFS: a catalogue in the first two sectors
+    if ((seclen == 0 || seclen == 256) && dfsCatalogue(b))
+        return "an Acorn DFS disc (a DFS catalogue fills its first two sectors)";
+    return QString();
+}
+
+// True when the directory area is a single repeated byte (a freshly formatted directory, not one of deleted files).
+bool directoryBlank(const Disk::Image &img, const Cpm::Format &f) {
+    QByteArray d;
+    if (!readLogical(img, f, 0, f.maxdir * 32, &d) || d.isEmpty()) return false;
+    return d.count(d[0]) == d.size();
+}
+
+// 128-byte records anywhere on the disc, outside the format's boot tracks, that hold anything but one repeated
+// byte. Formatting writes every track, so a freshly formatted disc has none; a disc with an empty directory and
+// data elsewhere is another kind of disc. (Data before a format's offset counts too: it is another partition,
+// and reading an empty one of a disc that holds data says nothing.)
+int strayRecords(const Disk::Image &img, const Cpm::Format &f) {
+    QSet<quint32> boot;
+    auto key = [](int c, int h, int i) { return quint32(c) << 16 | quint32(h) << 8 | quint32(i); };
+    for (int side = 0; side < (f.separateSides ? 2 : 1); ++side) {
+        Cpm::Format g = f;
+        if (f.separateSides) {
+            g.fixedHead = side;
+            g.derived = false;
+            QString e;
+            if (!g.derive(&e)) continue;
+        }
+        int c, h, i;
+        for (int l = g.offsetSectors; l < g.dataStart; ++l)
+            if (g.locate(l, &c, &h, &i)) boot.insert(key(c, h, i));
+    }
+    int n = 0;
+    QByteArray s;
+    for (int c = 0; c < img.cylinders(); ++c)
+        for (int h = 0; h < img.heads(); ++h)
+            for (int i = 0; i < img.sectorCount(c, h); ++i) {
+                if (boot.contains(key(c, h, i)) || !img.read(c, h, i, &s)) continue;
+                for (int r = 0; r + 128 <= s.size(); r += 128)
+                    if (s.mid(r, 128).count(s[r]) != 128) ++n;
+            }
+    return n;
+}
+
+Candidate evaluateSide(const Disk::Image &img, const Cpm::Format &f, int head);
+
+// An empty reading (a blank directory, and no files on the other side of a disc with a filesystem per side) of a
+// disc that holds data. A few records are tolerated (a boot loader spilling past its tracks, say).
+bool emptyButUsed(const Disk::Image &img, const Cpm::Format &f) {
+    if (!directoryBlank(img, f)) return false;
+    if (f.separateSides && evaluateSide(img, f, 1 - f.fixedHead).files > 0) return false;
+    return strayRecords(img, f) >= 4;
+}
+
 const Cpm::Format *libraryMatch(const Cpm::Format &f, int firstId, bool haveIds) {
     const Cpm::Format *best = nullptr;
     for (const Cpm::Format &l : Cpm::library())
@@ -363,6 +485,15 @@ Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
     c.evidence.prepend("signature:" + QString(QCryptographicHash::hash(listingSignature(c.fmt, ent).toUtf8(), QCryptographicHash::Md5).toHex()));
     return c;
 }
+
+namespace {
+Candidate evaluateSide(const Disk::Image &img, const Cpm::Format &f, int head) {
+    Cpm::Format g = f;
+    g.fixedHead = head;
+    g.derived = false;
+    return evaluate(img, g, false);
+}
+} // namespace
 
 Result detect(Disk::Image &img, const QString &remembered, int keep) {
     Result res;
@@ -603,8 +734,29 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
     }
 
     // ----- rank, one per layout
+    int emptyButUsedCount = 0;
+    const Disk::RawLayout lastLayout = raw ? img.rawLayout() : Disk::RawLayout();
+    for (Candidate &c : all) c.raw = raw && !c.raw.valid() ? lastLayout : c.raw;
+    // an empty reading of a disc that holds data: not this format (see emptyButUsed)
+    auto usedButEmpty = [&](const Candidate &c) {
+        if (c.files != 0 || c.remembered || c.score < -1e8) return false;
+        if (raw && !img.rawLayout().sameShape(c.raw)) {
+            QString e;
+            Disk::RawLayout l = c.raw;
+            l.firstId = 1;
+            if (!img.setRawLayout(l, &e)) return false;
+        }
+        return emptyButUsed(img, c.fmt);
+    };
+    Disk::RawLayout droppedLayout;       // the best dropped reading's, to describe the disc if nothing is left
+    double droppedScore = -1e9;
     for (Candidate &c : all) {
-        if (raw && !c.raw.valid()) c.raw = img.rawLayout();
+        if (usedButEmpty(c)) {
+            if (c.score > droppedScore) { droppedScore = c.score; droppedLayout = c.raw; }
+            c.score = -1e9;          // dropped below
+            ++emptyButUsedCount;
+            continue;
+        }
         if (raw && c.raw.bytes() > img.rawFileSize()) {
             c.score -= 3;
             c.evidence << QString("needs the image to be %1 bytes; it is %2 (padded)").arg(c.raw.bytes()).arg(img.rawFileSize());
@@ -615,6 +767,10 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
                 if (l.name != c.fmt.name && l.sameLayout(c.fmt)) same << l.name;
             if (!same.isEmpty()) c.evidence << "the same layout is also defined as " + same.join(", ");
         }
+    }
+    if (raw && !img.rawLayout().sameShape(lastLayout)) {
+        QString e;
+        img.setRawLayout(lastLayout, &e);
     }
     std::stable_sort(all.begin(), all.end(), [](const Candidate &a, const Candidate &b) {
         if (a.score != b.score) return a.score > b.score;
@@ -634,9 +790,9 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         if (res.ranked.size() >= keep) break;
     }
     // physical description
-    if (raw && !res.ranked.isEmpty()) {
+    if (raw && (!res.ranked.isEmpty() || droppedLayout.valid())) {
         QString e;
-        img.setRawLayout(res.ranked.first().raw, &e);
+        img.setRawLayout(res.ranked.isEmpty() ? droppedLayout : res.ranked.first().raw, &e);
     }
     Disk::Shape sh = img.shape();
     res.physical = QString("%1: %2 cylinder%3, %4 side%5, %6 x %7-byte sectors per track")
@@ -648,17 +804,30 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
     if (sh.badSectors) res.physical += QString(", %1 bad or missing sector%2").arg(sh.badSectors).arg(sh.badSectors == 1 ? "" : "s");
     if (raw) res.physical += QString(" (raw: %1 bytes)").arg(img.rawFileSize());
 
+    const QString foreign = foreignFilesystem(img);
+    const QString foreignWhy = "This looks like " + foreign + ", not a CP/M disc. (Acorn Disk Wrangler can open it.) "
+                               "If it really is CP/M, choose the format by hand (Tools > Disc format).";
     if (res.ranked.isEmpty()) {
         res.confidence = "none";
-        res.why = "No layout gives a readable CP/M directory. Choose a format by hand (Tools > Disc format).";
-        QByteArray b;
-        if (img.read(0, 0, 0, &b) && b.size() >= 512 && (quint8(b[11]) | quint8(b[12]) << 8) == 512 &&
-            quint8(b[21]) >= 0xF0 && quint8(b[13]) && !(quint8(b[13]) & (quint8(b[13]) - 1)))
-            res.why = "This looks like an MS-DOS (FAT) disc, not CP/M: its first sector holds a FAT boot record. "
-                      "(Acorn Disk Wrangler can open PC FAT discs.)";
+        if (!foreign.isEmpty())
+            res.why = foreignWhy;
+        else if (emptyButUsedCount)
+            res.why = "No CP/M files were found: the layouts that fit read an empty directory, but the disc holds data "
+                      "no directory entry accounts for, so it is probably not a CP/M disc (or its directory has been "
+                      "wiped). Choose a format by hand (Tools > Disc format) if it is.";
+        else
+            res.why = "No layout gives a readable CP/M directory. Choose a format by hand (Tools > Disc format).";
         return res;
     }
     const Candidate &best = res.ranked.first();
+    // Another filesystem's structures and no CP/M files: not a CP/M disc. With CP/M files as well (unlikely, but a
+    // boot sector can resemble a FAT), it is shown but never written until the user confirms the format.
+    if (!foreign.isEmpty() && best.files == 0 && !best.remembered) {
+        res.ranked.clear();
+        res.confidence = "none";
+        res.why = foreignWhy;
+        return res;
+    }
     QString bestSig = best.evidence.first();
     bool clean = best.badEntries == 0 && best.badPointers == 0 && best.crossLinks == 0 && best.textBad * 4 <= best.textGood;
     const Candidate *rival = nullptr, *sameReading = nullptr;
@@ -703,6 +872,11 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
     // unless it is only a search result and the known format is the sensible reading.
     res.safeToWrite = clean && sh.badSectors == 0 && !rival &&
                       (best.remembered || (best.fromLibrary && !sameReading));
+    if (!foreign.isEmpty() && !best.remembered) {
+        res.safeToWrite = false;
+        if (res.confidence == "high") res.confidence = "medium";
+        res.why += " The disc also looks like " + foreign + ".";
+    }
     if (!res.safeToWrite) res.why += " Changes are off until the format is confirmed (Tools > Disc format).";
     return res;
 }

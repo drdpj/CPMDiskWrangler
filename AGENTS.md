@@ -30,6 +30,7 @@ with its terms (and in About if it ships in the program); material only consulte
 | `newdisc.*` | File > New disc image |
 | `dragout.*` | `retro-files` JSON writer/reader, drag-out data, temporary drag folders |
 | `viewer.*`, `viewtext.*` | the text/hex viewer (CP/M `^Z`, WordStar bit 7) |
+| `buttonbar.h` | the main window's button bar: real QPushButtons kept in step with their QActions (a QToolBar's own buttons draw as flat text on macOS). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `icon.*`, `icons/` | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
 ## The rules that must not be broken
@@ -145,7 +146,15 @@ with its terms (and in About if it ships in the program); material only consulte
    don't, +-1 plausible .COM starts, -4 files starting in E5 space), then are named after an identical library
    format if there is one.
 5. Readings whose "directory" is mostly nonsense, or score below -5, are dropped. One per layout is kept.
-6. Confidence: `high` if nothing with a different file listing comes within 6 points; `medium` if a known
+6. Not CP/M at all: an empty directory fits every layout of the right shape, so a disc whose directory area is
+   just E5 (an Acorn DFS disc formatted by Acorn's FORM, for one) used to open as an empty CP/M disc. Now (a) an
+   empty reading whose directory is one repeated byte is dropped if the rest of the disc (outside that format's
+   boot tracks; data before an `offset` counts) has 4 or more non-blank 128-byte records - formatting writes every
+   track, so a fresh disc has none; and (b) `foreignFilesystem()` recognises Acorn DFS catalogues, ADFS old map
+   (Hugo/Nick at 0x201 and 0x6FB) and D/E, and FAT (BPB, or a media byte + FF FF at 0 or 512, as on DOS 1.x and
+   Acorn DOS Plus 800K): with no CP/M files that means "not CP/M" (pointing at Acorn Disk Wrangler); with files,
+   the reading is shown but read-only until confirmed. A remembered (confirmed) format is exempt from both.
+7. Confidence: `high` if nothing with a different file listing comes within 6 points; `medium` if a known
    format with a different layout lists the same files; `low` for empty directories. `safeToWrite` per rule 6.
 
 Real-disc results (tests below): Osborne SD (osb1sssd, skew 2, including rotated tracks) and DD, Osborne 8"
@@ -167,7 +176,7 @@ Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each
 builds and deploys, `ci/collect-licences.sh` gathers the licences of every shipped library into
 `licences-bundled.qrc`, and `ci/build.sh` again compiles them in (Help > Licences, `licences.cpp`). A new source
 file in the .pro also goes in CMakeLists.txt and any `tests/*.pro` that build `mainwindow.cpp` (they need
-`../licences.cpp`). `ci/`, `licences.*`, `licences/` and the workflow are shared with Acorn Disk Wrangler: keep them
+`../licences.cpp`). `ci/`, `licences.*`, `licences/`, `buttonbar.h` and the workflow are shared with Acorn Disk Wrangler: keep them
 identical.
 ```
 qmake cpmdiskwrangler.pro && make          # or CMake
@@ -188,6 +197,7 @@ Each test is its own `.pro` in `tests/`:
 | `tests/verify_independent.sh <fstest outdirs>` | **independent**: Python IMD/DSK decoder + libdsk (where its geometry probe is right) must see the same sectors; cpmtools must read every file exactly and `fsck.cpm` must be clean |
 | `guitest <dir> [osborne.imd [teledisk.td0]] [--adw dir]` | offscreen GUI: host drops (userN folders, flattening, .inf skipped), real drag events between windows, drag-out JSON, drops made by Acorn Disk Wrangler's code, read-only rules, format dialog, TeleDisk Save As; screenshots in `<dir>/shots` |
 | `tests/interop_adw` (qmake `ADW=<Acorn Disk Wrangler source>`) | built from **Acorn Disk Wrangler's own dragout.cpp**: `make <dir>` writes its drags (ADFS, DFS, FAT) for guitest; `read <json>` reads ours |
+| `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
 | `mkicon <dir>` | the PNG icons |
 
 **Verify independently, not with our own code.** Our reader agreeing with our writer proves little. This

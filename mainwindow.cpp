@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "mainwindow.h"
+
+#include "buttonbar.h"
 #include "licences.h"
 #include "formatdialog.h"
 #include "newdisc.h"
@@ -275,12 +277,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     help->addAction("About &Qt...", qApp, &QApplication::aboutQt);
     help->addAction("&Licences...", this, [this] { showLicences(this); });
 
-    QToolBar *tb = addToolBar("Main");
-    tb->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    tb->setMovable(false);
-    for (QAction *a : {m_actAdd, m_actExtract, m_actView, m_actProps, m_actDelete}) tb->addAction(a);
-    tb->addSeparator();
-    tb->addAction(m_actFormat);
+    ButtonBar::makeButtonBar(addToolBar("Main"), {m_actAdd, m_actExtract, m_actView, m_actProps, m_actDelete, nullptr, m_actFormat});
 
     connect(m_tree, &QTreeWidget::itemSelectionChanged, this, &MainWindow::updateUi);
     connect(m_tree, &QTreeWidget::itemDoubleClicked, this, [this](QTreeWidgetItem *it) {

@@ -26,6 +26,11 @@ echo "independent checks: $(grep -c '^ok' "$W/verify.log") passed, $(grep -c '^F
 "$b/fstest/fstest" atomic "$W/atomic" | tail -1 | grep -q ok || { echo "FAIL atomic"; fail=1; }
 "$b/fstest/fstest" library | tail -1 | grep -q ok || { echo "FAIL library"; fail=1; }
 "$b/fstest/fstest" roundtrip "$W"/fs/imd/*.imd "$W"/fs/edsk/*.dsk | grep -v "^same" && fail=1
+step "not CP/M: Acorn DFS discs, and DFS discs with the catalogue wiped"
+mkdir -p "$W/foreign" && python3 "$src/tests/make_foreign.py" "$W/foreign"
+"$b/detecttest/detecttest" "$W"/foreign/* > "$W/foreign.log" 2>&1
+nf=$(ls "$W"/foreign | wc -l); nn=$(grep -c 'confidence none' "$W/foreign.log")
+echo "read as not CP/M: $nn of $nf"; [ "$nn" -eq "$nf" ] || { grep -B2 'confidence [lmh]' "$W/foreign.log"; fail=1; }
 if [ -n "$real" ]; then
   O="$real/Myrcurial_o1next/research"; Z="$real/udo-munk_z80pack/cpmsim/disks/library"
   step "real images: round trip, detection, cpmtools comparison"
