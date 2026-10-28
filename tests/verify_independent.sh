@@ -8,6 +8,7 @@
 #     must match what fstest expected, and fsck.cpm must find nothing wrong.
 # Needs cpmtools and libdsk-utils (Ubuntu: apt install cpmtools libdsk-utils).
 fail=0
+defs="$(cd "$(dirname "$0")/.." && pwd)/resources/builtin-diskdefs"   # this checkout's own definitions
 for dir in "$@"; do
   for dd in "$dir"/*.diskdef; do
     name=$(basename "$dd" .diskdef); base="$dir/$name"
@@ -16,11 +17,11 @@ for dir in "$@"; do
     sides=$(awk '/^ *sides/{print $2}' "$base".diskdef)
     fmtname=$(head -1 "$dd" | awk '{print $2}')
     tracks=$(awk '/^ *tracks/{print $2}' "$dd"); sectrk=$(awk '/^ *sectrk/{print $2}' "$dd"); seclen=$(awk '/^ *seclen/{print $2}' "$dd")
-    real_sides=$(grep -A30 "^diskdef $name\$" /home/claude/CPMDiskWrangler/resources/builtin-diskdefs | awk '/^ *sides/{print $2; exit}')
+    real_sides=$(grep -A30 "^diskdef $name\$" "$defs" | awk '/^ *sides/{print $2; exit}')
     case "$img" in
       *.imd|*.dsk)
         it=imd; [ "${img##*.}" = dsk ] && it=edsk
-        heads=$(grep -A30 "^diskdef $name\$" /home/claude/CPMDiskWrangler/resources/builtin-diskdefs | awk '/^ *heads/{print $2; exit}')
+        heads=$(grep -A30 "^diskdef $name\$" "$defs" | awk '/^ *heads/{print $2; exit}')
         [ -z "$heads" ] && { [ "$tracks" -gt 86 ] && heads=2 || heads=1; }
         boot=$(awk '/^ *boottrk/{print $2}' "$dd")
         if ! python3 "$(dirname "$0")"/decode_container.py "$img" $t/py.logical "$tracks" "$sectrk" "$seclen" "${real_sides:-alt}" "$heads" "${boot:-0}" >$t/t0 2>$t/err; then
