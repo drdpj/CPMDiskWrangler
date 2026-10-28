@@ -103,6 +103,8 @@ public:
     int sides() const { return m_nvols; }
     bool dropOpensImage() const { return m_nvols == 0; }   // nothing read as CP/M here: a drop opens an image               // filesystems shown: 1, or 2 for a disc on each side
     const Detect::Result &detection() const { return m_det; }
+    // Scores the readings again on the disc as it is now (done before Tools > Disc format shows them).
+    void rescoreReadings();
     DropTree *tree() { return m_tree; }
     bool writable() const;
     QString readOnlyReason() const;

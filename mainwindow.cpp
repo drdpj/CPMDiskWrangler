@@ -1107,10 +1107,23 @@ void MainWindow::discInfo() {
     d.exec();
 }
 
+// The readings as the disc is now: files may have been added or deleted since it was detected, and a disc made
+// here was scored when it was empty. (Tools > Disc format needs no unsaved changes, so this is the saved disc.)
+void MainWindow::rescoreReadings() {
+    Disk::RawLayout before = m_img.rawLayout();
+    QString e;
+    for (Detect::Candidate &c : m_det.ranked) {
+        if (m_img.kind() == Disk::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, &e)) continue;
+        c = Detect::reevaluate(m_img, c);
+    }
+    if (m_img.kind() == Disk::Kind::Raw && before.valid()) m_img.setRawLayout(before, &e);
+}
+
 void MainWindow::formatDialog() {
     if (!m_img.isOpen()) return;
     if (m_img.hasPending()) { message("Disc format", "Save or revert your changes before reading the disc with another format."); return; }
     Disk::RawLayout before = m_img.rawLayout();
+    rescoreReadings();
     FormatDialog d(&m_img, m_det, m_detIndex, m_safe, this);
     int r = d.exec();
     QString err;

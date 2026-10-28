@@ -43,6 +43,8 @@ struct Candidate {
     int files = 0, fileEntries = 0, badEntries = 0, badPointers = 0, crossLinks = 0, exactCounts = 0;
     int textGood = 0, textBad = 0, startsBlank = 0;
     QStringList evidence;            // for the format dialog
+    double base = 0;                 // the part of score that evaluate() gave (the rest: known format, IDs, ...)
+    int baseLines = 0;               // the evidence lines evaluate() wrote (the first ones)
     QString key() const;             // identifies the layout (for removing duplicates)
 };
 
@@ -57,6 +59,11 @@ struct Result {
 // Scores one format against an image (raw images must already have their layout set). Used by detect() and by
 // the format dialog when the user picks or edits a format by hand.
 Candidate evaluate(const Disk::Image &img, const Cpm::Format &f, bool deep);
+
+// The same reading scored again on the disc as it is now (files added or deleted since detection, a new disc
+// that has been filled): what evaluate() found is replaced, the bonuses detection added are kept. A raw image
+// must already have the candidate's layout set.
+Candidate reevaluate(const Disk::Image &img, const Candidate &c);
 
 // rememberedDiskdef: a format the user confirmed for this file earlier (diskdefs text), or empty.
 // For a raw image, the image's layout is set to the winner's before returning.

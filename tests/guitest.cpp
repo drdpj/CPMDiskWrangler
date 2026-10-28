@@ -22,7 +22,12 @@
 // out of this program) for interop_adw to read, and screenshots in <workdir>/shots.
 #include <QApplication>
 #include <QDir>
+#include <QComboBox>
 #include <QDragEnterEvent>
+#include <QFormLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QSpinBox>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -234,6 +239,41 @@ int main(int argc, char **argv) {
         CHECK(fileData(vc, 0, "AUTOEXEC.BAT") == "ECHO HI\r\n", "DOS file content and exact size");
     }
     CHECK(C.save(), "save the Kaypro disc");
+
+    printf("== format dialog on a disc made here and filled since (Acorn Z80: side 1 runs back)\n");
+    {
+        MainWindow Z;
+        CHECK(Z.newImage(wd + "/z.img", Disk::Kind::Raw, *Cpm::findFormat("acorn-z80"), false, QString()), "new Acorn Z80 raw disc");
+        Z.importPaths({wd + "/host/readme.txt"}, -1);
+        int n = Z.volume().files().size();
+        CHECK(n > 0 && Z.save(), "add a file and save");
+        CHECK(Z.detection().ranked.first().files == 0, "the reading was scored when the disc was empty");
+        Z.rescoreReadings();
+        CHECK(Z.detection().ranked.first().files == n, QString("scored again it lists the files (%1 of %2)").arg(Z.detection().ranked.first().files).arg(n));
+        FormatDialog fd(&Z.image(), Z.detection(), 0, true, &Z);
+        QSpinBox *heads = nullptr;
+        QComboBox *order = nullptr;
+        QPushButton *tryBtn = nullptr;
+        for (QFormLayout *fl : fd.findChildren<QFormLayout *>())
+            for (int r = 0; r < fl->rowCount(); ++r) {
+                QLayoutItem *li = fl->itemAt(r, QFormLayout::LabelRole), *fi = fl->itemAt(r, QFormLayout::FieldRole);
+                auto *lab = li ? qobject_cast<QLabel *>(li->widget()) : nullptr;
+                if (lab && lab->text() == "Sides" && fi && fi->layout()) {
+                    heads = qobject_cast<QSpinBox *>(fi->layout()->itemAt(0)->widget());
+                    order = qobject_cast<QComboBox *>(fi->layout()->itemAt(2)->widget());
+                }
+            }
+        for (QPushButton *b : fd.findChildren<QPushButton *>()) if (b->text() == "Try these settings") tryBtn = b;
+        CHECK(heads && order && tryBtn, "found the hand-made format form");
+        if (heads && order && tryBtn) {
+            heads->setValue(1);
+            tryBtn->click();
+            CHECK(fd.chosen().files == 0 && order->currentText() == "outback", "one side: nothing read, the side order shown is kept");
+            heads->setValue(2);
+            tryBtn->click();
+            CHECK(fd.chosen().files == n, QString("back to two sides: the files again (%1)").arg(fd.chosen().files));
+        }
+    }
 
     printf("== read-only rules\n");
     if (a.size() >= 2) {

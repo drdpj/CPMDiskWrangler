@@ -212,6 +212,12 @@ for the directory) that every self-test had passed.
   checked by eye (PROFILE.SUB is a SUBMIT script; WM.COM continues as Z80 code with its own messages).
 - cpmtools reads `./diskdefs` before `/etc/cpmtools/diskdefs`: the scripts write one into a temporary folder.
 - The cpmtools 4MB `z80pack-hd` listing crashes cpmtools on hd-tools.dsk (malloc error); our reading checks clean.
+- **The format dialog's form must keep what was typed.** Deriving a format normalises it (one side forces side
+  order `alt`), so refilling the form from a tried reading changed the next try: 1 side then 2 sides read nothing
+  on an `outback` disc. A reading tried by hand is selected without refilling the form (`m_keepForm`), and one-sided
+  formats leave the order shown alone (`guitest` checks this on a new Acorn Z80 disc).
+- **Readings go stale.** `m_det` is scored when the disc is opened or made (a new disc: empty). The format dialog
+  scores them again first (`MainWindow::rescoreReadings`, `Detect::reevaluate` keeps detection's bonuses).
 - `slots` is a Qt macro: don't use it as a variable name.
 - GUI tests: synthetic drops need DragEnter, DragMove and Drop sent to the tree's **viewport**; dialogs inside a
   drop handler are deferred with `QTimer::singleShot`; `MainWindow::autoAnswer` answers the questions in tests.

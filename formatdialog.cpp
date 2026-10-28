@@ -147,7 +147,7 @@ void FormatDialog::selectionChanged() {
     QTreeWidgetItem *it = m_list->currentItem();
     if (!it) return;
     const Detect::Candidate &c = m_cands[it->data(0, Qt::UserRole).toInt()];
-    fillForm(c.fmt);
+    if (!m_keepForm) fillForm(c.fmt);
     QStringList out;
     out << c.fmt.displayName() << c.fmt.summary();
     if (!c.fmt.source.isEmpty()) out << "Source: " + c.fmt.source;
@@ -179,7 +179,7 @@ void FormatDialog::fillForm(const Cpm::Format &f) {
     m_sectrk->setValue(f.sectrk);
     m_tracks->setValue(f.tracks);
     m_heads->setValue(f.physHeads);
-    m_sides->setCurrentIndex(int(f.sides));
+    if (f.physHeads == 2) m_sides->setCurrentIndex(int(f.sides));    // one side has no order: keep the one shown
     m_boot->setValue(f.bootsec >= 0 ? 0 : f.boottrk);
     m_skew->setValue(f.skewtab.isEmpty() ? f.skew : 0);
     QStringList st;
@@ -259,7 +259,11 @@ void FormatDialog::tryCustom() {
     for (const Cpm::Format &l : Cpm::library())
         if (l.sameLayout(f)) { c.fmt.name = l.name; c.fmt.desc = l.desc; c.fromLibrary = true; break; }
     c.evidence << "set by hand";
+    // Select the new reading without refilling the form from it: the form keeps exactly what was typed, so the
+    // next try starts from the same settings (deriving a format normalises some of them).
+    m_keepForm = true;
     addCandidate(c, true);
+    m_keepForm = false;
     m_formErr->setText(err);
 }
 

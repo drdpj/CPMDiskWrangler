@@ -52,6 +52,7 @@ private:
     bool evaluateFormat(const Cpm::Format &f, Detect::Candidate *out, QString *err);
 
     Disk::Image *m_img;
+    bool m_keepForm = false;         // selecting a reading just tried by hand: leave the form as typed
     QVector<Detect::Candidate> m_cands;
     QTreeWidget *m_list;
     QPlainTextEdit *m_details;

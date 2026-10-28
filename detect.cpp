@@ -483,6 +483,22 @@ Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
         if (cs.startsBlank) c.evidence << QString("%1 files start in never-written (E5) space").arg(cs.startsBlank);
     }
     c.evidence.prepend("signature:" + QString(QCryptographicHash::hash(listingSignature(c.fmt, ent).toUtf8(), QCryptographicHash::Md5).toHex()));
+    c.base = c.score;
+    c.baseLines = c.evidence.size();
+    return c;
+}
+
+Candidate reevaluate(const Disk::Image &img, const Candidate &old) {
+    Candidate fresh = evaluate(img, old.fmt, true);
+    if (fresh.score < -1e8) return old;
+    Candidate c = old;
+    c.score = old.score - old.base + fresh.score;
+    c.base = fresh.score;
+    c.files = fresh.files; c.fileEntries = fresh.fileEntries; c.badEntries = fresh.badEntries;
+    c.badPointers = fresh.badPointers; c.crossLinks = fresh.crossLinks; c.exactCounts = fresh.exactCounts;
+    c.textGood = fresh.textGood; c.textBad = fresh.textBad; c.startsBlank = fresh.startsBlank;
+    c.evidence = fresh.evidence + old.evidence.mid(old.baseLines);
+    c.baseLines = fresh.baseLines;
     return c;
 }
 
