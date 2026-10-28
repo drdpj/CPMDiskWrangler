@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <QApplication>
-#include <QSettings>
 #include "cpmformat.h"
+#include "appsettings.h"
 #include "dragout.h"
 #include "icon.h"
 #include "mainwindow.h"
@@ -30,12 +30,13 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QApplication::setOrganizationName("cpmdiskwrangler");
     QApplication::setApplicationName("cpmdiskwrangler");
+    AppSettings::init();                             // portable mode if <program>.ini is beside the program
     QApplication::setApplicationVersion(APP_VERSION);
     QGuiApplication::setDesktopFileName("cpmdiskwrangler");
     QApplication::setWindowIcon(appIcon());
     RetroFiles::cleanStale();
     QStringList warnings;
-    Cpm::setExtraDiskdefFiles(QSettings().value("diskdefFiles").toStringList(), &warnings);
+    Cpm::setExtraDiskdefFiles(AppSettings().value("diskdefFiles").toStringList(), &warnings);
     MainWindow w;
     w.show();
     for (int i = 1; i < argc; ++i) {

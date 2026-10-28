@@ -30,6 +30,7 @@ with its terms (and in About if it ships in the program); material only consulte
 | `newdisc.*` | File > New disc image |
 | `dragout.*` | `retro-files` JSON writer/reader, drag-out data, temporary drag folders |
 | `viewer.*`, `viewtext.*` | the text/hex viewer (CP/M `^Z`, WordStar bit 7) |
+| `appsettings.h` | where settings live: the system's place, or `<program>.ini` beside the program (portable). Use `AppSettings` instead of `QSettings` in program code (tests may use `QSettings` to clear the system store). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `buttonbar.h` | the main window's button bar: real QPushButtons kept in step with their QActions (a QToolBar's own buttons draw as flat text on macOS). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `icon.*`, `icons/` | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
@@ -194,7 +195,7 @@ Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each
 builds and deploys, `ci/collect-licences.sh` gathers the licences of every shipped library into
 `licences-bundled.qrc`, and `ci/build.sh` again compiles them in (Help > Licences, `licences.cpp`). A new source
 file in the .pro also goes in CMakeLists.txt and any `tests/*.pro` that build `mainwindow.cpp` (they need
-`../licences.cpp`). `ci/`, `licences.*`, `licences/`, `buttonbar.h` and the workflow are shared with Acorn Disk Wrangler: keep them
+`../licences.cpp`). `ci/`, `licences.*`, `licences/`, `buttonbar.h`, `appsettings.h` and the workflow are shared with Acorn Disk Wrangler: keep them
 identical.
 ```
 qmake cpmdiskwrangler.pro && make          # or CMake

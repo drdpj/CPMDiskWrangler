@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "mainwindow.h"
+#include "appsettings.h"
 
 #include "buttonbar.h"
 #include "licences.h"
@@ -45,7 +46,6 @@
 #include <QMimeData>
 #include <QPointer>
 #include <QPushButton>
-#include <QSettings>
 #include <QSpinBox>
 #include <QStatusBar>
 #include <QTextBrowser>
@@ -226,6 +226,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_actSaveAs->setShortcut(QKeySequence("Ctrl+Shift+S"));
     m_actRevert = file->addAction("&Revert", this, &MainWindow::revert);
     file->addSeparator();
+    file->addAction("Create &local config file...", this, [this] { AppSettings::createPortableFileDialog(this); });
+    file->addSeparator();
     file->addAction("&Close", this, &QWidget::close)->setShortcut(QKeySequence::Close);
     file->addAction("&Quit", qApp, &QApplication::closeAllWindows)->setShortcut(QKeySequence::Quit);
 
@@ -258,7 +260,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_actInfo->setShortcut(QKeySequence("Ctrl+I"));
     tools->addAction("Add a &diskdefs file to the format library...", this, &MainWindow::addDiskdefsDialog);
     tools->addSeparator();
-    QSettings st;
+    AppSettings st;
     m_optTrim = tools->addAction("Trim the ^Z padding from text files when extracting");
     m_optTrim->setCheckable(true);
     m_optTrim->setChecked(st.value("trimText", false).toBool());
@@ -268,9 +270,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_optBackup = tools->addAction("Keep a .bak copy when saving");
     m_optBackup->setCheckable(true);
     m_optBackup->setChecked(st.value("backup", true).toBool());
-    connect(m_optTrim, &QAction::toggled, [](bool on) { QSettings().setValue("trimText", on); });
-    connect(m_optFolders, &QAction::toggled, [](bool on) { QSettings().setValue("folderPerUser", on); });
-    connect(m_optBackup, &QAction::toggled, [](bool on) { QSettings().setValue("backup", on); });
+    connect(m_optTrim, &QAction::toggled, [](bool on) { AppSettings().setValue("trimText", on); });
+    connect(m_optFolders, &QAction::toggled, [](bool on) { AppSettings().setValue("folderPerUser", on); });
+    connect(m_optBackup, &QAction::toggled, [](bool on) { AppSettings().setValue("backup", on); });
 
     QMenu *help = menuBar()->addMenu("&Help");
     help->addAction("&About CP/M Disk Wrangler...", this, &MainWindow::about);
@@ -335,7 +337,7 @@ int MainWindow::currentSide() const {
 // ------------------------------------------------------------------------------------------- opening
 
 QString MainWindow::rememberedFormat() const {
-    QSettings st;
+    AppSettings st;
     QString key = "formats/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
                                                         QCryptographicHash::Sha1).toHex();
     QString v = st.value(key).toString();
@@ -345,7 +347,7 @@ QString MainWindow::rememberedFormat() const {
 
 void MainWindow::rememberFormat() {
     if (m_img.path().isEmpty() || !m_nvols) return;
-    QSettings st;
+    AppSettings st;
     QString key = "formats/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
                                                         QCryptographicHash::Sha1).toHex();
     Cpm::Format f = m_vols[0].format();
@@ -465,10 +467,10 @@ void MainWindow::closeEvent(QCloseEvent *e) {
 }
 
 void MainWindow::openDialog() {
-    QString p = QFileDialog::getOpenFileName(this, "Open CP/M disc image", QSettings().value("lastDir").toString(),
+    QString p = QFileDialog::getOpenFileName(this, "Open CP/M disc image", AppSettings().value("lastDir").toString(),
                                              "Disc images (*.imd *.dsk *.td0 *.img *.ima *.raw *.h8d *.ssd *.dsd *.bin);;All files (*)");
     if (p.isEmpty()) return;
-    QSettings().setValue("lastDir", QFileInfo(p).absolutePath());
+    AppSettings().setValue("lastDir", QFileInfo(p).absolutePath());
     if (m_img.isOpen()) {
         auto *w = new MainWindow;
         w->setAttribute(Qt::WA_DeleteOnClose);
@@ -484,7 +486,7 @@ void MainWindow::newImageDialog() {
     if (d.exec() != QDialog::Accepted) return;
     Cpm::Format f = d.format();
     QString ext = Disk::kindExtension(d.kind());
-    QString p = QFileDialog::getSaveFileName(this, "New disc image", QSettings().value("lastDir").toString() + "/" + f.name + "." + ext,
+    QString p = QFileDialog::getSaveFileName(this, "New disc image", AppSettings().value("lastDir").toString() + "/" + f.name + "." + ext,
                                              QString("Disc image (*.%1)").arg(ext));
     if (p.isEmpty()) return;
     MainWindow *w = this;
@@ -718,9 +720,9 @@ bool MainWindow::exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, 
 void MainWindow::extractSelected() {
     QVector<FileRef> refs = selectedRefs();
     if (refs.isEmpty()) return;
-    QString dir = QFileDialog::getExistingDirectory(this, "Extract to folder", QSettings().value("extractDir").toString());
+    QString dir = QFileDialog::getExistingDirectory(this, "Extract to folder", AppSettings().value("extractDir").toString());
     if (dir.isEmpty()) return;
-    QSettings().setValue("extractDir", dir);
+    AppSettings().setValue("extractDir", dir);
     QVector<XItem> items;
     QString err;
     if (!exportFiles(refs, &items, &err)) { message("Extract", err); return; }
@@ -915,9 +917,9 @@ void MainWindow::importSummary(const ImportCtx &c) {
 }
 
 void MainWindow::addFilesDialog() {
-    QStringList p = QFileDialog::getOpenFileNames(this, "Add files", QSettings().value("addDir").toString());
+    QStringList p = QFileDialog::getOpenFileNames(this, "Add files", AppSettings().value("addDir").toString());
     if (p.isEmpty()) return;
-    QSettings().setValue("addDir", QFileInfo(p.first()).absolutePath());
+    AppSettings().setValue("addDir", QFileInfo(p.first()).absolutePath());
     QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
     importPaths(p, sel.isEmpty() ? -1 : targetUser(sel.first()), sel.isEmpty() ? 0 : targetSide(sel.first()));
 }
@@ -1137,7 +1139,7 @@ void MainWindow::formatDialog() {
 void MainWindow::addDiskdefsDialog() {
     QString p = QFileDialog::getOpenFileName(this, "Add a cpmtools diskdefs file", QString(), "diskdefs (diskdefs* *.def *.txt);;All files (*)");
     if (p.isEmpty()) return;
-    QSettings st;
+    AppSettings st;
     QStringList files = st.value("diskdefFiles").toStringList();
     if (!files.contains(p)) files << p;
     QStringList warnings;
@@ -1156,5 +1158,6 @@ void MainWindow::about() {
                        "Copyright &copy; 2026 Daniel Jameson.<br>Licensed under the GNU General Public License v3 or later.<br><br>"
                        "Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later). "
                        "The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura. Uses Qt under the LGPL v3. "
-                       "Help &gt; Licences shows the full licence texts and notices, including those of the libraries distributed with it.");
+                       "Help &gt; Licences shows the full licence texts and notices, including those of the libraries distributed with it.<br><br>" +
+                           AppSettings::where().toHtmlEscaped());
 }
