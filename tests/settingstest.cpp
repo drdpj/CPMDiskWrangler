@@ -44,6 +44,43 @@ int main(int argc, char **argv) {
     qputenv("APPIMAGE", QFile::encodeName(tmp.path() + "/gone.AppImage"));
     CHECK(!AppSettings::offered(), "a missing .AppImage counts as installed");
 
+    printf("== AppImage, first run (nothing saved yet)\n");
+    {
+        QTemporaryDir fresh;
+        { AppSettings s; s.clear(); }                       // no settings at all (Qt fixes the config folder at first use)
+        QFile img(fresh.path() + "/First.AppImage");
+        img.open(QIODevice::WriteOnly);
+        img.close();
+        qputenv("APPIMAGE", QFile::encodeName(img.fileName()));
+        AppSettings::init();
+        CHECK(AppSettings().allKeys().isEmpty(), "no settings saved yet");
+        CHECK(AppSettings::createPortableFile(&err), "creating the local config file still works");
+        CHECK(QFileInfo::exists(fresh.path() + "/" + ini) && AppSettings::portable(), "the (empty) ini is made and used");
+        AppSettings::init();
+        CHECK(AppSettings::portable(), "and found at the next start");
+        qunsetenv("APPIMAGE");
+        AppSettings::init();
+        { AppSettings s; s.setValue("backup", false); }     // as the first section left it
+    }
+
+    printf("== a folder that can't be written\n");
+    {
+        QTemporaryDir ro;
+        QFile img(ro.path() + "/Locked.AppImage");
+        img.open(QIODevice::WriteOnly);
+        img.close();
+        QFile::setPermissions(ro.path(), QFile::ReadOwner | QFile::ExeOwner);
+        qputenv("APPIMAGE", QFile::encodeName(img.fileName()));
+        AppSettings::init();
+        bool writable = QFileInfo(ro.path()).isWritable();      // root can write anywhere: then this can't be tested
+        CHECK(writable || (!AppSettings::createPortableFile(&err) && err.contains("could not write")),
+              "refused, saying it can't write there");
+        CHECK(writable || !AppSettings::portable(), "and the system's settings are still used");
+        QFile::setPermissions(ro.path(), QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+        qunsetenv("APPIMAGE");
+        AppSettings::init();
+    }
+
     printf("== AppImage\n");
     QDir().mkpath(tmp.path() + "/stick");
     const QString image = tmp.path() + "/stick/Wrangler.AppImage";

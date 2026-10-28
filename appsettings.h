@@ -97,14 +97,22 @@ public:
         if (!offered()) { *err = "an installed program keeps its settings in the system's place"; return false; }
         if (portable()) { *err = "the settings are already kept in " + QDir::toNativeSeparators(f); return false; }
         const bool existed = QFileInfo::exists(f);
+        // Make the file first: QSettings writes nothing when there are no settings yet (a first run), and the
+        // file's existence is what switches portable mode on. This also says plainly why it can't be written.
+        QFile touch(f);
+        if (!touch.open(QIODevice::WriteOnly | QIODevice::Append)) {
+            *err = "could not write " + QDir::toNativeSeparators(f) + ": " + touch.errorString();
+            return false;
+        }
+        touch.close();
         {
             QSettings ini(f, IniFormat);
             AppSettings current;
             for (const QString &k : current.allKeys()) ini.setValue(k, current.value(k));
             ini.sync();
-            if (ini.status() != NoError || !QFileInfo(f).isFile()) {
+            if (ini.status() != NoError) {
                 if (!existed) QFile::remove(f);
-                *err = "could not write " + QDir::toNativeSeparators(f) + " (is the program's folder read-only?)";
+                *err = "could not write the settings into " + QDir::toNativeSeparators(f);
                 return false;
             }
         }
