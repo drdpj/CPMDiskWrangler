@@ -3,7 +3,8 @@
 # Builds Windows (x64 zip), macOS (Apple Silicon .dmg) and Linux (x86_64 AppImage), each linked to Qt's shared
 # libraries, with the licence of everything shipped compiled into the program (Help > Licences) and copied
 # beside it. Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
-# v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks).
+# v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks); a tag with a
+# suffix, such as v1.0.0-beta.1, makes it a pre-release.
 #
 # Each platform builds twice (ci/build.sh): the first build is deployed to find out which libraries ship, then
 # ci/collect-licences.sh gathers their licences into licences-bundled.qrc and the second build compiles them in.
@@ -192,5 +193,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # a tag with a suffix (v1.0.0-beta.1, v1.0.0-rc.1) is published as a pre-release
+          pre=()
+          case "$GITHUB_REF_NAME" in *-*) pre=(--prerelease) ;; esac
           gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
-              --generate-notes
+              --generate-notes "${pre[@]}"
