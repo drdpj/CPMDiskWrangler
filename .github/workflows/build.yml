@@ -82,7 +82,11 @@ jobs:
           app=$(basename "$(ls ./*.pro)" .pro)
           {
             echo "APP=$app"
-            echo "NAME=$(sed -n 's/^QMAKE_TARGET_PRODUCT *= *//p' "$app.pro")"
+            # A file name can't contain "/", but the Finder shows ":" as "/", so "CP:M Disk Wrangler.app"
+            # appears as "CP/M Disk Wrangler". The disk image's name just drops the slash.
+            name=$(sed -n 's/^QMAKE_TARGET_PRODUCT *= *//p' "$app.pro")
+            echo "BUNDLE=${name//\//:}"
+            echo "VOLUME=${name//\//}"
             echo "VERSION=$(git describe --tags --always)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
@@ -107,13 +111,13 @@ jobs:
           [ "$bad" = 0 ] || { echo "::error::the bundle still loads Homebrew's libraries"; exit 1; }
           codesign --force --deep --sign - "$app"   # ad hoc: macdeployqt's changes broke the linker's signature
           mkdir -p dmg dist
-          mv "$app" "dmg/$NAME.app"
+          mv "$app" "dmg/$BUNDLE.app"
           cp -R LICENSE THIRD-PARTY-NOTICES.md licences dmg/
           ln -s /Applications dmg/Applications
-          hdiutil create -volname "$NAME" -srcfolder dmg -format UDZO -ov "dist/$APP-$VERSION-macos-arm64.dmg"
+          hdiutil create -volname "$VOLUME" -srcfolder dmg -format UDZO -ov "dist/$APP-$VERSION-macos-arm64.dmg"
       - name: Check it starts
         run: |
-          "dmg/$NAME.app/Contents/MacOS/$APP" & pid=$!
+          "dmg/$BUNDLE.app/Contents/MacOS/$APP" & pid=$!
           sleep 8
           kill -0 "$pid" || { echo "::error::$APP exited at once"; exit 1; }
           kill "$pid"
