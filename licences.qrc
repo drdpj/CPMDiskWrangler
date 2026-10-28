@@ -1,0 +1,9 @@
+<!-- Licence texts compiled into the program (Help > Licences). The number in each alias sets the order shown.
+     A release build adds licences-bundled.qrc (made by ci/collect-licences.sh) for the libraries shipped with it. -->
+<RCC>
+    <qresource prefix="/licences">
+        <file alias="1 This program - GNU GPL v3">LICENSE</file>
+        <file alias="2 Third-party notices">THIRD-PARTY-NOTICES.md</file>
+        <file alias="3 Qt - GNU LGPL v3">licences/LGPL-3.0.txt</file>
+    </qresource>
+</RCC>

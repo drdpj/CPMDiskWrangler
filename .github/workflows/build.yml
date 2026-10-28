@@ -1,0 +1,186 @@
+# Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root.
+#
+# Builds Windows (x64 zip), macOS (Apple Silicon .dmg) and Linux (x86_64 AppImage), each linked to Qt's shared
+# libraries, with the licence of everything shipped compiled into the program (Help > Licences) and copied
+# beside it. Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
+# v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks).
+#
+# Each platform builds twice (ci/build.sh): the first build is deployed to find out which libraries ship, then
+# ci/collect-licences.sh gathers their licences into licences-bundled.qrc and the second build compiles them in.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-qt5-base zip
+      - name: Identify
+        run: |
+          app=$(basename "$(ls ./*.pro)" .pro)
+          {
+            echo "APP=$app"
+            echo "VERSION=$(git describe --tags --always)"
+          } >> "$GITHUB_ENV"
+      - name: Build and deploy
+        run: bash ci/build.sh windows
+      - name: Collect licences
+        run: bash ci/collect-licences.sh windows deploy
+      - name: Rebuild with the licences compiled in
+        run: bash ci/build.sh windows
+      - name: Package
+        run: |
+          cp -r LICENSE THIRD-PARTY-NOTICES.md licences deploy/
+          mkdir -p dist
+          (cd deploy && zip -qr "../dist/$APP-$VERSION-windows-x64.zip" .)
+      - name: Check it starts outside MSYS2
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Windows\System32;C:\Windows"
+          $p = Start-Process -FilePath "deploy\$env:APP.exe" -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) { throw "$env:APP.exe exited at once (code $($p.ExitCode)): a DLL is probably missing" }
+          Stop-Process -Id $p.Id
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+
+  macos:
+    runs-on: macos-14      # Apple Silicon; the .app runs on this macOS version and later
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Qt 5
+        run: |
+          brew install qt@5
+          echo "$(brew --prefix qt@5)/bin" >> "$GITHUB_PATH"
+      - name: Identify
+        run: |
+          app=$(basename "$(ls ./*.pro)" .pro)
+          {
+            echo "APP=$app"
+            echo "NAME=$(sed -n 's/^QMAKE_TARGET_PRODUCT *= *//p' "$app.pro")"
+            echo "VERSION=$(git describe --tags --always)"
+          } >> "$GITHUB_ENV"
+      - name: Build and deploy
+        run: bash ci/build.sh macos
+      - name: Collect licences
+        run: bash ci/collect-licences.sh macos "build/$APP.app"
+      - name: Rebuild with the licences compiled in
+        run: bash ci/build.sh macos
+      - name: Package
+        run: |
+          app="build/$APP.app"
+          cp -R LICENSE THIRD-PARTY-NOTICES.md licences "$app/Contents/Resources/"
+          if find "$app" -type f \( -perm -u+x -o -name '*.dylib' \) -exec otool -L {} + 2>/dev/null |
+                 grep -E '^[[:space:]]+(/opt/homebrew|/usr/local)/'; then
+              echo "::error::the bundle still refers to Homebrew's libraries"; exit 1
+          fi
+          codesign --force --deep --sign - "$app"   # ad hoc: macdeployqt's changes broke the linker's signature
+          mkdir -p dmg dist
+          mv "$app" "dmg/$NAME.app"
+          cp -R LICENSE THIRD-PARTY-NOTICES.md licences dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "$NAME" -srcfolder dmg -format UDZO -ov "dist/$APP-$VERSION-macos-arm64.dmg"
+      - name: Check it starts
+        run: |
+          "dmg/$NAME.app/Contents/MacOS/$APP" & pid=$!
+          sleep 8
+          kill -0 "$pid" || { echo "::error::$APP exited at once"; exit 1; }
+          kill "$pid"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+
+  linux:
+    runs-on: ubuntu-22.04  # the oldest glibc still offered, so the AppImage runs on as many systems as possible
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: 1      # linuxdeploy is itself an AppImage; the runner has no FUSE
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Qt 5 and linuxdeploy
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qtbase5-dev qt5-qmake build-essential xvfb
+          mkdir -p "$HOME/tools"
+          for t in linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+                   linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage; do
+              curl -fsSL -o "$HOME/tools/$(basename "$t")" "https://github.com/linuxdeploy/$t"
+          done
+          chmod +x "$HOME"/tools/*.AppImage
+          echo "$HOME/tools" >> "$GITHUB_PATH"
+      - name: Identify
+        run: |
+          app=$(basename "$(ls ./*.pro)" .pro)
+          {
+            echo "APP=$app"
+            echo "VERSION=$(git describe --tags --always)"
+          } >> "$GITHUB_ENV"
+      - name: Build and deploy
+        run: bash ci/build.sh linux
+      - name: Collect licences
+        run: bash ci/collect-licences.sh linux build/AppDir
+      - name: Rebuild with the licences compiled in
+        run: bash ci/build.sh linux
+      - name: Package
+        run: |
+          doc="build/AppDir/usr/share/doc/$APP"
+          mkdir -p "$doc" dist
+          cp -r LICENSE THIRD-PARTY-NOTICES.md licences "$doc/"
+          cd build
+          QMAKE=$(command -v qmake) LINUXDEPLOY_OUTPUT_VERSION="$VERSION" \
+              linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+          mv ./*.AppImage "../dist/$APP-$VERSION-linux-x86_64.AppImage"
+      - name: Check it starts
+        run: |
+          set +e
+          timeout 8 xvfb-run -a "dist/$APP-$VERSION-linux-x86_64.AppImage"
+          [ $? = 124 ] || { echo "::error::$APP exited before the timeout"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
+              --generate-notes

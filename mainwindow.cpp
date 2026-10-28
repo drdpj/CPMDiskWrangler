@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "mainwindow.h"
+#include "licences.h"
 #include "formatdialog.h"
 #include "newdisc.h"
 #include "viewer.h"
@@ -259,6 +260,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QMenu *help = menuBar()->addMenu("&Help");
     help->addAction("&About CP/M Disk Wrangler...", this, &MainWindow::about);
     help->addAction("About &Qt...", qApp, &QApplication::aboutQt);
+    help->addAction("&Licences...", this, [this] { showLicences(this); });
 
     QToolBar *tb = addToolBar("Main");
     tb->setToolButtonStyle(Qt::ToolButtonTextOnly);
@@ -1130,5 +1132,5 @@ void MainWindow::about() {
                        "Copyright &copy; 2026 Daniel Jameson.<br>Licensed under the GNU General Public License v3 or later.<br><br>"
                        "Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later). "
                        "The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura. Uses Qt 5 under the LGPL v3. "
-                       "See THIRD-PARTY-NOTICES.md for details.");
+                       "Help &gt; Licences shows the full licence texts and notices, including those of the libraries distributed with it.");
 }

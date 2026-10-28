@@ -18,11 +18,14 @@ if(APPLE)
     set(CPMDW_ICNS icons/cpmdiskwrangler.icns)
     set_source_files_properties(${CPMDW_ICNS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 endif()
-add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} resources.qrc
+add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} resources.qrc licences.qrc licences.cpp licences.h
     main.cpp mainwindow.cpp formatdialog.cpp newdisc.cpp viewer.cpp viewtext.cpp icon.cpp dragout.cpp
     diskimage.cpp lzhuf.cpp cpmformat.cpp cpmfs.cpp detect.cpp
     mainwindow.h mainwindow_p.h formatdialog.h newdisc.h viewer.h viewtext.h icon.h dragout.h
     diskimage.h cpmformat.h cpmfs.h detect.h)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/licences-bundled.qrc)   # a release build's library licences (ci/)
+    target_sources(cpmdiskwrangler PRIVATE licences-bundled.qrc)
+endif()
 target_link_libraries(cpmdiskwrangler Qt5::Widgets)
 set_target_properties(cpmdiskwrangler PROPERTIES
     MACOSX_BUNDLE_BUNDLE_NAME "CP/M Disk Wrangler"
