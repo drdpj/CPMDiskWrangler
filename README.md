@@ -77,7 +77,8 @@ the usual place for your system: the registry (`HKEY_CURRENT_USER\Software\cpmdi
 To keep them with the program instead - on a USB stick, say - choose **File > Create local config file**: it
 makes **`cpmdiskwrangler.ini`** in the program's folder (beside the `.exe` on Windows, beside the `.app` on macOS) with
 a copy of the current settings, and uses it from then on. (Putting an empty file of that name there by hand does
-the same.) Delete the file to go back to the system's settings. Help > About says which is in use.
+the same.) Delete the file to go back to the system's settings. Help > About says which is in use. For the AppImage the file goes beside the
+`.AppImage`; a program installed from the `.deb` always uses the system's place, so it doesn't offer this.
 
 ## Drag and drop between disc tools
 Both Wranglers implement **[retro-files](docs/retro-files-format.md)** (`application/x-retro-files+json`), an open

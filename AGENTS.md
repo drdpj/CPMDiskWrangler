@@ -30,7 +30,7 @@ with its terms (and in About if it ships in the program); material only consulte
 | `newdisc.*` | File > New disc image |
 | `dragout.*` | `retro-files` JSON writer/reader, drag-out data, temporary drag folders |
 | `viewer.*`, `viewtext.*` | the text/hex viewer (CP/M `^Z`, WordStar bit 7) |
-| `appsettings.h` | where settings live: the system's place, or `<program>.ini` beside the program (portable). Use `AppSettings` instead of `QSettings` in program code (tests may use `QSettings` to clear the system store). Header only; shared with Acorn Disk Wrangler, keep identical |
+| `appsettings.h` | where settings live: the system's place, or `<program>.ini` beside the program (portable; for an AppImage, beside the `.AppImage` file - `$APPIMAGE` - not in its temporary mount; a program installed on Linux has no portable mode, so File > Create local config file isn't shown). Use `AppSettings` instead of `QSettings` in program code (tests may use `QSettings` to clear the system store). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `buttonbar.h` | the main window's button bar: real QPushButtons kept in step with their QActions (a QToolBar's own buttons draw as flat text on macOS). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `icon.*`, `icons/` | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
@@ -221,6 +221,7 @@ Each test is its own `.pro` in `tests/`:
 | `tests/interop_adw` (qmake `ADW=<Acorn Disk Wrangler source>`) | built from **Acorn Disk Wrangler's own dragout.cpp**: `make <dir>` writes its drags (ADFS, DFS, FAT) for guitest; `read <json>` reads ours |
 | `tests/acornz80_check.py <dsd> <outdir>` | **independent** Acorn Z80 reader (from Application Note 007 only); `run_all.sh` compares its files with ours for every `<real>/acorn/*.dsd` (the owner's discs, not in the repo) |
 | `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
+| `settingstest` | where settings live on Linux: an installed program has no portable mode; an AppImage keeps `<program>.ini` beside the `.AppImage` file (shared with Acorn Disk Wrangler) |
 | `mkicon <dir>` | the PNG icons |
 
 **Verify independently, not with our own code.** Our reader agreeing with our writer proves little. This
