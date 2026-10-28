@@ -75,9 +75,29 @@ linux)
 *) note "collect-licences: unknown platform '$platform'"; exit 1 ;;
 esac
 
+echo "collect-licences: shipped library -> package"
+sed 's/^/    /' "$work/map"
 [ -s "$work/map" ] || { note "collect-licences: no libraries found in $deployed - was it deployed?"; exit 1; }
 
 # ---------------------------------------------------------------- each package's licence texts
+# A package that installs no licence file of its own (Homebrew keeps only files named plainly LICENSE, COPYING
+# ..., so it drops Qt's LICENSE.LGPLv3 and the like) gets the standard texts of the licences it declares, from
+# the SPDX licence list. The index says which texts came from there.
+spdx_texts() {             # spdx_texts <package> <SPDX expression>: 0 if every licence in it was found
+    local id ok=0 got=1
+    for id in $(printf '%s\n' "$2" | sed 's/spdx://g' | tr '(),' '   '); do
+        case "$id" in AND|OR|WITH|and|or|with) continue ;; esac
+        mkdir -p "$out/$1"
+        if curl -fsSL --retry 3 -o "$out/$1/$id.txt" \
+               "https://raw.githubusercontent.com/spdx/license-list-data/main/text/$id.txt"; then
+            got=0
+        else
+            rm -f "$out/$1/$id.txt"; note "collect-licences: no SPDX text for '$id' ($1)"; ok=1
+        fi
+    done
+    return $((ok | got))
+}
+
 copy_into() {              # copy_into <package> <file>: keeps the file name, numbering a clash
     local dest="$out/$1" base n
     mkdir -p "$dest"
@@ -99,15 +119,23 @@ while read -r pkg; do
     declared=""
     case "$platform" in
     windows)
-        pacman -Qlq "$pkg" | grep '/share/licenses/' | grep -v '/$' > "$work/files" || true
-        declared=$(pacman -Qi "$pkg" | sed -n 's/^Licenses *: *//p')
+        pacman -Qlq "$pkg" < /dev/null | grep '/share/licenses/' | grep -v '/$' > "$work/files" || true
+        declared=$(pacman -Qi "$pkg" < /dev/null | sed -n 's/^Licenses *: *//p')
         ;;
     macos)
-        keg=$(brew --prefix "$pkg")
+        keg=$(brew --prefix "$pkg" < /dev/null)
         find -L "$keg" -maxdepth 1 -type f \( -iname 'licen[cs]e*' -o -iname 'copying*' -o -iname 'copyright*' \
              -o -iname 'notice*' \) > "$work/files" 2>/dev/null || true
-        declared=$(brew info --json=v2 "$pkg" |
-                   python3 -c 'import json,sys; print(json.load(sys.stdin)["formulae"][0].get("license") or "")')
+        # its "license" is an SPDX id, or {"any_of"/"all_of": [...]}, or {"id": {"with": "exception"}}
+        declared=$(brew info --json=v2 "$pkg" < /dev/null | python3 -c '
+import json, sys
+def expr(x):
+    if isinstance(x, str): return x
+    if isinstance(x, list): return " AND ".join(expr(i) for i in x)
+    for k, op in (("any_of", " OR "), ("all_of", " AND ")):
+        if k in x: return "(" + op.join(expr(i) for i in x[k]) + ")"
+    return " AND ".join(k + (" WITH " + v["with"] if isinstance(v, dict) and "with" in v else "") for k, v in x.items())
+print(expr(json.load(sys.stdin)["formulae"][0].get("license") or ""))')
         ;;
     linux)
         [ -e "/usr/share/doc/$pkg/copyright" ] && echo "/usr/share/doc/$pkg/copyright" > "$work/files"
@@ -121,6 +149,10 @@ while read -r pkg; do
     if [ -s "$work/files" ]; then
         while read -r f; do copy_into "$pkg" "$f"; done < "$work/files"
         printf '%s  [%s]\n    %s\n\n' "$pkg" "${declared:-licence not stated}" "$libs" >> "$index"
+    elif [ -n "$declared" ] && [ "$platform" != linux ] && spdx_texts "$pkg" "$declared"; then
+        printf '%s  [%s]\n    %s\n    (installs no licence file: standard texts of the licences above, from SPDX)\n\n' \
+            "$pkg" "$declared" "$libs" >> "$index"
+        note "collect-licences: $pkg installs no licence file; used the SPDX texts for: $declared"
     else
         note "collect-licences: no licence text found for package $pkg ($libs)"
         missing=1

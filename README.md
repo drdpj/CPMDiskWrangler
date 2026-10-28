@@ -15,7 +15,7 @@ Run:    `./cpmdiskwrangler [image ...]`          (each image gets its own window
 Exactly as for Acorn Disk Wrangler: in the **MSYS2 MINGW64** shell, install the tools, then from the source
 folder build and deploy, collect the licences of everything it ships, and build again with them compiled in:
 
-    pacman -S --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base
+    pacman -S --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools
     bash ci/build.sh windows
     bash ci/collect-licences.sh windows deploy
     bash ci/build.sh windows

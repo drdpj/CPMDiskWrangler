@@ -27,7 +27,7 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: msys2/setup-msys2@v2
@@ -35,7 +35,7 @@ jobs:
           msystem: MINGW64
           update: true
           install: >-
-            mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-qt5-base zip
+            mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools zip
       - name: Identify
         run: |
           app=$(basename "$(ls ./*.pro)" .pro)
@@ -70,7 +70,7 @@ jobs:
   macos:
     runs-on: macos-14      # Apple Silicon; the .app runs on this macOS version and later
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Install Qt 5
@@ -121,7 +121,7 @@ jobs:
     env:
       APPIMAGE_EXTRACT_AND_RUN: 1      # linuxdeploy is itself an AppImage; the runner has no FUSE
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Install Qt 5 and linuxdeploy
@@ -154,9 +154,9 @@ jobs:
           mkdir -p "$doc" dist
           cp -r LICENSE THIRD-PARTY-NOTICES.md licences "$doc/"
           cd build
-          QMAKE=$(command -v qmake) LINUXDEPLOY_OUTPUT_VERSION="$VERSION" \
+          # name the file ourselves: linuxdeploy would use the desktop file's Name, and "CP/M" has a slash in it
+          QMAKE=$(command -v qmake) OUTPUT="../dist/$APP-$VERSION-linux-x86_64.AppImage" \
               linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
-          mv ./*.AppImage "../dist/$APP-$VERSION-linux-x86_64.AppImage"
       - name: Check it starts
         run: |
           set +e
