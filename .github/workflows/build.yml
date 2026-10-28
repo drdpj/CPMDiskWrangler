@@ -83,7 +83,7 @@ jobs:
           Start-Sleep -Seconds 8
           if ($p.HasExited) { throw "$env:APP.exe exited at once (code $($p.ExitCode)): a DLL is probably missing" }
           Stop-Process -Id $p.Id
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: dist/*
@@ -154,7 +154,7 @@ jobs:
           sleep 8
           kill -0 "$pid" || { echo "::error::$APP exited at once"; exit 1; }
           kill "$pid"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: dist/*
@@ -208,7 +208,7 @@ jobs:
           set +e
           timeout 8 xvfb-run -a "dist/$APP-$VERSION-linux-x86_64.AppImage"
           [ $? = 124 ] || { echo "::error::$APP exited before the timeout"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux
           path: dist/*
@@ -220,7 +220,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
