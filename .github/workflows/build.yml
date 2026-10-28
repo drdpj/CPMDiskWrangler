@@ -95,10 +95,16 @@ jobs:
         run: |
           app="build/$APP.app"
           cp -R LICENSE THIRD-PARTY-NOTICES.md licences "$app/Contents/Resources/"
-          if find "$app" -type f \( -perm -u+x -o -name '*.dylib' \) -exec otool -L {} + 2>/dev/null |
-                 grep -E '^[[:space:]]+(/opt/homebrew|/usr/local)/'; then
-              echo "::error::the bundle still refers to Homebrew's libraries"; exit 1
-          fi
+          # Nothing in the bundle may still load a library from Homebrew. A library's own ID (the first line
+          # otool -L prints for it) is left alone: Qt's plugins keep their Homebrew ID, which is harmless.
+          bad=0
+          while IFS= read -r f; do
+              self=$(otool -D "$f" 2>/dev/null | awk 'NR == 2 { print $1 }')
+              otool -L "$f" 2>/dev/null | sed -n '2,$p' | awk '{ print $1 }' |
+                  grep -E '^(/opt/homebrew|/usr/local)/' | grep -vxF "${self:-(none)}" |
+                  sed "s|^|::error::${f#build/} loads |" | grep . && bad=1
+          done < <(find "$app" -type f \( -perm -u+x -o -name '*.dylib' \))
+          [ "$bad" = 0 ] || { echo "::error::the bundle still loads Homebrew's libraries"; exit 1; }
           codesign --force --deep --sign - "$app"   # ad hoc: macdeployqt's changes broke the linker's signature
           mkdir -p dmg dist
           mv "$app" "dmg/$NAME.app"
