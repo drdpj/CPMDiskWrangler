@@ -1,10 +1,13 @@
 # Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root.
 #
-# Builds Windows (x64 zip), macOS (Apple Silicon .dmg) and Linux (x86_64 AppImage), each linked to Qt's shared
-# libraries, with the licence of everything shipped compiled into the program (Help > Licences) and copied
-# beside it. Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
+# Builds Windows (x64 zip), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
+# AppImage), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
+# program (Help > Licences) and copied beside it. Qt 6 by default; "Run workflow" (Actions tab) can build with
+# Qt 5.15 instead, whose packages are named ...-qt5 (on macOS that one is Apple Silicon only, from Homebrew). Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
 # v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks); a tag with a
 # suffix, such as v1.0.0-beta.1, makes it a pre-release.
+#
+# The version shown in Help > About is git describe's (version.pri), so a tagged build shows the tag.
 #
 # Each platform builds twice (ci/build.sh): the first build is deployed to find out which libraries ship, then
 # ci/collect-licences.sh gathers their licences into licences-bundled.qrc and the second build compiles them in.
@@ -17,9 +20,19 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      qt:
+        description: Qt major version
+        type: choice
+        options: ['6', '5']
+        default: '6'
 
 permissions:
   contents: read
+
+env:
+  QT: ${{ inputs.qt || '6' }}
+  QT_MAC_VERSION: 6.8.3          # Qt's official macOS build: 6.8 LTS supports macOS 12 and later
 
 jobs:
   windows:
@@ -33,16 +46,23 @@ jobs:
           fetch-depth: 0
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
-          install: >-
-            mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools zip
+          pacboy: gcc:p make:p
+          install: zip git      # git: the version in the package names comes from git describe
+      - name: Install Qt ${{ env.QT }}
+        run: |
+          if [ "$QT" = 6 ]; then pkgs=(qt6-base); else pkgs=(qt5-base qt5-tools); fi
+          pacman -S --noconfirm --needed "${pkgs[@]/#/$MINGW_PACKAGE_PREFIX-}"
       - name: Identify
         run: |
+          # MSYS2's git may call a checkout made by another git "dubious" and refuse it; qmake's git describe
+          # (the version shown in Help > About) needs it too
+          git config --global --add safe.directory "$(pwd)"
           app=$(basename "$(ls ./*.pro)" .pro)
           {
             echo "APP=$app"
-            echo "VERSION=$(git describe --tags --always)"
+            echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
         run: bash ci/build.sh windows
@@ -63,18 +83,28 @@ jobs:
           Start-Sleep -Seconds 8
           if ($p.HasExited) { throw "$env:APP.exe exited at once (code $($p.ExitCode)): a DLL is probably missing" }
           Stop-Process -Id $p.Id
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: dist/*
 
   macos:
-    runs-on: macos-14      # Apple Silicon; the .app runs on this macOS version and later
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Install Qt 5
+      - name: Install Qt 6 (Qt's official universal build)
+        if: env.QT == '6'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_MAC_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+          cache: true
+      - name: Install Qt 5 (Homebrew, Apple Silicon only)
+        if: env.QT == '5'
         run: |
           brew install qt@5
           echo "$(brew --prefix qt@5)/bin" >> "$GITHUB_PATH"
@@ -88,7 +118,8 @@ jobs:
             name=$(sed -n 's/^QMAKE_TARGET_PRODUCT *= *//p' "$app.pro")
             echo "BUNDLE=${name//\//:}"
             echo "VOLUME=${name//\//}"
-            echo "VERSION=$(git describe --tags --always)"
+            echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
+            echo "MACARCH=$([ "$QT" = 5 ] && echo arm64 || echo universal)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
         run: bash ci/build.sh macos
@@ -100,29 +131,30 @@ jobs:
         run: |
           app="build/$APP.app"
           cp -R LICENSE THIRD-PARTY-NOTICES.md licences "$app/Contents/Resources/"
-          # Nothing in the bundle may still load a library from Homebrew. A library's own ID (the first line
-          # otool -L prints for it) is left alone: Qt's plugins keep their Homebrew ID, which is harmless.
+          # Nothing in the bundle may load a library from outside it, except the system's own. A library's own
+          # ID (the first line otool -L prints for it) is left alone: Qt's plugins keep their original ID,
+          # which is harmless.
           bad=0
           while IFS= read -r f; do
               self=$(otool -D "$f" 2>/dev/null | awk 'NR == 2 { print $1 }')
-              otool -L "$f" 2>/dev/null | sed -n '2,$p' | awk '{ print $1 }' |
-                  grep -E '^(/opt/homebrew|/usr/local)/' | grep -vxF "${self:-(none)}" |
+              otool -L "$f" 2>/dev/null | grep -v ':$' | awk '{ print $1 }' | grep '^/' |
+                  grep -vE '^(/System/|/usr/lib/)' | grep -vxF "${self:-(none)}" |
                   sed "s|^|::error::${f#build/} loads |" | grep . && bad=1
           done < <(find "$app" -type f \( -perm -u+x -o -name '*.dylib' \))
-          [ "$bad" = 0 ] || { echo "::error::the bundle still loads Homebrew's libraries"; exit 1; }
+          [ "$bad" = 0 ] || { echo "::error::the bundle still loads libraries from outside it"; exit 1; }
           codesign --force --deep --sign - "$app"   # ad hoc: macdeployqt's changes broke the linker's signature
           mkdir -p dmg dist
           mv "$app" "dmg/$BUNDLE.app"
           cp -R LICENSE THIRD-PARTY-NOTICES.md licences dmg/
           ln -s /Applications dmg/Applications
-          hdiutil create -volname "$VOLUME" -srcfolder dmg -format UDZO -ov "dist/$APP-$VERSION-macos-arm64.dmg"
+          hdiutil create -volname "$VOLUME" -srcfolder dmg -format UDZO -ov "dist/$APP-$VERSION-macos-$MACARCH.dmg"
       - name: Check it starts
         run: |
           "dmg/$BUNDLE.app/Contents/MacOS/$APP" & pid=$!
           sleep 8
           kill -0 "$pid" || { echo "::error::$APP exited at once"; exit 1; }
           kill "$pid"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: dist/*
@@ -135,10 +167,13 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Install Qt 5 and linuxdeploy
+      - name: Install Qt ${{ env.QT }} and linuxdeploy
         run: |
+          if [ "$QT" = 6 ]; then pkgs=(qt6-base-dev qt6-base-dev-tools qmake6 qt6-qpa-plugins libgl-dev)
+          else pkgs=(qtbase5-dev qt5-qmake); fi
           sudo apt-get update -qq
-          sudo apt-get install -y -qq qtbase5-dev qt5-qmake build-essential xvfb
+          sudo apt-get install -y -qq "${pkgs[@]}" build-essential xvfb
+          echo "QMAKE=$(command -v "$([ "$QT" = 6 ] && echo qmake6 || echo qmake)")" >> "$GITHUB_ENV"
           mkdir -p "$HOME/tools"
           for t in linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
                    linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage; do
@@ -151,7 +186,7 @@ jobs:
           app=$(basename "$(ls ./*.pro)" .pro)
           {
             echo "APP=$app"
-            echo "VERSION=$(git describe --tags --always)"
+            echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
         run: bash ci/build.sh linux
@@ -166,14 +201,14 @@ jobs:
           cp -r LICENSE THIRD-PARTY-NOTICES.md licences "$doc/"
           cd build
           # name the file ourselves: linuxdeploy would use the desktop file's Name, and "CP/M" has a slash in it
-          QMAKE=$(command -v qmake) OUTPUT="../dist/$APP-$VERSION-linux-x86_64.AppImage" \
+          OUTPUT="../dist/$APP-$VERSION-linux-x86_64.AppImage" \
               linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
       - name: Check it starts
         run: |
           set +e
           timeout 8 xvfb-run -a "dist/$APP-$VERSION-linux-x86_64.AppImage"
           [ $? = 124 ] || { echo "::error::$APP exited before the timeout"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux
           path: dist/*
@@ -185,7 +220,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true

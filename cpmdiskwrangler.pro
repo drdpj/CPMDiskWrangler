@@ -1,5 +1,5 @@
 QT += widgets
-CONFIG += c++11
+CONFIG += c++17
 TARGET = cpmdiskwrangler
 TEMPLATE = app
 win32:RC_ICONS = icons/cpmdiskwrangler.ico      # qmake generates the .rc for us
@@ -31,3 +31,4 @@ HEADERS += mainwindow.h mainwindow_p.h formatdialog.h newdisc.h viewer.h viewtex
 RESOURCES += resources.qrc
 RESOURCES += licences.qrc                          # Help > Licences: LICENSE, notices, the LGPL for Qt
 exists(licences-bundled.qrc): RESOURCES += licences-bundled.qrc   # a release build's library licences (ci/)
+include(version.pri)                              # APP_VERSION from git describe (Help > About)

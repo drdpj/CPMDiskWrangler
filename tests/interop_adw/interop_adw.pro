@@ -3,7 +3,7 @@
 # qmake ADW=/path/to/AcornDiskWrangler interop_adw.pro
 isEmpty(ADW): error("set ADW to the Acorn Disk Wrangler source folder: qmake ADW=/path/to/AcornDiskWrangler")
 QT += widgets
-CONFIG += c++11 console
+CONFIG += c++17 console
 CONFIG -= app_bundle
 TARGET = interop_adw
 INCLUDEPATH += $$ADW

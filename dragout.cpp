@@ -253,13 +253,19 @@ QStringList DragOutMime::formats() const {
 
 bool DragOutMime::hasFormat(const QString &mimeType) const { return formats().contains(mimeType); }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+QVariant DragOutMime::retrieveData(const QString &mimeType, QMetaType type) const {
+    const int typeId = type.id();
+#else
 QVariant DragOutMime::retrieveData(const QString &mimeType, QVariant::Type type) const {
+    const int typeId = int(type);                  // QVariant::Type values are QMetaType ids
+#endif
     if (mimeType == UriList) {
         extract();
-        if (type == QVariant::ByteArray || type == QVariant::String) {
+        if (typeId == QMetaType::QByteArray || typeId == QMetaType::QString) {
             QByteArray b;
             for (const QUrl &u : m_urls) b += u.toEncoded() + "\r\n";
-            return type == QVariant::String ? QVariant(QString::fromUtf8(b)) : QVariant(b);
+            return typeId == QMetaType::QString ? QVariant(QString::fromUtf8(b)) : QVariant(b);
         }
         QVariantList l;
         for (const QUrl &u : m_urls) l << u;

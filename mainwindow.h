@@ -61,7 +61,11 @@ protected:
     void dragMoveEvent(QDragMoveEvent *e) override;
     void dropEvent(QDropEvent *e) override;
     QStringList mimeTypes() const override;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)               // Qt 6 passes the list by reference, Qt 5 by value
+    QMimeData *mimeData(const QList<QTreeWidgetItem *> &items) const override;
+#else
     QMimeData *mimeData(const QList<QTreeWidgetItem *> items) const override;
+#endif
     Qt::DropActions supportedDropActions() const override;
     void startDrag(Qt::DropActions supported) override;
 private:
