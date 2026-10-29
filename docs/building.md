@@ -48,6 +48,13 @@ If the dock still shows a generic icon, log out and in again.
    UCRT64 shell, the first step's `build/<app>.exe` is enough. qmake's warning about a missing `_resource_res.o`
    is harmless.
 
+   `ci/build.sh` reuses `build/` (the release workflow runs it twice). After switching Qt version or toolchain
+   (Qt 5 and 6, MINGW64 and UCRT64), delete `build/` and `deploy/` first: objects left by the other one fail to
+   link with `undefined reference to __imp__...` errors.
+
+For 32-bit Windows (Windows 7 SP1 and later), see [building-windows-32bit.md](building-windows-32bit.md): Qt 5.15
+and MinGW 8.1 from Qt's own downloads, in a Command Prompt.
+
 ## macOS
 With Qt's official Qt 6 (the [online installer](https://www.qt.io/download-qt-installer-oss) or
 [aqtinstall](https://github.com/miurahr/aqtinstall)) on your PATH:
@@ -99,4 +106,4 @@ every third-party component Qt records in a `qt_attribution.json` (`ci/qt-attrib
 ## Shared files
 These are identical in both repositories; change them in both: `ci/`, `.github/workflows/build.yml`,
 `licences.cpp`, `licences.h`, `licences.qrc`, `licences/`, `version.pri`, `version.cmake`,
-`docs/building.md` and `docs/retro-files-format.md`.
+`docs/building.md`, `docs/building-windows-32bit.md` and `docs/retro-files-format.md`.

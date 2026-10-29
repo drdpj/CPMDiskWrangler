@@ -188,7 +188,8 @@ as APP_VERSION, shown in Help > About; "unknown" without git, or set it with `qm
 `-DAPP_VERSION=...`. It is read when qmake/CMake runs, so re-run them after a new commit or tag. Both files are
 shared with the other wrangler.
 
-How to build on each platform and how releases work, for people: `docs/building.md` (shared).
+How to build on each platform and how releases work, for people: `docs/building.md` (shared); a 32-bit Windows 7
+build (Qt 5.15, MinGW 8.1 32-bit; not tried yet): `docs/building-windows-32bit.md` (shared).
 
 **Release builds and licences.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages, linked to
 Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each is built twice: `ci/build.sh`
