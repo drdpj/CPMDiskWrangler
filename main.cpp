@@ -27,6 +27,7 @@
 #endif
 
 int main(int argc, char *argv[]) {
+    QGuiApplication::setDesktopFileName("cpmdiskwrangler");   // before QApplication: registers with the portal first
     QApplication app(argc, argv);
     QApplication::setOrganizationName("cpmdiskwrangler");
     QApplication::setApplicationName("cpmdiskwrangler");
