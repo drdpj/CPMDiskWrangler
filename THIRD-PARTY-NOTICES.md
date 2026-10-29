@@ -44,6 +44,7 @@ These were read for facts about formats. No code or text was copied from them.
 | cpmtools' `cpm(5)` manual page | directory entries, CP/M 3 labels and time stamps, byte counts | GPL v3+ (documentation) |
 | Acorn Application Note 007 (Acorn Computers, via chrisacorns.computinghistory.org.uk) | the Acorn Z80 second processor disc format | facts only |
 | Adam Sampson, "Archiving CP/M floppies" notes (offog.org) | Research Machines 480Z track 0 and side layout | facts only |
+| Notes on the Torch CP/N directory, entries, address word and allocation map (a source comment the owner supplied) | the Torch CP/N filesystem (`torchfs.cpp`, `tests/torch_check.py`) | facts only |
 | Myrcurial/o1next research notes (GitHub) | confirming that IMD tracks must be placed by sector ID | facts only |
 
 ## Used only for testing (not included, not distributed)

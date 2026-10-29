@@ -29,6 +29,7 @@
 #include <QVector>
 
 #include "cpmformat.h"
+#include "torchfs.h"
 
 #include "diskimage.h"
 
@@ -87,7 +88,7 @@ public:
 
     int freeBlocks() const;
     int freeEntries() const;
-    qint64 freeBytes() const { return qint64(freeBlocks()) * m_fmt.blocksize; }
+    qint64 freeBytes() const { return qint64(freeBlocks()) * (m_fmt.torch ? Torch::SecLen : m_fmt.blocksize); }   // Torch: sectors
     int usedEntries() const;
     bool hasStamps() const { return m_stamps; }        // SFCB (0x21) entries present
     const Label &label() const { return m_label; }
@@ -114,6 +115,7 @@ public:
     static QString toCpmName(const QString &hostName);
     static bool validName(const QString &name, QString *why);
     static QByteArray name11(const QString &name);    // "NAME.EXT" -> 11 space-padded bytes
+    static QString nameFrom11(const QByteArray &n11); // 11 bytes -> "NAME.EXT" ("NAME" with no extension)
 
     // ----- raw access (offsets are bytes from the start of block 0)
     bool readBytes(qint64 off, int len, QByteArray *out, QString *err) const;
@@ -131,6 +133,22 @@ private:
     bool freeSlot(int index) const;
     bool isFileEntry(quint8 st) const;
     bool inertEntry(const QByteArray &e) const;     // a user entry that holds nothing and isn't a file name
+
+    // Torch CP/N (Format::torch; torchfs.cpp): the same interface over its own filesystem. m_dir holds its 16-byte
+    // entries; a file's "blocks" are its sectors, index sectors included.
+    bool torchParse(QString *err);
+    bool torchReadFile(const File &f, QByteArray *out, QString *err) const;
+    QVector<bool> torchInUse(QStringList *errors = nullptr, QStringList *warnings = nullptr) const;
+    int torchFreeSectors() const;
+    Report torchCheck() const;
+    bool torchAdd(int user, const QString &name, const QByteArray &data, quint16 attrs, bool replace, QString *err);
+    bool torchDelete(int user, const QString &name, QString *err);
+    bool torchRename(int user, const QString &name, int newUser, const QString &newName, QString *err);
+    bool torchSetAttrs(int user, const QString &name, quint16 attrs, QString *err);
+    bool torchInit(QString *err);
+    bool torchSector(int lsec, QByteArray *out, QString *err) const;
+    bool torchWriteSector(int lsec, const QByteArray &d, QString *err);
+    Torch::SectorReader torchReader() const;
 
     Disk::Image *m_img = nullptr;
     Format m_fmt;

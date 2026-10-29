@@ -1079,10 +1079,11 @@ void MainWindow::editProperties() {
     if (one) {
         name = new QLineEdit(one->name);
         fl->addRow("Name", name);
-        fl->addRow("Size", new QLabel(QString("%1 bytes (%2 records%3), %4 block%5, %6 directory entr%7")
+        const QString unit = m_vols[refs[0].side].format().torch ? "sector" : "block";   // Torch: index sectors included
+        fl->addRow("Size", new QLabel(QString("%1 bytes (%2 records%3), %4 %8%5, %6 directory entr%7")
                                           .arg(one->size).arg(one->records).arg(one->exactSize ? ", exact size recorded" : "")
                                           .arg(one->blocks).arg(one->blocks == 1 ? "" : "s").arg(one->entries.size())
-                                          .arg(one->entries.size() == 1 ? "y" : "ies")));
+                                          .arg(one->entries.size() == 1 ? "y" : "ies").arg(unit)));
         if (one->created.isValid()) fl->addRow("Created", new QLabel(one->created.toString("yyyy-MM-dd HH:mm")));
         if (one->accessed.isValid()) fl->addRow("Accessed", new QLabel(one->accessed.toString("yyyy-MM-dd HH:mm")));
         if (one->updated.isValid()) fl->addRow("Updated", new QLabel(one->updated.toString("yyyy-MM-dd HH:mm")));
@@ -1157,9 +1158,14 @@ void MainWindow::checkDisc() {
         if (r.ok() && r.warnings.isEmpty()) s += "No problems found.\n";
         if (!r.errors.isEmpty()) s += "Errors:\n" + r.errors.join("\n") + "\n";
         if (!r.warnings.isEmpty()) s += "Warnings:\n" + r.warnings.join("\n") + "\n";
-        s += QString("%1 files in %2 directory entries; %3 of %4 entries free; %5 of %6 blocks free.\n\n")
-                 .arg(v.files().size()).arg(v.usedEntries()).arg(v.freeEntries()).arg(v.format().maxdir)
-                 .arg(v.freeBlocks()).arg(v.format().dsm + 1);
+        if (v.format().torch)
+            s += QString("%1 files; %2 of %3 directory entries free; %4 of %5 sectors free (Torch CP/N).\n\n")
+                     .arg(v.files().size()).arg(v.freeEntries()).arg(Torch::Entries)
+                     .arg(v.freeBlocks()).arg(Torch::Sectors - Torch::Reserved);
+        else
+            s += QString("%1 files in %2 directory entries; %3 of %4 entries free; %5 of %6 blocks free.\n\n")
+                     .arg(v.files().size()).arg(v.usedEntries()).arg(v.freeEntries()).arg(v.format().maxdir)
+                     .arg(v.freeBlocks()).arg(v.format().dsm + 1);
     }
     message("Check disc", s.trimmed(), !allOk);
 }
@@ -1181,25 +1187,36 @@ void MainWindow::discInfo() {
         l << "<b>Format:</b> " + f.displayName().toHtmlEscaped() + " (" + f.origin.toHtmlEscaped() + ")";
         l << "&nbsp;&nbsp;" + f.summary().toHtmlEscaped();
         if (!f.source.isEmpty()) l << "&nbsp;&nbsp;Source: " + f.source.toHtmlEscaped();
-        int bsh = 0;
-        while ((128 << bsh) < f.blocksize) ++bsh;
-        quint16 al = 0;
-        for (int b = 0; b < qMin(16, f.dirBlocks); ++b) al |= quint16(0x8000 >> b);
-        l << QString("<b>Disc parameter block:</b> SPT %1, BSH %2, BLM %3, EXM %4, DSM %5, DRM %6, AL0 %7H, AL1 %8H, OFF %9")
-                 .arg(f.sectrk * f.seclen / 128).arg(bsh).arg((1 << bsh) - 1).arg(f.exm).arg(f.dsm).arg(f.drm)
-                 .arg(al >> 8, 2, 16, QChar('0')).arg(al & 0xFF, 2, 16, QChar('0')).arg(f.bootsec >= 0 ? f.bootsec / f.sectrk : f.boottrk);
-        QString xl;
-        for (int v : f.xlat) xl += QString::number(v + 1) + " ";
-        l << "<b>Sector order on a track:</b> " + xl;
-        for (int side = 0; side < m_nvols; ++side) {
-            const Cpm::Volume &v = m_vols[side];
-            l << QString("<b>Directory%5:</b> %1 of %2 entries used; %3; label %4")
-                     .arg(v.usedEntries()).arg(f.maxdir).arg(v.hasStamps() ? "time stamps: " + v.stampKinds() : QString("no time stamps"))
-                     .arg(v.label().present ? "'" + v.label().name.toHtmlEscaped() + "'" : QString("none"))
-                     .arg(m_nvols > 1 ? QString(" (side %1)").arg(side) : QString());
+        if (f.torch) {
+            const Cpm::Volume &v = m_vols[0];
+            l << QString("<b>Filesystem:</b> Torch CP/N - 256 directory entries of 16 bytes in track 0 and track 1 sectors 0-5, "
+                         "an allocation map in track 1 sectors 6-7; each file reached through index sectors (one L3 sector "
+                         "for up to 128 data sectors, an L2 sector above more), two 128-byte records to a sector");
+            l << QString("<b>Directory:</b> %1 of %2 entries used; %3 of %4 sectors free")
+                     .arg(v.usedEntries()).arg(Torch::Entries).arg(v.freeBlocks()).arg(Torch::Sectors - Torch::Reserved);
+            l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, m_det.why.toHtmlEscaped());
+            l << "<b>As a definition:</b><pre>" + f.toDiskdef().toHtmlEscaped() + "</pre>";
+        } else {
+            int bsh = 0;
+            while ((128 << bsh) < f.blocksize) ++bsh;
+            quint16 al = 0;
+            for (int b = 0; b < qMin(16, f.dirBlocks); ++b) al |= quint16(0x8000 >> b);
+            l << QString("<b>Disc parameter block:</b> SPT %1, BSH %2, BLM %3, EXM %4, DSM %5, DRM %6, AL0 %7H, AL1 %8H, OFF %9")
+                     .arg(f.sectrk * f.seclen / 128).arg(bsh).arg((1 << bsh) - 1).arg(f.exm).arg(f.dsm).arg(f.drm)
+                     .arg(al >> 8, 2, 16, QChar('0')).arg(al & 0xFF, 2, 16, QChar('0')).arg(f.bootsec >= 0 ? f.bootsec / f.sectrk : f.boottrk);
+            QString xl;
+            for (int v : f.xlat) xl += QString::number(v + 1) + " ";
+            l << "<b>Sector order on a track:</b> " + xl;
+            for (int side = 0; side < m_nvols; ++side) {
+                const Cpm::Volume &v = m_vols[side];
+                l << QString("<b>Directory%5:</b> %1 of %2 entries used; %3; label %4")
+                         .arg(v.usedEntries()).arg(f.maxdir).arg(v.hasStamps() ? "time stamps: " + v.stampKinds() : QString("no time stamps"))
+                         .arg(v.label().present ? "'" + v.label().name.toHtmlEscaped() + "'" : QString("none"))
+                         .arg(m_nvols > 1 ? QString(" (side %1)").arg(side) : QString());
+            }
+            l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, m_det.why.toHtmlEscaped());
+            l << "<b>As a cpmtools definition:</b><pre>" + f.toDiskdef().toHtmlEscaped() + "</pre>";
         }
-        l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, m_det.why.toHtmlEscaped());
-        l << "<b>As a cpmtools definition:</b><pre>" + f.toDiskdef().toHtmlEscaped() + "</pre>";
     }
     if (autoAnswer) { m_status->setText("info shown"); return; }
     QDialog d(this);

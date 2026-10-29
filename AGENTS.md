@@ -6,6 +6,7 @@ of Acorn Disk Wrangler (github.com/drdpj/AcornDiskWrangler) and follows the same
 
 ## What this is
 A Qt 6 / Qt 5.15 (C++17) desktop tool for CP/M disc images: raw, ImageDisk, CPCEMU DSK / extended DSK, TeleDisk (read).
+It also reads and writes Torch CP/N discs, whose files are CP/M files kept in Torch's own filesystem (`torchfs.cpp`).
 It works out each disc's logical format, then lists, adds, extracts, renames and deletes files, sets attributes,
 user numbers and CP/M 3 labels, and makes new discs. One disc per window; drag and drop between windows, the
 desktop and other programs via the `retro-files` format shared with Acorn Disk Wrangler. GPLv3-or-later; the
@@ -32,6 +33,7 @@ with its terms (and in About if it ships in the program); material only consulte
 | `viewer.*`, `viewtext.*` | the text/hex viewer (CP/M `^Z`, WordStar bit 7) |
 | `appsettings.h` | where settings live: the system's place, or `<program>.ini` beside the program (portable; for an AppImage, beside the `.AppImage` file - `$APPIMAGE` - not in its temporary mount; a program installed on Linux has no portable mode, so File > Create local config file isn't shown). Use `AppSettings` instead of `QSettings` in program code (tests may use `QSettings` to clear the system store). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `buttonbar.h` | the main window's button bar: real QPushButtons kept in step with their QActions (a QToolBar's own buttons draw as flat text on macOS). Header only; shared with Acorn Disk Wrangler, keep identical |
+| `torchfs.h/.cpp` | Torch CP/N's filesystem (format key `torchcpn`): `Torch::walk`/`scan` (shared with detection) and the `Cpm::Volume` methods `torch...` that every public `Volume` method hands over to when `Format::torch` is set, so the window, drags, Copy/Paste and the tests see one `Volume` |
 | `icon.*`, `icons/` | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
 ## The rules that must not be broken
@@ -138,6 +140,43 @@ with its terms (and in About if it ships in the program); material only consulte
   tracks, 2K blocks, 128 entries). All 20 files match cpmtools (run on each side cut out of the file); an edit of
   side 1 left side 0 and both track 0s byte-identical and passes `fsck.cpm`. The images are the owner's, not in
   the repo: `guitest --rm <image>` and `run_all.sh` (from `<real>/rm/*.img`) use them when given.
+- **Torch CP/N** (`torch-cpn`, key `torchcpn yes`; Torch Z80 second processor; checked on five of the owner's real
+  discs, `SIG0.dsd`, `AdventureB01.dsd`, `TurboPascal30A.dsd`, `WordStar.dsd`, `StandardUtilities2.dsd`: raw, interleaved, 409,600 bytes, not in the repo).
+  **Not a CP/M directory**, so no CP/M reading or block size can describe it: the program's CP/M search finds
+  nothing and rightly called these discs "not CP/M" before. 80 cylinders x 2 sides x 10 x 256 (FM), file cylinder
+  by cylinder. A sector address word is cylinder << 5 | side << 4 | sector, so logical sector = (word >> 4) * 10 +
+  (word & 15), which is exactly the `alt` order the format uses. From the notes the owner supplied (a source comment
+  on the directory and the address word) plus what the discs showed (each fact held on all five unless noted):
+  - directory: track 0 and track 1 sectors 0-5, 256 entries of 16 bytes; **never-used entries are all zero** (not E5); deleted ones are below.
+    Entry: word 0 = the first index sector (bit 15 = L2, else L3), word 1 = highest record number, byte 4 user,
+    bytes 5-12 name, 13-15 extension, bit 7: 5-8 F1'-F4', 13 R/O, 14 SYS, 15 archived (the same positions as CP/M's
+    attribute bits in the 8.3 name). Entries with index address **FFFF** are **deleted files**: CP/N keeps the name, user and record
+    count and frees the sectors in the map. Evidence: `WordStar.dsd`'s six (`CREF80.COM`, `L80.COM`, `LIB.COM`,
+    `LIB80.COM`, `M80.COM`, `TEN.MAC`, user 20, the last six slots) each have their old L3 index sector intact in
+    free space, in the same order, with exactly the entry's record count, and the data still reads as those
+    programs; the map marks none of it. `SHOW.C` on `SIG0.dsd` is another. Torch MCP 1.22 writes FFFF into a word
+    in its map-handling code (around $9649), not traced further. So, as with CP/M's E5: deleted entries are not
+    listed, a new file takes the first all-zero or deleted slot, and Delete here writes FFFF over word 0 and keeps
+    the rest, as CP/N does (`fstest` checks both; `run_all.sh` checks the slot on the real discs). An undelete
+    would be possible (find a free L3 whose sectors are free and match the record count) but isn't written. An
+    empty file gets one record of ^Z, since an entry can't be without data.
+  - **index**: an L3 sector lists up to 128 data sectors; files of up to 128 sectors use one L3 (TURBO.COM, 121),
+    larger ones an L2 listing L3s (ADV.COM, 141). Lists end at the first zero word. Data pointers carry **4000**
+    (first record in use) and **8000** (second): every sector C000 except the last of a file with an odd number of
+    records (4000); L2 pointers have no flags.
+  - **allocation map** (track 1 sectors 6-7): word t = cylinder * 2 + side, bit s = sector s in use; bits 10-15 always
+    set; words 160-255 FC00 (three discs) or FFFF (two; new discs get FC00); tracks 0 and 1 all marked. On every disc it marks exactly the sectors the files
+    reach. Track 1 sectors 8-9 are the same bytes on every disc (a D6 D7 ... ramp, then zeros) but sector 9's byte 254
+    (85 on three discs, 80 and 47 on the others; detection ignores it, new discs get 85):
+    written by the formatter, so new discs get them and detection takes them as evidence (+6; the map's fixed bits
+    are required at all, +10). Free sectors are E5.
+  - sizes are whole records (no byte count): a file added comes back padded with ^Z to its last record, as on CP/M
+    2.2 (`fstest` expects that for Torch). User numbers 0-31 (`WordStar.dsd` uses 0, 10 and 20). No labels, no time stamps.
+  - writing: index sectors first, then data, lowest free sector first (a sector is free when no file reaches it and
+    the map doesn't mark it). Real CP/N's own order is not known and doesn't matter to a reader. Adding a 70,000-byte
+    file to a copy of each real disc writes only sectors that were free, the directory and the map, and
+    `tests/torch_check.py` (an independent reader from the notes alone) reads every file, old and new, and finds
+    the map exact. **Not yet checked by Torch's own CP/N** reading a disc this program wrote.
 - **TeleDisk**: 12-byte header (`TD` normal, `td` advanced), optional comment block, tracks (count, cylinder,
   head, crc), sectors (C H R N flags crc; data block with length and encoding 0 raw / 1 repeated pair /
   2 RLE). Checked against MAME's reader and on real Kaypro and Zorba images. 1.x advanced compression (LZW) is
@@ -156,6 +195,10 @@ with its terms (and in About if it ships in the program); material only consulte
    track, 30-86 cylinders, 1-2 heads.
 2. Library candidates that fit physically are evaluated directly (+3 for being known; +4 / -6 if the format
    has a sector-ID base and the disc's IDs match / don't). The PCW spec (+15) and a remembered format (+20) too.
+   A Torch CP/N format (`torchcpn`) is scored by `evaluateTorch` instead: its map's fixed bits are required (else
+   no reading), then +10 for the map, +6 for the formatter's sectors, +4 a file, +2 a sound index chain, -15 an
+   entry that isn't a file, -8 a broken chain or a sector used twice. It is never "empty but used", and another
+   filesystem's look-alike structures don't veto it (its own are stronger evidence).
 3. The search: for each side order x boot tracks (0-6) x skew (1..sectrk-1; none beyond 32 sectors/track),
    read a window where the directory would be and classify the entries once; then for each block size and
    directory size (whole blocks only) score: +4 per file entry, +2 per entry whose block count matches its
@@ -220,6 +263,7 @@ Each test is its own `.pro` in `tests/`:
 | `tests/verify_independent.sh <fstest outdirs>` | **independent**: Python IMD/DSK decoder + libdsk (where its geometry probe is right) must see the same sectors; cpmtools must read every file exactly and `fsck.cpm` must be clean |
 | `guitest <dir> [osborne.imd [teledisk.td0]] [--adw dir]` | offscreen GUI: host drops (userN folders, flattening, .inf skipped), real drag events between windows, drag-out JSON, drops made by Acorn Disk Wrangler's code, read-only rules, format dialog, TeleDisk Save As, the menu and button order, Copy / Paste with the real keys (`QTest`: the `.pro` has `QT += testlib`); screenshots in `<dir>/shots`. `run_all.sh` fails unless it ends "all ok" |
 | `tests/interop_adw` (qmake `ADW=<Acorn Disk Wrangler source>`) | built from **Acorn Disk Wrangler's own dragout.cpp**: `make <dir>` writes its drags (ADFS, DFS, FAT) for guitest; `read <json>` reads ours |
+| `tests/torch_check.py <image> <outdir>` | **independent** Torch CP/N reader and checker (from the format notes only): extracts every file, checks every chain, the record flags and that the map marks exactly the sectors in use. `verify_independent.sh` uses it for `fstest`'s Torch discs (cpmtools can't read them); `run_all.sh` compares its files with ours for every `<real>/torch/*.dsd` (the owner's discs, not in the repo) and adds a file to a copy of each |
 | `tests/acornz80_check.py <dsd> <outdir>` | **independent** Acorn Z80 reader (from Application Note 007 only); `run_all.sh` compares its files with ours for every `<real>/acorn/*.dsd` (the owner's discs, not in the repo) |
 | `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
 | `settingstest` | where settings live on Linux: an installed program has no portable mode; an AppImage keeps `<program>.ini` beside the `.AppImage` file (shared with Acorn Disk Wrangler) |
@@ -277,6 +321,7 @@ for the directory) that every self-test had passed.
 (8" CP/M 1.3-3, MP/M, 4MB hard discs, UCSD and FLP-80DOS negatives), lesbird/H89 and FujiNetWIFI (Heathkit H8D).
 
 ## Known gaps / ideas
-Torch CP/N and other BBC Micro CP/M systems; per-head sector bases
+Other BBC Micro CP/M systems; undeleting Torch CP/N files (FFFF entries); a check of Torch CP/N discs written here on a real Torch (or an emulator running CP/N);
+unsqueezing .?Q? files in the viewer; per-head sector bases
 (Kaypro 4 side 1); new discs with a filesystem per side; TeleDisk 1.x LZW; DateStamper stamps; CP/M 3 passwords (kept, not
 checked); an MBASIC detokeniser for the viewer; writing TeleDisk.

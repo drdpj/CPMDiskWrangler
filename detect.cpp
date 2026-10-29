@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "detect.h"
+#include "torchfs.h"
 
 #include <QCryptographicHash>
 #include <QHash>
@@ -444,6 +445,33 @@ const Cpm::Format *libraryMatch(const Cpm::Format &f, int firstId, bool haveIds)
     return best;
 }
 
+// Torch CP/N (format key "torchcpn"): its own directory, not a CP/M one. A reading needs the map's fixed bits;
+// then +4 a file, +2 a file whose index chain is sound, -15 an entry that isn't a file, -8 a broken chain or a sector
+// used twice, +10 for the map and +6 for the formatter's two sectors.
+Candidate evaluateTorch(const Disk::Image &img, Candidate c) {
+    Torch::Scan s = Torch::scan([&](int n, QByteArray *out) { return readLogical(img, c.fmt, qint64(n) * Torch::SecLen, Torch::SecLen, out); });
+    if (!s.readable) { c.score = -1e9; c.evidence << "the Torch CP/N directory tracks can't be read with this layout"; return c; }
+    if (!s.mapOk) { c.score = -1e9; c.evidence << "no Torch CP/N allocation map here (its fixed bits are missing)"; return c; }
+    c.files = s.files;
+    c.fileEntries = s.files;
+    c.badEntries = s.bad;
+    c.badPointers = s.badPtr;
+    c.crossLinks = s.cross;
+    c.exactCounts = s.exact;
+    c.score = 10 + 4.0 * s.files + 2.0 * s.exact - 15.0 * s.bad - 8.0 * (s.badPtr + s.cross);
+    c.evidence << QString("%1 files in %2 directory entries (Torch CP/N)").arg(s.files).arg(s.files + s.bad);
+    c.evidence << "a Torch CP/N allocation map (its fixed bits set, the directory tracks in use)";
+    if (s.signature) { c.score += 6; c.evidence << "track 1 sectors 8-9 hold the bytes Torch's formatter writes"; }
+    if (s.bad) c.evidence << QString("%1 directory entries make no sense").arg(s.bad);
+    if (s.badPtr) c.evidence << QString("%1 files whose index sectors don't hold together").arg(s.badPtr);
+    if (s.cross) c.evidence << QString("%1 sectors used twice").arg(s.cross);
+    if (s.files) c.evidence << QString("index chains match the record counts in %1 of %2 files").arg(s.exact).arg(s.files);
+    c.evidence.prepend("signature:" + QString(QCryptographicHash::hash(("torch|" + s.names.join('|')).toUtf8(), QCryptographicHash::Md5).toHex()));
+    c.base = c.score;
+    c.baseLines = c.evidence.size();
+    return c;
+}
+
 } // namespace
 
 QString Candidate::key() const {
@@ -452,7 +480,7 @@ QString Candidate::key() const {
     for (int v : f.xlat) sk += QString::number(v) + ",";
     return QString("%1x%2x%3x%4x%5|").arg(raw.seclen).arg(raw.sectrk).arg(raw.heads).arg(raw.t0sectrk).arg(raw.sideBySide) +
            QString("%1|%2|%3|%4|%5|").arg(f.seclen).arg(f.sectrk).arg(f.tracks).arg(f.separateSides ? 9 : f.physHeads == 1 ? 0 : int(f.sides)).arg(f.dataStart) +
-           QString("%1|%2|%3|%4").arg(f.blocksize).arg(f.maxdir).arg(f.dirBlocks).arg(sk);
+           QString("%1|%2|%3|%4%5").arg(f.blocksize).arg(f.maxdir).arg(f.dirBlocks).arg(sk).arg(f.torch ? "|torch" : "");
 }
 
 Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
@@ -461,6 +489,7 @@ Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
     QString e;
     if (!c.fmt.derived && !c.fmt.derive(&e)) { c.score = -1e9; c.evidence << "invalid: " + e; return c; }
     if (img.kind() == Disk::Kind::Raw) c.raw = img.rawLayout();
+    if (c.fmt.torch) return evaluateTorch(img, c);
     QByteArray dir;
     if (!readLogical(img, c.fmt, 0, c.fmt.maxdir * 32, &dir)) {
         c.score = -1e9;
@@ -779,7 +808,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
     for (Candidate &c : all) c.raw = raw && !c.raw.valid() ? lastLayout : c.raw;
     // an empty reading of a disc that holds data: not this format (see emptyButUsed)
     auto usedButEmpty = [&](const Candidate &c) {
-        if (c.files != 0 || c.remembered || c.score < -1e8) return false;
+        if (c.files != 0 || c.remembered || c.score < -1e8 || c.fmt.torch) return false;   // Torch: its map says
         if (raw && !img.rawLayout().sameShape(c.raw)) {
             QString e;
             Disk::RawLayout l = c.raw;
@@ -844,7 +873,8 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
     if (sh.badSectors) res.physical += QString(", %1 bad or missing sector%2").arg(sh.badSectors).arg(sh.badSectors == 1 ? "" : "s");
     if (raw) res.physical += QString(" (raw: %1 bytes)").arg(img.rawFileSize());
 
-    const QString foreign = foreignFilesystem(img);
+    // (a Torch CP/N reading has its own structures to go by; its directory could pass for something else's)
+    const QString foreign = !res.ranked.isEmpty() && res.ranked.first().fmt.torch ? QString() : foreignFilesystem(img);
     const QString foreignWhy = "This looks like " + foreign + ", not a CP/M disc. (Acorn Disk Wrangler can open it.) "
                                "If it really is CP/M, choose the format by hand (Tools > Disc format).";
     if (res.ranked.isEmpty()) {

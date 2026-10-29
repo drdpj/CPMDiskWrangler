@@ -37,11 +37,15 @@ It copes with interleaved and rotated tracks, with discs whose track 0 is single
 double density (Osborne, Research Machines 480Z), and with double-sided discs that hold a separate filesystem on
 each side (shown as **Side 0** and **Side 1**).
 
+It also opens and writes **Torch CP/N** discs (the Torch Z80 second processor for the BBC Micro). Their files are
+CP/M files, but the disc keeps them its own way rather than in a CP/M directory; the program recognises such a disc
+and handles it like any other, except that it has no labels or time stamps and keeps sizes in whole 128-byte records.
+
 ## How it finds the format
 A CP/M disc doesn't record its own layout, so the program tries the possibilities - block size, directory size,
 reserved tracks, skew, side order - and keeps the reading that makes sense of the directory and the files. Known
 formats count for more: about 140 are built in, including cpmtools' library, the Amstrad CPC, PCW and +3, Kaypro,
-Osborne, Research Machines 480Z and Acorn's Z80 second processor.
+Osborne, Research Machines 480Z, Acorn's Z80 second processor and Torch CP/N.
 
 **Tools > Disc format** shows the ranked readings and their evidence, lets you pick one yourself (it's remembered
 for that file), and copies any of them as a cpmtools `diskdef`. Tools > Add a diskdefs file adds your own

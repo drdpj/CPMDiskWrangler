@@ -60,6 +60,11 @@ bool Format::derive(QString *err) {
         *err = "acorndfs needs 256-byte sectors and a boot area holding track 0's first two sectors";
         return false;
     }
+    if (torch && (seclen != 256 || sectrk != 10 || tracks != 160 || heads != 2 || sides != SideOrder::Alt || reserved ||
+                  offsetSectors || separateSides || skew > 1 || !skewtab.isEmpty() || t0sectrk || acornDfs)) {
+        *err = "torchcpn needs 2 sides of 80 tracks of 10 x 256 bytes, cylinder by cylinder (sides alt), with no skew or boot area";
+        return false;
+    }
     if (t0sectrk > 0) {
         if (reserved < sectrk) { *err = "a track 0 of its own shape must be in the boot area (boottrk 1 or more)"; return false; }
         if (t0seclen < 128 || t0seclen > 8192 || (t0seclen & (t0seclen - 1)) || t0sectrk > 255) { *err = "track0: bad sector size or count"; return false; }
@@ -125,8 +130,13 @@ bool Format::locate(int lsec, int *cyl, int *head, int *idx) const {
     return *cyl >= 0;
 }
 
+qint64 Format::capacityBytes() const {
+    if (torch) return qint64(tracks - 2) * sectrk * seclen;
+    return qint64(dsm + 1) * blocksize;
+}
+
 bool Format::sameLayout(const Format &o) const {
-    return seclen == o.seclen && sectrk == o.sectrk && tracks == o.tracks && physHeads == o.physHeads &&
+    return torch == o.torch && seclen == o.seclen && sectrk == o.sectrk && tracks == o.tracks && physHeads == o.physHeads &&
            separateSides == o.separateSides &&
            (physHeads == 1 || sides == o.sides) && blocksize == o.blocksize && maxdir == o.maxdir &&
            dirBlocks == o.dirBlocks && dataStart == o.dataStart && xlat == o.xlat && dsm == o.dsm && exm == o.exm;
@@ -139,6 +149,9 @@ static QString kb(qint64 b) {
 }
 
 QString Format::summary() const {
+    if (torch)
+        return QString("Torch CP/N: %1 x %2 bytes/track, %3 tracks (2 sides, alt), 256 directory entries, %4")
+            .arg(sectrk).arg(seclen).arg(tracks).arg(kb(capacityBytes()));
     QString skewText;
     if (!skewtab.isEmpty()) skewText = "skew table";
     else if (skew > 1) skewText = QString("skew %1").arg(skew);
@@ -152,6 +165,7 @@ QString Format::summary() const {
 }
 
 QString Format::shortSummary() const {
+    if (torch) return QString("%1x%2, %3 trk (2 sides alt), Torch CP/N filesystem").arg(sectrk).arg(seclen).arg(tracks);
     QString sk = !skewtab.isEmpty() ? QString("skew table") : skew > 1 ? QString("skew %1").arg(skew) : QString("no skew");
     QString sides = separateSides ? QString(" x 2 separate sides") : physHeads == 1 ? QString() : QString(" (2 sides %1)").arg(sideOrderName(this->sides));
     QString boot = bootsec >= 0 ? QString("%1 boot sec").arg(bootsec) : QString("boot %1").arg(boottrk);
@@ -177,6 +191,7 @@ QString Format::toDiskdef() const {
         l << QString("  track0 %1 %2 %3%4").arg(t0sectrk).arg(t0seclen).arg(t0fm ? "fm" : "mfm")
                  .arg(t0firstId >= 0 ? QString(" %1").arg(t0firstId) : QString());
     if (acornDfs) l << "  acorndfs yes";
+    if (torch) l << "  torchcpn yes";
     if (bootsec >= 0) l << QString("  bootsec %1").arg(bootsec);
     else l << QString("  boottrk %1").arg(boottrk);
     if (offsetSectors > 0) l << QString("  offset %1").arg(qint64(offsetSectors) * seclen);
@@ -289,6 +304,8 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
             f.separateSides = val.toLower().startsWith('y');
         } else if (key == "acorndfs") {
             f.acornDfs = val.toLower().startsWith('y');
+        } else if (key == "torchcpn") {
+            f.torch = val.toLower().startsWith('y');
         } else if (key == "fm") {
             f.fm = val.toLower().startsWith('y');
         } else if (key == "datarate") {

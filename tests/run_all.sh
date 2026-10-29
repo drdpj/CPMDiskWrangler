@@ -17,7 +17,7 @@ export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)
 step "fstest: every format in every container, then independent checks"
 for k in raw imd edsk; do
-  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd rm-dd rm-qd; do
+  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd rm-dd rm-qd torch-cpn; do
     "$b/fstest/fstest" "$W/fs/$k" $f $k > "$W/fs-$k-$f.log" 2>&1 || { echo "FAIL fstest $f $k"; cat "$W/fs-$k-$f.log"; fail=1; }
   done
 done
@@ -52,6 +52,24 @@ $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0
     python3 "$src/tests/acornz80_check.py" "$z" "$W/az/py" > /dev/null
     d=0; for f in "$W/az/py"/*; do l=$(basename "$f" | tr A-Z a-z); cmp -s "$f" "$W/az/$n/0/$l" || { echo "FAIL $n: $l differs"; d=1; }; done
     [ $d -eq 0 ] && echo "$n: $(ls "$W/az/py" | wc -l) files match the independent Acorn Z80 reader" || fail=1
+  done
+  # Torch CP/N discs (the owner's, not in the repo): detected as torch-cpn, and every file as the independent reader
+  # (torch_check.py, from the format notes alone) reads it; then a file added to a copy, checked the same way
+  for z in $(ls "$real"/torch/*.dsd 2>/dev/null); do
+    n=$(basename "$z"); rm -rf "$W/tz"; mkdir -p "$W/tz"
+    "$b/detecttest/detecttest" -x "$W/tz" "$z" > "$W/tz.log" 2>&1
+    grep -q "confidence high; writable" "$W/tz.log" && grep -q "torch-cpn" "$W/tz.log" || { echo "FAIL $n: not detected as torch-cpn, high, writable"; fail=1; }
+    python3 "$src/tests/torch_check.py" "$z" "$W/tz/py" > "$W/tz/check" || { echo "FAIL $n: torch_check.py: $(head -3 "$W/tz/check")"; fail=1; }
+    diff -r "$W/tz/py" "$W/tz/$n" > /dev/null && echo "$n: $(find "$W/tz/py" -type f | wc -l) files match the independent Torch CP/N reader" || { echo "FAIL $n: files differ from torch_check.py's"; fail=1; }
+    cp "$z" "$W/tz/edit.dsd"
+    "$b/fstest/fstest" addto "$W/tz/edit.dsd" ADDED.TXT 70000 > /dev/null 2>&1
+    python3 "$src/tests/torch_check.py" "$W/tz/edit.dsd" "$W/tz/py2" > "$W/tz/check2"
+    for f in "$W/tz/py"/*/*; do cmp -s "$f" "$W/tz/py2/${f#"$W/tz/py/"}" || { echo "FAIL $n: $(basename "$f") changed by adding a file"; fail=1; }; done
+    # the new entry took the first unused or deleted slot (deleted: index address FFFF)
+    python3 -c "import sys; d = open(sys.argv[1], 'rb').read(4096); e = [d[i:i + 16] for i in range(0, 4096, 16)]
+n = next(i for i, x in enumerate(e) if x[5:10] == b'ADDED'); sys.exit(any(x == bytes(16) or x[:2] == b'\\xff\\xff' for x in e[:n]))" "$W/tz/edit.dsd" \
+      || { echo "FAIL $n: the added file didn't take the first free directory slot"; fail=1; }
+    [ -s "$W/tz/py2/0/added.txt" ] && grep -q "^ok" "$W/tz/check2" && echo "$n: a file added to a copy checks clean, the others unchanged" || { echo "FAIL $n: adding a file: $(head -3 "$W/tz/check2")"; fail=1; }
   done
   step "GUI"
   adwdir=""

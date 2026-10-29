@@ -368,6 +368,35 @@ int main(int argc, char **argv) {
         CHECK(R2.openImage(wd + "/rm.img") && R2.sides() == 2 && R2.volume(1).files().size() == n1 + 2, "reopened: side 1 has the two new files");
         shot(&R2, wd + "/shots/rm.png");
     }
+    printf("== Torch CP/N: a new disc, files in, a paste from another disc, saved and reopened\n");
+    {
+        MainWindow T;
+        T.show();
+        QString tp = wd + "/torch.dsd";
+        CHECK(T.newImage(tp, Disk::Kind::Raw, *Cpm::findFormat("torch-cpn"), false, QString()), "new Torch CP/N disc");
+        CHECK(T.writable() && T.volume().format().torch, "the new Torch disc is writable");
+        T.importPaths({wd + "/host/readme.txt", wd + "/host/user3"}, -1);
+        CHECK(T.volume().indexOf(0, "README.TXT") >= 0 && T.volume().indexOf(3, "GAME.COM") >= 0, "host files added, user3 folder into user 3");
+        QAction *label = nullptr;
+        for (QAction *x : T.findChildren<QAction *>()) if (x->text() == "Disc &label...") label = x;
+        CHECK(label && !label->isEnabled(), "Torch discs have no label: Disc label is off");
+        B.tree()->clearSelection();
+        findRow(B.tree(), RowFile, 0, "README.TXT")->setSelected(true);
+        QMetaObject::invokeMethod(&B, "copySelected", Qt::DirectConnection);
+        QString e2;
+        CHECK(T.deleteFiles({FileRef(0, 0, "README.TXT")}, &e2), "delete README.TXT from the Torch disc: " + e2);
+        T.tree()->clearSelection();
+        QMetaObject::invokeMethod(&T, "paste", Qt::DirectConnection);
+        CHECK(T.volume().indexOf(0, "README.TXT") >= 0, "pasted from the IBM 3740 disc onto the Torch disc");
+        CHECK(T.volume().check().ok(), "the Torch disc checks clean: " + T.volume().check().errors.join("; "));
+        CHECK(T.save(), "saved");
+        MainWindow T2;
+        CHECK(T2.openImage(tp) && T2.volume().format().torch && T2.writable(), "reopened by detection as Torch CP/N, writable");
+        CHECK(T2.volume().files().size() == 2, QString("2 files after reopening (README.TXT, 3:GAME.COM), %1 found").arg(T2.volume().files().size()));
+        QMetaObject::invokeMethod(&T2, "discInfo", Qt::DirectConnection);      // autoAnswer: no dialog, just no crash
+        shot(&T2, wd + "/shots/torch.png");
+    }
+
     printf("== menus and buttons: the same order as Acorn Disk Wrangler's\n");
     {   // (Acorn Disk Wrangler has a few more items in between; with them taken out, both list the same things in the same order)
         QStringList edit, buttons, common;

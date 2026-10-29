@@ -35,6 +35,7 @@
 #include "../cpmfs.h"
 #include "../detect.h"
 #include "../diskimage.h"
+#include "../torchfs.h"
 
 static int failures = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { printf("  FAIL: %s\n", qPrintable(QString(msg))); ++failures; } } while (0)
@@ -48,6 +49,13 @@ static QByteArray content(int size, quint32 seed, bool text) {
 
 struct Expect { int user; QString name; QByteArray data; quint16 attrs; };
 
+// What a file reads back as: exactly as written, or on a disc that keeps only whole records and no byte count
+// (Torch CP/N) padded with ^Z to the end of its last record.
+static QByteArray asStored(const Cpm::Format &f, const QByteArray &data) {
+    if (!f.torch || (data.size() % 128 == 0 && !data.isEmpty())) return data;
+    return data + QByteArray(128 - data.size() % 128, char(0x1A));   // empty: one record of ^Z
+}
+
 static bool verify(Cpm::Volume &v, const QVector<Expect> &ex, const QString &what) {
     int before = failures;
     CHECK(v.files().size() == ex.size(), QString("%1: %2 files, expected %3").arg(what).arg(v.files().size()).arg(ex.size()));
@@ -58,7 +66,8 @@ static bool verify(Cpm::Volume &v, const QVector<Expect> &ex, const QString &wha
         QByteArray d;
         QString err;
         CHECK(v.readFile(v.files()[i], &d, &err), what + ": read " + e.name + ": " + err);
-        CHECK(d == e.data, QString("%1: %2:%3 content differs (%4 vs %5 bytes)").arg(what).arg(e.user).arg(e.name).arg(d.size()).arg(e.data.size()));
+        QByteArray want = asStored(v.format(), e.data);
+        CHECK(d == want, QString("%1: %2:%3 content differs (%4 vs %5 bytes)").arg(what).arg(e.user).arg(e.name).arg(d.size()).arg(want.size()));
         CHECK(v.files()[i].attrs == e.attrs, QString("%1: %2 attributes %3, expected %4").arg(what, e.name).arg(v.files()[i].attrs).arg(e.attrs));
     }
     Cpm::Report r = v.check();
@@ -138,6 +147,17 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     ex[1].data = content(3000, 99, true);
     CHECK(v.addFile(ex[1].user, ex[1].name, ex[1].data, 0, when, true, &err), "replace: " + err);
     CHECK(v.deleteFile(ex[2].user, ex[2].name, &err), "delete: " + err);
+    if (f.torch) {
+        // CP/N's deletion: index address FFFF, the name kept; a new file takes the first unused or deleted slot
+        int dead = -1;
+        for (int i = 0; i < v.directory().size() && dead < 0; ++i) if (Torch::entryIsDeleted(v.directory()[i])) dead = i;
+        CHECK(dead >= 0 && v.directory()[dead].mid(5, 2) == "F2", "Torch: the deleted file's entry isn't marked FFFF with its name kept");
+        bool earlierFree = false;
+        for (int i = 0; i < dead; ++i) earlierFree |= Torch::entryIsFree(v.directory()[i]);
+        CHECK(v.addFile(0, "REUSE.TMP", "x", 0, when, false, &err), "Torch: add after delete: " + err);
+        if (dead >= 0 && !earlierFree) CHECK(v.directory()[dead].mid(5, 5) == "REUSE", "Torch: a new file didn't reuse the deleted entry");
+        CHECK(v.deleteFile(0, "REUSE.TMP", &err), "Torch: delete again: " + err);
+    }
     ex.removeAt(2);
     CHECK(v.rename(ex[2].user, ex[2].name, 5, "RENAMED.DOC", &err), "rename: " + err);
     ex[2].user = 5; ex[2].name = "RENAMED.DOC";
@@ -192,7 +212,7 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         QString d = outdir + "/" + fname + ".expect/" + QString::number(e.user);
         QDir().mkpath(d);
         QFile o(d + "/" + e.name.toLower());
-        if (o.open(QIODevice::WriteOnly)) o.write(e.data);
+        if (o.open(QIODevice::WriteOnly)) o.write(asStored(f, e.data));
     }
     return 0;
 }

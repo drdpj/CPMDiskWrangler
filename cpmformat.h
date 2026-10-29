@@ -70,6 +70,11 @@ struct Format {
     // locked file $.CPMDISC covering the side) so the BBC's DFS sees the disc as full. In the boot area, so the
     // filesystem never reads it; new discs get it; detection takes it as evidence. cpmtools ignores the key.
     bool acornDfs = false;
+    // "torchcpn yes": not a CP/M directory at all but Torch CP/N's filesystem (torchfs.cpp), which holds CP/M files:
+    // 16-byte directory entries, each file reached through index sectors, a sector-by-sector allocation map. Needs
+    // 2 sides x 80 x 10 x 256, cylinder by cylinder, no skew or boot area. blocksize and maxdir only satisfy derive().
+    // cpmtools ignores the key (and can't read such a disc).
+    bool torch = false;
 
     // ----- derived by derive()
     int physHeads = 1;            // heads the format uses
@@ -88,7 +93,7 @@ struct Format {
     bool derive(QString *err);    // fills the derived fields; false if the parameters are inconsistent
     // Where logical sector lsec (absolute) is on a disc with imageHeads heads: false if out of range.
     bool locate(int lsec, int *cyl, int *head, int *idx) const;
-    qint64 capacityBytes() const { return qint64(dsm + 1) * blocksize; }
+    qint64 capacityBytes() const;   // what files can use (Torch CP/N: every sector outside its first two tracks)
     QString summary() const;      // one line for the status bar / info box
     QString shortSummary() const; // "10x256, 40 trk, skew 2, boot 3, 2K, 64 dir" for lists
     QString toDiskdef() const;    // the definition in diskdefs syntax (so it can be used with cpmtools)

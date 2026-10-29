@@ -59,6 +59,11 @@ PY
            cmp -s "$img" "$base".logical && echo "ok   $name: raw image is in logical order" || { echo "FAIL $name: raw image is not the logical image"; fail=1; }
          fi ;;
     esac
+    if grep -q "^ *torchcpn yes" "$dd"; then       # Torch CP/N: cpmtools can't read it; the independent reader instead
+      if python3 "$(dirname "$0")"/torch_check.py "$logical" $t/torch >$t/tc 2>&1; then echo "ok   $name: torch_check.py: $(tail -1 $t/tc)"; else echo "FAIL $name: torch_check.py: $(head -5 $t/tc | tr '\n' ' ')"; fail=1; fi
+      if diff -r $t/torch "$base".expect >/dev/null; then echo "ok   $name: torch_check.py reads every file exactly"; else echo "FAIL $name: torch_check.py's files differ"; fail=1; fi
+      rm -rf $t; continue
+    fi
     ( cd $t && fsck.cpm -n -f "$fmtname" "$logical" >$t/fsck 2>&1 ); fr=$?
     if [ $fr -ne 0 ] || grep -q -i -E "error|bad|illegal" $t/fsck; then echo "FAIL $name: fsck.cpm: $(head -3 $t/fsck | tr '\n' ' ')"; fail=1; else echo "ok   $name: fsck.cpm clean"; fi
     n=0; bad=0

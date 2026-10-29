@@ -8,9 +8,28 @@
 #   imdmode N      ImageDisk mode for a new disc: 0/1/2 = FM 500/300/250 kbps, 3/4/5 = MFM 500/300/250 kbps
 #   desc "text"    description shown in menus
 #   source "text"  where the definition comes from and how far it has been checked
+#   torchcpn yes   the disc holds Torch CP/N's own filesystem, not a CP/M directory (see torch-cpn below)
 # and a top-level line
 #   describe NAME "text"   gives a description to a definition loaded later (e.g. from cpmtools' file).
 # A definition here replaces a cpmtools definition of the same name.
+
+diskdef torch-cpn
+  desc "Torch Z80 second processor, CP/N, 400K (80 track double-sided, FM)"
+  source "Torch CP/N's own filesystem, not a CP/M directory (torchfs.cpp): 256 x 16-byte directory entries in track 0 and track 1 sectors 0-5, an allocation map in track 1 sectors 6-7, files reached through index sectors. From notes the owner supplied, checked on three real discs (SIG0, Adventure, Turbo Pascal 3.0)."
+  seclen 256
+  tracks 160
+  heads 2
+  sides alt
+  sectrk 10
+  skew 0
+  blocksize 2048
+  maxdir 256
+  boottrk 0
+  torchcpn yes
+  secbase 0
+  imdmode 2
+  os 2.2
+end
 
 diskdef acorn-z80
   desc "Acorn Z80 second processor, CP/M 2.2, 400K (80 track double-sided, FM)"

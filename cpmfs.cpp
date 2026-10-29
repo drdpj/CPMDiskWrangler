@@ -106,7 +106,7 @@ QByteArray Volume::name11(const QString &name) {
     return base + ext;
 }
 
-static QString displayName(const QByteArray &n11) {
+QString Volume::nameFrom11(const QByteArray &n11) {
     QString base = QString::fromLatin1(n11.left(8)), ext = QString::fromLatin1(n11.mid(8, 3));
     while (base.endsWith(' ')) base.chop(1);
     while (ext.endsWith(' ')) ext.chop(1);
@@ -215,6 +215,7 @@ bool Volume::parse(QString *err) {
     m_dir.clear();
     m_label = Label();
     m_stamps = false;
+    if (m_fmt.torch) return torchParse(err);
     QByteArray raw;
     if (!readBytes(0, m_fmt.maxdir * 32, &raw, err)) return false;
     for (int i = 0; i < m_fmt.maxdir; ++i) m_dir.append(raw.mid(i * 32, 32));
@@ -226,7 +227,7 @@ bool Volume::parse(QString *err) {
             m_label.index = i;
             QByteArray n = e.mid(1, 11);
             for (char &c : n) c = char(c & 0x7F);
-            m_label.name = displayName(n);
+            m_label.name = nameFrom11(n);
             m_label.mode = quint8(e[12]);
             m_label.created = decodeStamp(e, 24);
             m_label.updated = decodeStamp(e, 28);
@@ -245,7 +246,7 @@ bool Volume::parse(QString *err) {
             File f;
             f.user = st;
             f.name11 = n;
-            f.name = displayName(n);
+            f.name = nameFrom11(n);
             byKey[k] = f;
         }
         ext[k].append(qMakePair(logicalExtent(e), i));
@@ -312,6 +313,7 @@ QVector<int> Volume::usersInUse() const {
 }
 
 bool Volume::readFile(const File &f, QByteArray *out, QString *err) const {
+    if (m_fmt.torch) return torchReadFile(f, out, err);
     QByteArray d(int(f.records * 128), '\0');
     for (int ei : f.entries) {
         const QByteArray &e = m_dir[ei];
@@ -347,6 +349,7 @@ QVector<bool> Volume::allocation() const {
 }
 
 int Volume::freeBlocks() const {
+    if (m_fmt.torch) return torchFreeSectors();
     int n = 0;
     for (bool u : allocation()) if (!u) ++n;
     return n;
@@ -355,18 +358,20 @@ int Volume::freeBlocks() const {
 bool Volume::freeSlot(int i) const { return quint8(m_dir[i][0]) == 0xE5 && !(m_stamps && (i & 3) == 3); }
 
 int Volume::freeEntries() const {
+    if (m_fmt.torch) return int(std::count_if(m_dir.begin(), m_dir.end(), [](const QByteArray &e) { return e.count('\0') == e.size(); }));
     int n = 0;
     for (int i = 0; i < m_dir.size(); ++i) if (freeSlot(i)) ++n;
     return n;
 }
 
 int Volume::usedEntries() const {
+    if (m_fmt.torch) return m_dir.size() - freeEntries();
     int n = 0;
     for (const QByteArray &e : m_dir) if (isFileEntry(quint8(e[0]))) ++n;
     return n;
 }
 
-bool Volume::labelAllowed() const { return m_label.present || m_fmt.os == Os::V3 || m_fmt.os == Os::Zsys; }
+bool Volume::labelAllowed() const { return !m_fmt.torch && (m_label.present || m_fmt.os == Os::V3 || m_fmt.os == Os::Zsys); }
 
 QString Volume::stampKinds() const {
     if (!m_stamps) return QString();
@@ -381,6 +386,7 @@ QString Volume::stampKinds() const {
 // ------------------------------------------------------------------------------------------- check
 
 Report Volume::check() const {
+    if (m_fmt.torch) return torchCheck();
     Report r;
     QMap<int, QString> owner;              // block -> "USER:NAME"
     for (int i = 0; i < m_dir.size(); ++i) {
@@ -403,7 +409,7 @@ Report Volume::check() const {
         }
         QByteArray n = e.mid(1, 11), masked = n;
         for (char &c : masked) c = char(c & 0x7F);
-        QString shown = QString("%1:%2").arg(st).arg(displayName(masked));
+        QString shown = QString("%1:%2").arg(st).arg(nameFrom11(masked));
         for (char c : n)
             if ((c & 0x7F) < 0x20) { r.errors << QString("entry %1: the name has control characters").arg(i); break; }
         if (quint8(e[15]) > 0x80) r.errors << QString("entry %1 (%2): record count %3 is more than 128").arg(i).arg(shown).arg(quint8(e[15]));
@@ -459,6 +465,7 @@ bool Volume::writeStamps(int entry, const QDateTime &first, const QDateTime &upd
 
 bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, quint16 attrs, const QDateTime &when,
                      bool replace, QString *err) {
+    if (m_fmt.torch) return torchAdd(user, nameIn, data, attrs, replace, err);      // no time stamps on Torch discs
     QString name = nameIn.toUpper(), why;
     if (!validName(name, &why)) { *err = name + ": " + why; return false; }
     int maxUser = m_fmt.os == Os::V3 ? 15 : 31;
@@ -535,6 +542,7 @@ bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, qu
 }
 
 bool Volume::deleteFile(int user, const QString &name, QString *err) {
+    if (m_fmt.torch) return torchDelete(user, name, err);
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1 is not in user %2").arg(name).arg(user); return false; }
     TXN_BEGIN
@@ -563,6 +571,7 @@ bool Volume::deleteFile(int user, const QString &name, QString *err) {
 }
 
 bool Volume::rename(int user, const QString &name, int newUser, const QString &newNameIn, QString *err) {
+    if (m_fmt.torch) return torchRename(user, name, newUser, newNameIn, err);
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1 is not in user %2").arg(name).arg(user); return false; }
     QString newName = newNameIn.toUpper(), why;
@@ -586,6 +595,7 @@ bool Volume::rename(int user, const QString &name, int newUser, const QString &n
 }
 
 bool Volume::setAttrs(int user, const QString &name, quint16 attrs, QString *err) {
+    if (m_fmt.torch) return torchSetAttrs(user, name, attrs, err);
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1 is not in user %2").arg(name).arg(user); return false; }
     TXN_BEGIN
@@ -605,6 +615,7 @@ bool Volume::setAttrs(int user, const QString &name, quint16 attrs, QString *err
 }
 
 bool Volume::setLabel(const QString &labelIn, QString *err) {
+    if (m_fmt.torch) { *err = "Torch CP/N discs have no label"; return false; }
     if (!labelAllowed()) { *err = "disc labels are a CP/M 3 feature; this disc's format is CP/M 2.2"; return false; }
     QString label = labelIn.toUpper().trimmed(), why;
     if (!label.isEmpty() && !validName(label, &why)) { *err = label + ": " + why; return false; }
@@ -633,6 +644,7 @@ bool Volume::setLabel(const QString &labelIn, QString *err) {
 }
 
 bool Volume::initDirectory(bool stamps, const QString &labelName, QString *err) {
+    if (m_fmt.torch) return torchInit(err);
     TXN_BEGIN
     QString er;
     for (int i = 0; i < m_fmt.maxdir; ++i) {
@@ -690,7 +702,8 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
     Volume v;
     // attach reads an all-E5 directory; then write the empty directory properly (stamps, label)
     if (!v.attach(img, f, err)) return false;
-    if (stamps && !v.initDirectory(true, label, err)) return false;
+    if (f.torch && !v.initDirectory(false, QString(), err)) return false;     // directory, map, formatter's sectors
+    if (stamps && !f.torch && !v.initDirectory(true, label, err)) return false;
     if (f.acornDfs) {
         QByteArray cat = acornDfsCatalogue(f.cylinders * f.sectrk);
         if (!img->write(0, 0, 0, cat.left(256), err) || !img->write(0, 0, 1, cat.mid(256), err)) return false;
