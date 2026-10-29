@@ -49,10 +49,14 @@ format with no close rival, one you've confirmed, or a disc made by this program
   images on an empty window opens them; dropped on a window with a disc, they're copied onto it as files.
 * **Files are grouped by user number.** Drop files on a *User N* row to put them in that user number. Host
   folders named `user3`, `user 3`, `u3` or `3` go to that user number; other folders are flattened.
-* **Add files** by dropping them from your file manager. Names become CP/M 8.3 (upper case; characters CP/M can't
-  use become `-`).
-* **Extract files** by dragging them out to your desktop or another program. Dragged to a tool that supports
-  retro-files, they keep their user number and attributes (see below).
+* **Add files** by dropping them from your file manager, or copy them there and Paste them here. Names become
+  CP/M 8.3 (upper case; characters CP/M can't use become `-`).
+* **Extract files** by dragging them out to your desktop or another program, or by copying them here and pasting
+  them there. Dragged or pasted into a tool that supports retro-files, they keep their user number and attributes
+  (see below).
+* **Copy and Paste** (Edit menu, or your system's usual keys: Ctrl+C / Ctrl+V, Cmd+C / Cmd+V on a Mac) work
+  between windows, between the two sides of a disc, with Acorn Disk Wrangler and with your file manager. A paste
+  goes to the selected user number (none selected: each file keeps its own).
 * **View** (double-click, F3): text up to the end-of-file mark (optionally ignoring WordStar's high bit), or hex.
 * **Rename** (F2), **Properties** (Alt+Enter) for attributes (R/O, SYS, ARC, F1'-F4') and user number, for one
   file or many. Edit > Disc label for CP/M 3 discs.

@@ -136,6 +136,8 @@ private slots:
     void onInternalDrop(const QByteArray &payload, QTreeWidgetItem *target);
     void onRetroFilesDropped(const QByteArray &json, QTreeWidgetItem *target);
     void updateUi();
+    void copySelected();
+    void paste();
 
 private:
     bool attachFormat(const Detect::Candidate &c, QString *err);
@@ -151,6 +153,8 @@ private:
     void importSummary(const ImportCtx &c);
     void message(const QString &title, const QString &text, bool warning = true);
     QString title() const;
+    bool clipboardUsable() const;                       // something Paste can add
+    bool pasteItems(const QMimeData *m, int user, int side);
 
     Disk::Image m_img;
     Cpm::Volume m_vols[2];
@@ -165,6 +169,6 @@ private:
     DropTree *m_tree;
     QLabel *m_status;
     QAction *m_actSave, *m_actSaveAs, *m_actRevert, *m_actAdd, *m_actDelete, *m_actProps, *m_actRename,
-        *m_actLabel, *m_actExtract, *m_actView, *m_actCheck, *m_actInfo, *m_actFormat;
+        *m_actLabel, *m_actExtract, *m_actView, *m_actCheck, *m_actInfo, *m_actFormat, *m_actCopy, *m_actPaste;
     QAction *m_optTrim, *m_optFolders, *m_optBackup;
 };

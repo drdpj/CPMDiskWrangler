@@ -23,6 +23,8 @@
 #include <QDateTime>
 #include <QFontMetrics>
 #include <QHeaderView>
+#include <QKeySequence>
+#include <QList>
 #include <QSet>
 #include <QString>
 #include <QStringList>
@@ -37,6 +39,17 @@ enum RowKind { RowRoot = 0, RowUser = 1, RowFile = 2 };
 
 #define CPMDW_MIME_ITEMS  "application/x-cpmdiskwrangler-items"
 #define CPMDW_MIME_SOURCE "application/x-cpmdiskwrangler-source"
+#define CPMDW_MIME_CLIP   "application/x-cpmdiskwrangler-clip"     // "pid:n": what Edit > Copy put there
+
+// Delete: the platform's Delete key(s), and on macOS Finder's Cmd+Backspace too (most Mac keyboards have no
+// forward-delete key). Same in Acorn Disk Wrangler.
+inline QList<QKeySequence> deleteKeys() {
+    QList<QKeySequence> k = QKeySequence::keyBindings(QKeySequence::Delete);
+#ifdef Q_OS_MACOS
+    k << QKeySequence("Ctrl+Backspace");               // Ctrl is the Command key on macOS
+#endif
+    return k;
+}
 
 // A file (or a host folder) read out of a disc or the host, ready to be written to a CP/M disc - or a CP/M file
 // ready to be written to the host. The attribute fields are filled from whatever the source knows.

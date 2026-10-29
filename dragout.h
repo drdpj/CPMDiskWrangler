@@ -73,6 +73,8 @@ public:
     QStringList formats() const override;
     bool hasFormat(const QString &mimeType) const override;
     std::shared_ptr<DragState> state() const { return m_state; }
+    // For Edit > Copy: also offer GNOME's file list (x-special/gnome-copied-files), which its file manager pastes.
+    void setForClipboard(bool on) { m_clipboard = on; }
 protected:
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)               // Qt 6 passes a QMetaType, Qt 5 a QVariant::Type
     QVariant retrieveData(const QString &mimeType, QMetaType type) const override;
@@ -87,6 +89,7 @@ private:
     mutable QList<QUrl> m_urls;
     mutable QByteArray m_json;
     std::shared_ptr<DragState> m_state;
+    bool m_clipboard = false;
 };
 
 } // namespace RetroFiles

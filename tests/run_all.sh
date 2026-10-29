@@ -55,7 +55,8 @@ $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0
   adwdir=""
   if [ -n "$adw" ]; then "$b/interop/interop_adw" make "$W/adw" >/dev/null; adwdir="--adw $W/adw"; fi
   rmimg=$(ls "$real"/rm/*.img 2>/dev/null | head -1)
-  "$b/guitest/guitest" "$W/gui" "$O/shipped-software/OS1DBASE.IMD" "$O/copower88/kaypro/copwrcpm.td0" $adwdir ${rmimg:+--rm "$rmimg"} 2>/dev/null | grep -E "FAIL|all ok|FAILURES" || fail=1
+  "$b/guitest/guitest" "$W/gui" "$O/shipped-software/OS1DBASE.IMD" "$O/copower88/kaypro/copwrcpm.td0" $adwdir ${rmimg:+--rm "$rmimg"} 2>/dev/null > "$W/gui.log"
+  grep -E "FAIL|all ok|FAILURES" "$W/gui.log"; grep -q "^all ok" "$W/gui.log" || fail=1
   [ -n "$adw" ] && { "$b/interop/interop_adw" read "$W/gui/out.json" | grep -q "GAME.COM" && echo "Acorn Disk Wrangler reads our drag: ok" || { echo "FAIL: Acorn Disk Wrangler could not read our drag"; fail=1; }; }
 fi
 echo; [ $fail -eq 0 ] && echo "ALL PASSED" || echo "SOME TESTS FAILED"

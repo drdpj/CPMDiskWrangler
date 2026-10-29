@@ -66,6 +66,15 @@ The sender may create the files only when a receiver first asks for `text/uri-li
 Wrangler does), and keeps them until it exits. A receiver must copy the files during the drop and must not
 keep references to them.
 
+### On the clipboard
+
+Copy and paste use the same formats. Both Wranglers' Edit > Copy put on the clipboard exactly what a drag of the
+selection offers, plus GNOME's `x-special/gnome-copied-files` (`copy`, then one `file://` URL per line), which
+GNOME Files pastes. The files are written to the base folder only when a receiver first asks for them, and are
+kept until the sender exits, as for a drag; a sender clears the clipboard when it exits if it still owns it. A
+receiver that pastes takes the JSON if it is there, else the URLs, exactly as for a drop. Both Wranglers paste
+from a file manager's copy too (`text/uri-list`, or GNOME's list).
+
 ### On each platform
 
 * **Windows:** the format is the registered clipboard format named exactly `application/x-retro-files+json`
@@ -298,3 +307,4 @@ here.
 
 * Version 1 (2026): first version, Acorn Disk Wrangler. The `cpm` namespace was settled with CP/M Disk Wrangler,
   which produces it (adding the optional `f1`-`f4` keys); no change of version was needed.
+* The clipboard (Copy / Paste) carries the same document; no change of version was needed.

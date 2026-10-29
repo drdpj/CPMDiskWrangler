@@ -27,6 +27,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QCloseEvent>
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -210,18 +211,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     statusBar()->addWidget(m_status, 1);
     resize(860, 600);
 
+    // The menus, the context menu and the button bar keep the same order as Acorn Disk Wrangler's (which has a few
+    // more items: Add folder, New directory, Boot option, Side order).
     QMenu *file = menuBar()->addMenu("&File");
     QAction *aNewWin = file->addAction("New &window", [] { auto *w = new MainWindow; w->setAttribute(Qt::WA_DeleteOnClose); w->show(); });
     aNewWin->setShortcut(QKeySequence("Ctrl+Shift+N"));
     QAction *aNew = file->addAction("&New disc image...", this, &MainWindow::newImageDialog);
     aNew->setShortcut(QKeySequence::New);
-    aNew->setIconText("New");
     QAction *aOpen = file->addAction("&Open...", this, &MainWindow::openDialog);
     aOpen->setShortcut(QKeySequence::Open);
-    aOpen->setIconText("Open");
+    file->addSeparator();
     m_actSave = file->addAction("&Save", this, &MainWindow::save);
     m_actSave->setShortcut(QKeySequence::Save);
-    m_actSave->setIconText("Save");
     m_actSaveAs = file->addAction("Save &as (ImageDisk, DSK or raw)...", this, &MainWindow::saveAsDialog);
     m_actSaveAs->setShortcut(QKeySequence("Ctrl+Shift+S"));
     m_actRevert = file->addAction("&Revert", this, &MainWindow::revert);
@@ -232,30 +233,40 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     file->addAction("&Quit", qApp, &QApplication::closeAllWindows)->setShortcut(QKeySequence::Quit);
 
     QMenu *edit = menuBar()->addMenu("&Edit");
-    m_actAdd = edit->addAction("&Add files...", this, &MainWindow::addFilesDialog);
-    m_actAdd->setIconText("Add");
-    m_actView = edit->addAction("&View", this, &MainWindow::viewSelected);
+    m_actView = edit->addAction("&View (text / hex)", this, &MainWindow::viewSelected);
     m_actView->setShortcut(QKeySequence("F3"));
     m_actView->setIconText("View");
     m_actExtract = edit->addAction("E&xtract to folder...", this, &MainWindow::extractSelected);
     m_actExtract->setShortcut(QKeySequence("Ctrl+E"));
     m_actExtract->setIconText("Extract");
+    edit->addSeparator();
+    m_actAdd = edit->addAction("&Add files...", this, &MainWindow::addFilesDialog);
+    m_actAdd->setShortcut(QKeySequence("Ctrl+Shift+F"));
+    m_actAdd->setIconText("Add files");
+    edit->addSeparator();
+    m_actCopy = edit->addAction("&Copy", this, &MainWindow::copySelected);
+    m_actCopy->setShortcuts(QKeySequence::Copy);       // the platform's own keys (Ctrl+C, Ctrl+Ins / Cmd+C)
+    m_actPaste = edit->addAction("&Paste", this, &MainWindow::paste);
+    m_actPaste->setShortcuts(QKeySequence::Paste);     // (Ctrl+V, Shift+Ins / Cmd+V)
+    edit->addSeparator();
     m_actRename = edit->addAction("Re&name...", this, &MainWindow::renameSelected);
     m_actRename->setShortcut(QKeySequence("F2"));
-    m_actProps = edit->addAction("&Properties (attributes, user)...", this, &MainWindow::editProperties);
+    m_actRename->setIconText("Rename");
+    m_actProps = edit->addAction("P&roperties (attributes, user)...", this, &MainWindow::editProperties);
     m_actProps->setShortcut(QKeySequence("Alt+Return"));
     m_actProps->setIconText("Properties");
     m_actDelete = edit->addAction("&Delete", this, &MainWindow::deleteSelected);
-    m_actDelete->setShortcut(QKeySequence::Delete);
+    m_actDelete->setShortcuts(deleteKeys());
     m_actDelete->setIconText("Delete");
     edit->addSeparator();
     m_actLabel = edit->addAction("Disc &label...", this, &MainWindow::setLabelDialog);
 
     QMenu *tools = menuBar()->addMenu("&Tools");
+    m_actCheck = tools->addAction("&Check disc", this, &MainWindow::checkDisc);
+    m_actCheck->setShortcut(QKeySequence("Ctrl+K"));
     m_actFormat = tools->addAction("Disc &format...", this, &MainWindow::formatDialog);
     m_actFormat->setShortcut(QKeySequence("Ctrl+F"));
     m_actFormat->setIconText("Format");
-    m_actCheck = tools->addAction("&Check disc", this, &MainWindow::checkDisc);
     m_actInfo = tools->addAction("Disc &information", this, &MainWindow::discInfo);
     m_actInfo->setShortcut(QKeySequence("Ctrl+I"));
     tools->addAction("Add a &diskdefs file to the format library...", this, &MainWindow::addDiskdefsDialog);
@@ -279,7 +290,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     help->addAction("About &Qt...", qApp, &QApplication::aboutQt);
     help->addAction("&Licences...", this, [this] { showLicences(this); });
 
-    ButtonBar::makeButtonBar(addToolBar("Main"), {m_actAdd, m_actExtract, m_actView, m_actProps, m_actDelete, nullptr, m_actFormat});
+    // Open / Save live in the File menu only; the button bar is for working on the disc contents.
+    ButtonBar::makeButtonBar(addToolBar("Main"), {m_actView, m_actExtract, m_actAdd, m_actRename, m_actProps, m_actDelete,
+                                                  nullptr, m_actFormat});
+    connect(QApplication::clipboard(), &QClipboard::dataChanged, this, &MainWindow::updateUi);
 
     connect(m_tree, &QTreeWidget::itemSelectionChanged, this, &MainWindow::updateUi);
     connect(m_tree, &QTreeWidget::itemDoubleClicked, this, [this](QTreeWidgetItem *it) {
@@ -634,6 +648,8 @@ void MainWindow::updateUi() {
     m_actRename->setEnabled(w && oneFile);
     m_actLabel->setEnabled(w && m_vols[currentSide()].labelAllowed());
     m_actExtract->setEnabled(have && !refs.isEmpty());
+    m_actCopy->setEnabled(have && !refs.isEmpty());
+    m_actPaste->setEnabled(w && clipboardUsable());
     m_actView->setEnabled(have && oneFile);
     m_actCheck->setEnabled(have);
     m_actInfo->setEnabled(m_img.isOpen());
@@ -686,10 +702,14 @@ int MainWindow::targetSide(QTreeWidgetItem *it) const {
 }
 
 void MainWindow::showContextMenu(const QPoint &pos) {
-    QMenu m;
-    for (QAction *a : {m_actView, m_actExtract, m_actRename, m_actProps, m_actDelete}) m.addAction(a);
+    QMenu m;                                    // the Edit menu's order, as Acorn Disk Wrangler's
+    m.addActions({m_actView, m_actExtract});
     m.addSeparator();
     m.addAction(m_actAdd);
+    m.addSeparator();
+    m.addActions({m_actCopy, m_actPaste});
+    m.addSeparator();
+    m.addActions({m_actRename, m_actProps, m_actDelete});
     m.exec(m_tree->viewport()->mapToGlobal(pos));
 }
 
@@ -922,6 +942,92 @@ void MainWindow::addFilesDialog() {
     AppSettings().setValue("addDir", QFileInfo(p.first()).absolutePath());
     QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
     importPaths(p, sel.isEmpty() ? -1 : targetUser(sel.first()), sel.isEmpty() ? 0 : targetSide(sel.first()));
+}
+
+// ------------------------------------------------------------------------------------------- copy and paste
+
+// Edit > Copy takes a copy of the selected files there and then, so a paste copies what was selected at the time even
+// if the disc has changed or its window has closed since. Inside this program a paste uses that copy (the clipboard
+// carries a token naming it); for the desktop and other programs the clipboard offers the files, as a drag does
+// (text/uri-list, the retro-files JSON and GNOME's list), written to a temporary folder only when something asks.
+static QVector<XItem> &clipItems() { static QVector<XItem> v; return v; }
+static QByteArray &clipToken() { static QByteArray t; return t; }
+
+void MainWindow::copySelected() {
+    QVector<FileRef> refs = selectedRefs();
+    if (refs.isEmpty()) { m_status->setText("Select the files to copy."); return; }
+    QVector<XItem> items;
+    QString err;
+    if (!exportFiles(refs, &items, &err)) { message("Copy", err); return; }
+    static int serial = 0;
+    clipItems() = items;
+    clipToken() = QByteArray::number(qint64(QCoreApplication::applicationPid())) + ":" + QByteArray::number(++serial);
+    auto *m = new RetroFiles::DragOutMime([items](QVector<XItem> *out, QString *) { *out = items; return true; },
+                                          trimTextOnExtract(), QFileInfo(m_img.path()).fileName());
+    m->setForClipboard(true);
+    m->setData(CPMDW_MIME_CLIP, clipToken());
+    QApplication::clipboard()->setMimeData(m);
+    static bool once = false;                  // the copied files live in a folder removed at exit: don't leave
+    if (!once) {                               // a clipboard behind that names them
+        once = true;
+        connect(qApp, &QCoreApplication::aboutToQuit, [] {
+            const QMimeData *c = QApplication::clipboard()->mimeData();
+            if (c && c->hasFormat(CPMDW_MIME_CLIP) && QApplication::clipboard()->ownsClipboard()) QApplication::clipboard()->clear();
+        });
+    }
+    m_status->setText(QString("Copied %1 file%2 - Edit > Paste puts %3 into another disc, a folder on the desktop or "
+                              "another program.").arg(items.size()).arg(items.size() == 1 ? "" : "s").arg(items.size() == 1 ? "it" : "them"));
+}
+
+// Local files the clipboard names: a file manager's copy (text/uri-list, or GNOME's own list).
+static QStringList clipboardPaths(const QMimeData *m) {
+    QStringList paths;
+    for (const QUrl &u : m->urls())
+        if (u.isLocalFile()) paths << u.toLocalFile();
+    if (paths.isEmpty() && m->hasFormat("x-special/gnome-copied-files")) {
+        const QList<QByteArray> lines = m->data("x-special/gnome-copied-files").split('\n');
+        for (int i = 1; i < lines.size(); ++i) {               // line 0 is "copy" or "cut"
+            QUrl u = QUrl::fromEncoded(lines[i].trimmed());
+            if (u.isLocalFile()) paths << u.toLocalFile();
+        }
+    }
+    return paths;
+}
+
+bool MainWindow::clipboardUsable() const {
+    const QMimeData *m = QApplication::clipboard()->mimeData();
+    return m && (m->hasFormat(CPMDW_MIME_CLIP) || m->hasFormat(RetroFiles::MimeType) || m->hasUrls() ||
+                 m->hasFormat("x-special/gnome-copied-files"));
+}
+
+// Edit > Paste: to the user number and side of the selection, as Add files does (no selection: each file keeps its
+// own user number).
+void MainWindow::paste() {
+    if (!m_nvols) return;
+    if (!writable()) { message("Paste", "The disc is read-only: " + readOnlyReason()); return; }
+    QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
+    int user = sel.isEmpty() ? -1 : targetUser(sel.first()), side = sel.isEmpty() ? 0 : targetSide(sel.first());
+    const QMimeData *m = QApplication::clipboard()->mimeData();
+    if (!m || !pasteItems(m, user, side))
+        m_status->setText("Nothing to paste: copy some files first (here, in another window, or in a file manager).");
+}
+
+bool MainWindow::pasteItems(const QMimeData *m, int user, int side) {
+    if (m->hasFormat(CPMDW_MIME_CLIP) && !clipToken().isEmpty() && m->data(CPMDW_MIME_CLIP) == clipToken()) {
+        const QVector<XItem> items = clipItems();          // copied in this program: nothing written to the host
+        ImportCtx c;
+        importItems(items, user, side, c);
+        importSummary(c);
+        return true;
+    }
+    if (m->hasFormat(RetroFiles::MimeType)) {             // another copy of this program, or another tool
+        QByteArray json = m->data(RetroFiles::MimeType);
+        if (!json.isEmpty()) { importRetroFiles(json, user, side); return true; }
+    }
+    QStringList paths = clipboardPaths(m);                 // files copied in a file manager: as Add files
+    if (paths.isEmpty()) return false;
+    importPaths(paths, user, side);
+    return true;
 }
 
 // ------------------------------------------------------------------------------------------- changing files

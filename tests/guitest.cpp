@@ -21,6 +21,11 @@
 // Wrangler, changes attributes/users, saves, and checks the read-only rules. Leaves <workdir>/out.json (a drag
 // out of this program) for interop_adw to read, and screenshots in <workdir>/shots.
 #include <QApplication>
+#include <QClipboard>
+#include <QFileInfo>
+#include <QMenuBar>
+#include <QTest>
+#include <QToolBar>
 #include <QDir>
 #include <QComboBox>
 #include <QDragEnterEvent>
@@ -363,6 +368,70 @@ int main(int argc, char **argv) {
         CHECK(R2.openImage(wd + "/rm.img") && R2.sides() == 2 && R2.volume(1).files().size() == n1 + 2, "reopened: side 1 has the two new files");
         shot(&R2, wd + "/shots/rm.png");
     }
+    printf("== menus and buttons: the same order as Acorn Disk Wrangler's\n");
+    {   // (Acorn Disk Wrangler has a few more items in between; with them taken out, both list the same things in the same order)
+        QStringList edit, buttons, common;
+        for (QAction *mm : A.menuBar()->actions())
+            if (mm->menu() && mm->text() == "&Edit")
+                for (QAction *x : mm->menu()->actions()) edit << (x->isSeparator() ? QString("-") : x->text().remove('&'));
+        for (QToolBar *tb : A.findChildren<QToolBar *>()) for (QPushButton *b : tb->findChildren<QPushButton *>()) buttons << b->text();
+        printf("  Edit: %s\n  buttons: %s\n", qPrintable(edit.join(" | ")), qPrintable(buttons.join(" | ")));
+        CHECK(edit == QStringList({"View (text / hex)", "Extract to folder...", "-", "Add files...", "-", "Copy", "Paste", "-",
+                                   "Rename...", "Properties (attributes, user)...", "Delete", "-", "Disc label..."}), "the Edit menu's order");
+        CHECK(buttons == QStringList({"View", "Extract", "Add files", "Rename", "Properties", "Delete", "Format"}), "the buttons' order");
+        for (const QString &b : buttons) if (b != "Format") common << b;
+        CHECK(common == QStringList({"View", "Extract", "Add files", "Rename", "Properties", "Delete"}), "the buttons both programs have, in the same order");
+    }
+
+    printf("== copy and paste, with the platform's keys\n");
+    {
+        auto key = [](MainWindow *w, QKeySequence::StandardKey k) {
+            w->activateWindow(); QTest::qWaitForWindowActive(w); w->tree()->setFocus(); pump();
+            QTest::keySequence(w->tree(), QKeySequence(k)); pump();
+        };
+        QClipboard *cb = QApplication::clipboard();
+        int ia = A.volume().indexOf(0, "AVERYLON.DOC");
+        CHECK(ia >= 0 && B.volume().indexOf(0, "AVERYLON.DOC") < 0, "0:AVERYLON.DOC is on disc A, not on B");
+        QByteArray doc = fileData(A.volume(), 0, "AVERYLON.DOC");
+        A.tree()->clearSelection();
+        findRow(A.tree(), RowFile, 0, "AVERYLON.DOC")->setSelected(true);
+        key(&A, QKeySequence::Copy);       // the tree's own Ctrl+C (a row's text) must not get it
+        const QMimeData *cm = cb->mimeData();
+        CHECK(cm && cm->hasFormat(CPMDW_MIME_CLIP) && cm->hasFormat(RetroFiles::MimeType) && cm->hasUrls() &&
+              cm->hasFormat("x-special/gnome-copied-files"), "Ctrl+C puts the files on the clipboard");
+        // what was copied is kept: delete it from A, then paste into B
+        QString e;
+        CHECK(A.deleteFiles({FileRef(0, 0, "AVERYLON.DOC")}, &e), "delete the copied file from disc A: " + e);
+        A.refresh();
+        B.tree()->clearSelection();
+        findRow(B.tree(), RowUser, 3)->setSelected(true);
+        key(&B, QKeySequence::Paste);
+        CHECK(fileData(B.volume(), 3, "AVERYLON.DOC") == doc, "Ctrl+V pastes it into disc B, into the selected User 3, unchanged");
+        B.tree()->clearSelection();
+        // files copied in a file manager: a URL list, or GNOME Files' own list (nothing selected: user 0)
+        auto *u = new QMimeData;
+        u->setUrls({QUrl::fromLocalFile(wd + "/host/misc/notes.txt")});
+        cb->setMimeData(u);
+        pump();
+        QMetaObject::invokeMethod(&B, "paste", Qt::DirectConnection);
+        CHECK(fileData(B.volume(), 0, "NOTES.TXT") == "notes\r\n", "a file copied in a file manager is pasted");
+        auto *g = new QMimeData;
+        g->setData("x-special/gnome-copied-files", "copy\n" + QUrl::fromLocalFile(wd + "/host/drop.txt").toEncoded());
+        cb->setMimeData(g);
+        pump();
+        QMetaObject::invokeMethod(&B, "paste", Qt::DirectConnection);
+        CHECK(fileData(B.volume(), 0, "DROP.TXT") == "dropped\r\n", "GNOME Files' list is pasted");
+        // copied here, pasted in a file manager: the files are written when it asks, as for a drag
+        B.tree()->clearSelection();
+        findRow(B.tree(), RowFile, 3, "AVERYLON.DOC")->setSelected(true);
+        QMetaObject::invokeMethod(&B, "copySelected", Qt::DirectConnection);
+        QList<QUrl> urls = cb->mimeData() ? cb->mimeData()->urls() : QList<QUrl>();
+        QFile out(urls.value(0).toLocalFile());
+        CHECK(urls.size() == 1 && QFileInfo(out).fileName() == "averylon.doc" && out.open(QIODevice::ReadOnly) && out.readAll() == doc,
+              "a file manager gets averylon.doc (lower case, as Extract writes it) when it asks: " + QFileInfo(out).fileName());
+        CHECK(cb->mimeData()->data("x-special/gnome-copied-files").startsWith("copy\nfile://"), "... and GNOME's list of it");
+    }
+
     shot(&A, wd + "/shots/pcw.png");
     shot(&B, wd + "/shots/ibm3740.png");
     printf("%s\n", failures ? qPrintable(QString("%1 FAILURES").arg(failures)) : "all ok");

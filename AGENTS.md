@@ -25,7 +25,7 @@ with its terms (and in About if it ships in the program); material only consulte
 | `detect.h/.cpp` | working out the format: candidates, scoring, ranking, confidence, `safeToWrite` |
 | `resources/builtin-diskdefs` | this program's definitions (Acorn Z80, Amstrad, Kaypro) and descriptions for cpmtools' ones |
 | `resources/cpmtools-diskdefs` | cpmtools 2.23's diskdefs file, unchanged (Michael Haardt and contributors, GPL v3+; see THIRD-PARTY-NOTICES.md) |
-| `mainwindow.*`, `mainwindow_p.h` | window, `DropTree`, importing/exporting, menus; `mainwindow_p.h` has the shared tree helpers (same as Acorn Disk Wrangler's) and `XItem` |
+| `mainwindow.*`, `mainwindow_p.h` | window, `DropTree`, importing/exporting, Copy / Paste, menus; `mainwindow_p.h` has the shared tree helpers (same as Acorn Disk Wrangler's) and `XItem` |
 | `formatdialog.*` | Tools > Disc format (ranked readings, evidence, preview, try a format by hand) |
 | `newdisc.*` | File > New disc image |
 | `dragout.*` | `retro-files` JSON writer/reader, drag-out data, temporary drag folders |
@@ -214,7 +214,7 @@ Each test is its own `.pro` in `tests/`:
 | `fstest library` | built-in definitions that replace cpmtools ones have the same layout and `dirblks` |
 | `fstest addto <image> NAME size` | detect, add a file, save (for checking edits of real images with cpmtools) |
 | `tests/verify_independent.sh <fstest outdirs>` | **independent**: Python IMD/DSK decoder + libdsk (where its geometry probe is right) must see the same sectors; cpmtools must read every file exactly and `fsck.cpm` must be clean |
-| `guitest <dir> [osborne.imd [teledisk.td0]] [--adw dir]` | offscreen GUI: host drops (userN folders, flattening, .inf skipped), real drag events between windows, drag-out JSON, drops made by Acorn Disk Wrangler's code, read-only rules, format dialog, TeleDisk Save As; screenshots in `<dir>/shots` |
+| `guitest <dir> [osborne.imd [teledisk.td0]] [--adw dir]` | offscreen GUI: host drops (userN folders, flattening, .inf skipped), real drag events between windows, drag-out JSON, drops made by Acorn Disk Wrangler's code, read-only rules, format dialog, TeleDisk Save As, the menu and button order, Copy / Paste with the real keys (`QTest`: the `.pro` has `QT += testlib`); screenshots in `<dir>/shots`. `run_all.sh` fails unless it ends "all ok" |
 | `tests/interop_adw` (qmake `ADW=<Acorn Disk Wrangler source>`) | built from **Acorn Disk Wrangler's own dragout.cpp**: `make <dir>` writes its drags (ADFS, DFS, FAT) for guitest; `read <json>` reads ours |
 | `tests/acornz80_check.py <dsd> <outdir>` | **independent** Acorn Z80 reader (from Application Note 007 only); `run_all.sh` compares its files with ours for every `<real>/acorn/*.dsd` (the owner's discs, not in the repo) |
 | `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
@@ -223,6 +223,28 @@ Each test is its own `.pro` in `tests/`:
 **Verify independently, not with our own code.** Our reader agreeing with our writer proves little. This
 caught a real bug (a built-in `kpiv` without `dirblks 2`, so new files were put in a block the Kaypro reserves
 for the directory) that every self-test had passed.
+
+## The window (kept in step with Acorn Disk Wrangler)
+- **Menus, button bar and context menu have the same order in both programs** (owner's rule; one program's extra
+  items may sit in between). File: New window (Ctrl+Shift+N), New disc image (Ctrl+N), Open | Save, Save as,
+  Revert | Create local config file | Close, Quit. Edit: View (F3), Extract to folder (Ctrl+E) | Add files
+  (Ctrl+Shift+F) | Copy, Paste (`QKeySequence::Copy/Paste`: the platform's keys) | Rename (F2), Properties
+  (Alt+Return), Delete (`deleteKeys()`: Delete, plus Cmd+Backspace on macOS) | Disc label. Tools: Check disc
+  (Ctrl+K) first, then this program's tools, then the options with *Keep a .bak copy* last. Buttons: View, Extract,
+  Add files, Rename, Properties, Delete | Format. Acorn Disk Wrangler adds Add folder and New directory after Add
+  files, and disc-level items at the end of Edit. `guitest` here and `guitest2` there assert the order: change
+  both programs together. Window title `<file> * - CP/M Disk Wrangler`; the status bar's label says what the disc
+  is, then `  -  `-separated extras such as `read-only: <reason>`.
+- **Copy and Paste** (the same design in Acorn Disk Wrangler): Copy exports the selection at once (`exportFiles`)
+  and keeps the `XItem`s, so a paste gets what was selected then even if the disc has changed or the window has
+  closed. The clipboard gets a `RetroFiles::DragOutMime` whose exporter returns that copy (files are written to a
+  drag folder only when another program asks: text/uri-list, the retro-files JSON and, `setForClipboard`, GNOME's
+  `x-special/gnome-copied-files`), plus `CPMDW_MIME_CLIP` = `pid:n`. Paste (`pasteItems`): our own token ->
+  `importItems` from the kept copy (nothing written); else retro-files JSON -> `importRetroFiles` (another copy of
+  this program, Acorn Disk Wrangler); else local files from a file manager (URLs or GNOME's list) ->
+  `importPaths`. Target: the selection's user number and side, as Add files (none selected: each file keeps its
+  user). A clipboard we still own is cleared at exit (its files go with the drag folders). Checked across real
+  processes on X11 (Xvfb + xclip); not tested with Windows Explorer or macOS Finder.
 
 ## Testing pitfalls (things that bit us)
 - **libdsk's geometry probe is unreliable** for many layouts (it guessed a Kaypro disc as 9 sectors from 1); its
