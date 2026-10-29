@@ -227,8 +227,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_actSaveAs->setShortcut(QKeySequence("Ctrl+Shift+S"));
     m_actRevert = file->addAction("&Revert", this, &MainWindow::revert);
     file->addSeparator();
-    file->addAction("Create &local config file...", this, [this] { AppSettings::createPortableFileDialog(this); });
-    file->addSeparator();
+    AppSettings::addMenuItem(file, this);         // where portable settings exist (not a Linux install)
+    if (AppSettings::offered()) file->addSeparator();
     file->addAction("&Close", this, &QWidget::close)->setShortcut(QKeySequence::Close);
     file->addAction("&Quit", qApp, &QApplication::closeAllWindows)->setShortcut(QKeySequence::Quit);
 

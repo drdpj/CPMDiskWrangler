@@ -11,7 +11,7 @@ step() { echo; echo "######## $*"; }
 build() { mkdir -p "$b/$1" && (cd "$b/$1" && qmake "$2" ${3:+"$3"} >/dev/null && make -j8 >/dev/null 2>"$b/$1.log") || { echo "BUILD FAILED: $1 (see $b/$1.log)"; fail=1; }; }
 step build
 build app "$src/cpmdiskwrangler.pro"
-for t in detecttest fstest guitest mkicon; do build $t "$src/tests/$t.pro"; done
+for t in detecttest fstest guitest mkicon settingstest; do build $t "$src/tests/$t.pro"; done
 [ -n "$adw" ] && build interop "$src/tests/interop_adw/interop_adw.pro" "ADW=$adw"
 export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)
@@ -26,6 +26,8 @@ echo "independent checks: $(grep -c '^ok' "$W/verify.log") passed, $(grep -c '^F
 "$b/fstest/fstest" atomic "$W/atomic" | tail -1 | grep -q ok || { echo "FAIL atomic"; fail=1; }
 "$b/fstest/fstest" library | tail -1 | grep -q ok || { echo "FAIL library"; fail=1; }
 "$b/fstest/fstest" roundtrip "$W"/fs/imd/*.imd "$W"/fs/edsk/*.dsk | grep -v "^same" && fail=1
+step "settings: installed vs AppImage (portable mode)"
+"$b/settingstest/settingstest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "settings: ok" || { "$b/settingstest/settingstest"; fail=1; }
 step "not CP/M: Acorn DFS discs, and DFS discs with the catalogue wiped"
 mkdir -p "$W/foreign" && python3 "$src/tests/make_foreign.py" "$W/foreign"
 "$b/detecttest/detecttest" "$W"/foreign/* > "$W/foreign.log" 2>&1

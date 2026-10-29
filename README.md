@@ -14,7 +14,14 @@ Get the latest build for Windows, macOS or Linux from the
 * **Windows** (10 or later, 64-bit): unzip anywhere and run `cpmdiskwrangler.exe`.
 * **macOS** (12 or later, Intel or Apple Silicon): open the `.dmg` and drag the app to Applications. It isn't
   signed by Apple, so the first time, right-click it and choose **Open**.
-* **Linux** (x86_64): the `.AppImage` runs as it is - make it executable (`chmod +x`) and start it.
+* **Linux** (x86_64):
+  * **Ubuntu 22.04 or later, Debian 12 or later:** install the `.deb`, which uses the system's Qt and puts the
+    program in the applications menu with its icon:
+    `sudo apt install ./cpmdiskwrangler-<version>-linux-amd64.deb` (the `./` matters; Ubuntu's App Center may not
+    open a downloaded `.deb`). Remove it with `sudo apt remove cpmdiskwrangler`.
+  * **Any other Linux:** the `.AppImage` runs as it is - make it executable (`chmod +x`) and start it. It
+    doesn't add itself to the applications menu, so docks show a generic icon for it unless a tool such as
+    Gear Lever or AppImageLauncher integrates it.
 
 Help > About shows the version, and Help > Licences the licences of the program and everything distributed with it.
 
@@ -74,7 +81,8 @@ the usual place for your system: the registry (`HKEY_CURRENT_USER\Software\cpmdi
 To keep them with the program instead - on a USB stick, say - choose **File > Create local config file**: it
 makes **`cpmdiskwrangler.ini`** in the program's folder (beside the `.exe` on Windows, beside the `.app` on macOS) with
 a copy of the current settings, and uses it from then on. (Putting an empty file of that name there by hand does
-the same.) Delete the file to go back to the system's settings. Help > About says which is in use.
+the same.) Delete the file to go back to the system's settings. Help > About says which is in use. For the AppImage the file goes beside the
+`.AppImage`; a program installed from the `.deb` always uses the system's place, so it doesn't offer this.
 
 ## Drag and drop between disc tools
 Both Wranglers implement **[retro-files](docs/retro-files-format.md)** (`application/x-retro-files+json`), an open
