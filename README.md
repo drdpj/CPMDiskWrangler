@@ -1,3 +1,6 @@
+[![Latest release](https://img.shields.io/github/v/release/drdpj/CPMDiskWrangler?label=release)](https://github.com/drdpj/CPMDiskWrangler/releases/latest)
+[![Latest pre-release](https://img.shields.io/github/v/release/drdpj/CPMDiskWrangler?include_prereleases&label=pre-release)](https://github.com/drdpj/CPMDiskWrangler/releases)
+
 # CP/M Disk Wrangler
 
 View and edit CP/M disc images. It reads raw sector dumps, ImageDisk, CPCEMU and extended DSK, and TeleDisk images,
