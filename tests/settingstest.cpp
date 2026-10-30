@@ -40,6 +40,20 @@ int main(int argc, char **argv) {
     CHECK(!AppSettings::createPortableFile(&err), "creating a local config file is refused");
     if (made) QFile::remove(stray.fileName());
 
+    printf("== the Windows installer's folder (unins000.dat beside the program)\n");
+    {
+        QTemporaryDir dir;
+        CHECK(!AppSettings::installedHere(dir.path()), "a folder without the uninstaller is an unzipped copy");
+        QFile exe(dir.path() + "/unins000.exe");
+        exe.open(QIODevice::WriteOnly);
+        exe.close();
+        CHECK(!AppSettings::installedHere(dir.path()), "the uninstaller's .exe alone isn't enough");
+        QFile dat(dir.path() + "/unins001.dat");
+        dat.open(QIODevice::WriteOnly);
+        dat.close();
+        CHECK(AppSettings::installedHere(dir.path()), "with its log (unins001.dat) it was installed");
+    }
+
     printf("== AppImage that isn't there\n");
     qputenv("APPIMAGE", QFile::encodeName(tmp.path() + "/gone.AppImage"));
     CHECK(!AppSettings::offered(), "a missing .AppImage counts as installed");

@@ -18,7 +18,8 @@
 ;
 ; Qt's DLLs and plugin folders change between releases (MSYS2's Qt moves on), so an update first deletes the DLLs
 ; beside the program and each folder this version ships; the workflow lists those folders in
-; build\installer-delete.iss. Anything else in the program's folder (a portable acorndiskwrangler.ini, say) is kept.
+; build\installer-delete.iss. Anything else in the program's folder is kept. An installed program has no portable
+; mode (appsettings.h: it sees Inno Setup's unins000.dat beside it), so File > Create local config file isn't shown.
 
 #ifndef ProgName
   #error ProgName (the program, e.g. acorndiskwrangler) must be given: /DProgName=...

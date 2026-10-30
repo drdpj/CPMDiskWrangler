@@ -23,8 +23,9 @@
 // beside the .app bundle on macOS - the settings are kept in that file instead, so the program can be carried on
 // a USB stick with them. An empty file is enough to switch it on. (On a read-only medium the settings are read
 // but not saved.) An AppImage runs from a temporary mount, so its folder is the one holding the .AppImage file
-// ($APPIMAGE). A program installed on Linux (a .deb, make install) has no folder of its own to carry about, so
-// it has no portable mode at all: offered() is false, and a .ini in /usr/bin is never looked for.
+// ($APPIMAGE). A program installed on Linux (a .deb, make install) or by the Windows installer has no folder of
+// its own to carry about, so it has no portable mode at all: offered() is false, and a .ini in /usr/bin or
+// Program Files is never looked for.
 //
 // File > Create local config file makes that file (createPortableFileDialog), copying the current settings into
 // it, and switches to it at once. Deleting the file goes back to the system's place at the next start.
@@ -49,13 +50,24 @@ public:
         if (portable()) setFallbacksEnabled(false);          // nothing from system-wide (e.g. /etc/xdg) files
     }
 
-    // Whether portable mode exists here: Windows, macOS, and a Linux AppImage; not a program installed on Linux.
+    // Whether portable mode exists here: a copy unzipped anywhere on Windows, macOS, and a Linux AppImage; not a
+    // program installed by the Windows installer (in Program Files, which isn't the user's to write to, and not
+    // carried about) or installed on Linux.
     static bool offered() {
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+#if defined(Q_OS_WIN)
+        return !installedHere(QCoreApplication::applicationDirPath());
+#elif defined(Q_OS_MACOS)
         return true;
 #else
         return !appImage().isEmpty();
 #endif
+    }
+
+    // Whether the Windows installer (ci/installer.iss, Inno Setup) put the program in this folder: Inno Setup always
+    // leaves its uninstaller's log, unins000.dat (unins001.dat ... if that name was taken), beside the program, and
+    // the zip has none. A plain check of the folder, so the tests can try it anywhere.
+    static bool installedHere(const QString &folder) {
+        return !QDir(folder).entryList({QStringLiteral("unins???.dat")}, QDir::Files).isEmpty();
     }
 
     // The .AppImage file this program was started from, or empty.

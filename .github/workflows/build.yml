@@ -133,6 +133,8 @@ jobs:
               -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/DIR=$dir"
           if ($p.ExitCode) { throw "$($setup.Name) failed (exit code $($p.ExitCode))" }
           if (-not (Test-Path "$dir\$env:APP.exe")) { throw "$($setup.Name) didn't install $env:APP.exe" }
+          # how the program knows it was installed (no File > Create local config file): appsettings.h, installedHere()
+          if (-not (Test-Path "$dir\unins000.dat")) { throw "no unins000.dat beside the installed $env:APP.exe" }
           $env:PATH = "C:\Windows\System32;C:\Windows"
           $a = Start-Process -FilePath "$dir\$env:APP.exe" -PassThru
           Start-Sleep -Seconds 8
