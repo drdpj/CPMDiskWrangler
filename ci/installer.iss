@@ -10,10 +10,11 @@
 ;        /DProgUrl=https://github.com/drdpj/AcornDiskWrangler /DDeployDir=C:\...\deploy /DOutDir=C:\...\dist
 ;        /DOutName=acorndiskwrangler-v0.9.7-beta.2-windows-x64-setup ci\installer.iss
 ;
-; ProgFolder is ProgTitle made fit for a folder or shortcut name ("CP/M" -> "CPM"). It installs for the current
-; user by default (no administrator needed, into %LOCALAPPDATA%\Programs) and offers "for all users" instead; an
-; install over an older version replaces it. Each program keeps its own AppId below, for good: Windows knows an
-; installed program by it.
+; ProgFolder is ProgTitle made fit for a folder or shortcut name ("CP/M" -> "CPM"). It installs for all users by
+; default, into Program Files (Windows asks for an administrator), and its first page offers "only for me" instead
+; (no administrator, into %LOCALAPPDATA%\Programs; also /CURRENTUSER on the command line, as the workflow's check
+; uses). An install over an older version replaces it. Each program keeps its own AppId below, for good: Windows
+; knows an installed program by it.
 ;
 ; Qt's DLLs and plugin folders change between releases (MSYS2's Qt moves on), so an update first deletes the DLLs
 ; beside the program and each folder this version ships; the workflow lists those folders in
@@ -76,7 +77,7 @@ DefaultDirName={autopf}\{#ProgFolder}
 DefaultGroupName={#ProgFolder}
 DisableProgramGroupPage=yes
 DisableDirPage=auto
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=commandline dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible

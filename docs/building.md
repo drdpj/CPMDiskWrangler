@@ -87,10 +87,10 @@ For Qt 5, use Homebrew's `qt@5` (Apple Silicon only, and Homebrew drops it in Ma
   To undo a tag before anyone has the release: `git tag -d <tag>`, `git push origin :refs/tags/<tag>`, and delete
   the release on GitHub.
 * **The Windows installer** is built only for a tag and for Run workflow (so it can be tried without a release),
-  and the workflow checks that it installs, starts and uninstalls. It installs for the current user by default (no
-  administrator needed), or for all users; a newer version installs over an older one. It isn't signed, so
-  Windows SmartScreen warns about it ("More info" > "Run anyway"). Inno Setup comes from the runner image, or
-  from Chocolatey when the image has none. Each program has its own fixed AppId in `ci/installer.iss`: never
+  and the workflow checks that it installs, starts and uninstalls. It installs into Program Files for all users by
+  default (Windows asks for an administrator), or only for the current user without one; a newer version
+  installs over an older one. It isn't signed, so Windows SmartScreen warns about it ("More info" > "Run
+  anyway"). Inno Setup comes from Chocolatey (or the runner image's, when that is current). Each program has its own fixed AppId in `ci/installer.iss`: never
   change it, or Windows treats the next version as a different program.
 * **Qt 5 builds**: Actions > Build > Run workflow, Qt major version 5. Their packages are named `...-qt5`; the
   macOS one comes from Homebrew's `qt@5`, for Apple Silicon only.
