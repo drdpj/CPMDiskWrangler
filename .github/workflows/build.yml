@@ -87,21 +87,23 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
-          # Inno Setup 6.3 or later (ci/installer.iss uses x64compatible): the runner image's own if it has one,
-          # else from Chocolatey (newer runner images may not carry it)
-          function Find-Iscc {
-            Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup *\ISCC.exe", "$env:ProgramFiles\Inno Setup *\ISCC.exe" -ErrorAction SilentlyContinue |
-              Where-Object { $_.VersionInfo.FileMajorPart * 100 + $_.VersionInfo.FileMinorPart -ge 603 } |
-              Select-Object -First 1
+          # Inno Setup 6.3 or later (ci/installer.iss uses x64compatible). choco upgrade installs Chocolatey's
+          # current one, or leaves the runner image's alone when that is already current (6.7.1 in October 2026).
+          choco upgrade innosetup -y --no-progress
+          if ($LASTEXITCODE) { throw "could not install Inno Setup" }
+          # Where it went: the folder its installer records, then the usual folders, then PATH. (Looking only in
+          # "Program Files*\Inno Setup *" and reading ISCC.exe's version found nothing on windows-latest.)
+          $places = @()
+          foreach ($hive in 'HKLM:\SOFTWARE\WOW6432Node', 'HKLM:\SOFTWARE', 'HKCU:\SOFTWARE') {
+            Get-ItemProperty "$hive\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup *_is1" -ErrorAction SilentlyContinue |
+              ForEach-Object { if ($_.InstallLocation) { $places += Join-Path $_.InstallLocation 'ISCC.exe' } }
           }
-          $iscc = Find-Iscc
-          if (-not $iscc) {
-            choco upgrade innosetup -y --no-progress      # installs it when it isn't there
-            if ($LASTEXITCODE) { throw "could not install Inno Setup" }
-            $iscc = Find-Iscc
-            if (-not $iscc) { throw "no Inno Setup 6.3 or later, even after installing it" }
-          }
-          Write-Host "Inno Setup $($iscc.VersionInfo.ProductVersion): $($iscc.FullName)"
+          $places += "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          $onPath = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($onPath) { $places += $onPath.Source }
+          $iscc = $places | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe not found; looked in: $($places -join '; ')" }
+          Write-Host "Inno Setup $((Get-Item -LiteralPath $iscc).VersionInfo.ProductVersion): $iscc"
           # name and copyright from the .pro, as the macOS bundle's; a folder or shortcut name can't hold "/" ("CP/M")
           $pro = Get-Content "$env:APP.pro"
           function Pro-Value($key) {
@@ -116,7 +118,7 @@ jobs:
           $del = @('[InstallDelete]', 'Type: files; Name: "{app}\*.dll"')
           $del += Get-ChildItem deploy -Directory | ForEach-Object { "Type: filesandordirs; Name: ""{app}\$($_.Name)""" }
           Set-Content -Path build\installer-delete.iss -Value $del -Encoding utf8
-          & $iscc.FullName /Qp "/DProgName=$env:APP" "/DProgTitle=$title" "/DProgFolder=$folder" `
+          & $iscc /Qp "/DProgName=$env:APP" "/DProgTitle=$title" "/DProgFolder=$folder" `
               "/DProgVersion=$version" "/DProgNumVersion=$num" "/DProgCopyright=$copyright" `
               "/DProgUrl=$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" "/DDeployDir=$PWD\deploy" `
               "/DOutDir=$PWD\dist" "/DOutName=$env:APP-$env:VERSION-windows-x64-setup" ci\installer.iss
