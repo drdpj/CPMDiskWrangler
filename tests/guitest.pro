@@ -6,6 +6,6 @@ CONFIG -= app_bundle
 TARGET = guitest
 SOURCES += guitest.cpp ../mainwindow.cpp ../licences.cpp ../formatdialog.cpp ../newdisc.cpp ../viewer.cpp ../viewtext.cpp ../icon.cpp \
            ../dragout.cpp ../diskimage.cpp ../lzhuf.cpp ../cpmformat.cpp ../cpmfs.cpp ../torchfs.cpp ../detect.cpp
-HEADERS += ../mainwindow.h ../mainwindow_p.h ../formatdialog.h ../newdisc.h ../viewer.h ../viewtext.h ../icon.h \
+HEADERS += ../fileopen.h ../mainwindow.h ../mainwindow_p.h ../formatdialog.h ../newdisc.h ../viewer.h ../viewtext.h ../icon.h \
            ../dragout.h ../diskimage.h ../cpmformat.h ../cpmfs.h ../torchfs.h ../detect.h
 RESOURCES += ../resources.qrc

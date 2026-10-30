@@ -11,7 +11,9 @@ formats. Files can be dragged between discs, to and from your desktop, and to an
 Get the latest build for Windows, macOS or Linux from the
 [Releases page](https://github.com/drdpj/CPMDiskWrangler/releases).
 
-* **Windows** (10 or later, 64-bit): unzip anywhere and run `cpmdiskwrangler.exe`.
+* **Windows** (10 or later, 64-bit): run the `...-setup.exe` installer, which adds the program to the Start menu
+  (no administrator needed), or unzip the `.zip` anywhere and run `cpmdiskwrangler.exe`. Neither is signed, so
+  Windows may warn the first time: choose **More info**, then **Run anyway**.
 * **macOS** (12 or later, Intel or Apple Silicon): open the `.dmg` and drag the app to Applications. It isn't
   signed by Apple, so the first time, right-click it and choose **Open**.
 * **Linux** (x86_64):

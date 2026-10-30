@@ -43,6 +43,7 @@
 #include <QUrl>
 #include <cstdio>
 #include "../formatdialog.h"
+#include "../fileopen.h"
 #include "../mainwindow.h"
 
 static int failures = 0;
@@ -459,6 +460,31 @@ int main(int argc, char **argv) {
         CHECK(urls.size() == 1 && QFileInfo(out).fileName() == "averylon.doc" && out.open(QIODevice::ReadOnly) && out.readAll() == doc,
               "a file manager gets averylon.doc (lower case, as Extract writes it) when it asks: " + QFileInfo(out).fileName());
         CHECK(cb->mimeData()->data("x-special/gnome-copied-files").startsWith("copy\nfile://"), "... and GNOME's list of it");
+    }
+
+    printf("== files opened from the Finder (fileopen.h)\n");
+    {
+        FileOpen::FileOpenFilter filter;
+        qApp->installEventFilter(&filter);
+        auto holding = [](const QString &p) {
+            QList<MainWindow *> r;
+            for (MainWindow *w : MainWindow::windows())
+                if (w->image().isOpen() && QFileInfo(w->image().path()).canonicalFilePath() == QFileInfo(p).canonicalFilePath()) r << w;
+            return r;
+        };
+        auto finderOpen = [](const QString &p) { QFileOpenEvent ev(p); QCoreApplication::sendEvent(qApp, &ev); pump(); };
+        CHECK(QFile::copy(wd + "/b.imd", wd + "/fo1.imd") && QFile::copy(wd + "/b.imd", wd + "/fo2.imd"), "two copies of b.imd to open");
+        const int n = MainWindow::windows().size();
+        finderOpen(wd + "/b.imd");
+        CHECK(MainWindow::windows().size() == n && holding(wd + "/b.imd").size() == 1, "an image already open is brought forward, not opened twice");
+        finderOpen(wd + "/fo1.imd");
+        CHECK(MainWindow::windows().size() == n + 1 && holding(wd + "/fo1.imd").size() == 1, "with every window holding a disc, it gets a window of its own");
+        auto *empty = new MainWindow;
+        empty->setAttribute(Qt::WA_DeleteOnClose);
+        empty->show();
+        pump();
+        finderOpen(wd + "/fo2.imd");
+        CHECK(MainWindow::windows().size() == n + 2 && holding(wd + "/fo2.imd").value(0) == empty, "an empty window takes it");
     }
 
     shot(&A, wd + "/shots/pcw.png");

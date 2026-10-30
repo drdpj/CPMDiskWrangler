@@ -1,6 +1,6 @@
 # Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root.
 #
-# Builds Windows (x64 zip), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
+# Builds Windows (x64 zip; for a release tag or Run workflow also an installer, ci/installer.iss), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
 # AppImage, and a .deb that uses the system's Qt for Ubuntu 22.04+ / Debian 12+), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
 # program (Help > Licences) and copied beside it. Qt 6 by default; "Run workflow" (Actions tab) can build with
 # Qt 5.15 instead, whose packages are named ...-qt5 (on macOS that one is Apple Silicon only, from Homebrew). Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
@@ -83,6 +83,64 @@ jobs:
           Start-Sleep -Seconds 8
           if ($p.HasExited) { throw "$env:APP.exe exited at once (code $($p.ExitCode)): a DLL is probably missing" }
           Stop-Process -Id $p.Id
+      - name: Installer (release tags and Run workflow)
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          # Inno Setup 6.3 or later (ci/installer.iss uses x64compatible): the runner image's own if it has one,
+          # else from Chocolatey (newer runner images may not carry it)
+          function Find-Iscc {
+            Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup *\ISCC.exe", "$env:ProgramFiles\Inno Setup *\ISCC.exe" -ErrorAction SilentlyContinue |
+              Where-Object { $_.VersionInfo.FileMajorPart * 100 + $_.VersionInfo.FileMinorPart -ge 603 } |
+              Select-Object -First 1
+          }
+          $iscc = Find-Iscc
+          if (-not $iscc) {
+            choco upgrade innosetup -y --no-progress      # installs it when it isn't there
+            if ($LASTEXITCODE) { throw "could not install Inno Setup" }
+            $iscc = Find-Iscc
+            if (-not $iscc) { throw "no Inno Setup 6.3 or later, even after installing it" }
+          }
+          Write-Host "Inno Setup $($iscc.VersionInfo.ProductVersion): $($iscc.FullName)"
+          # name and copyright from the .pro, as the macOS bundle's; a folder or shortcut name can't hold "/" ("CP/M")
+          $pro = Get-Content "$env:APP.pro"
+          function Pro-Value($key) {
+            ($pro | Select-String -Pattern "^$key\s*=\s*(.*)$" | Select-Object -First 1).Matches[0].Groups[1].Value.Trim()
+          }
+          $title = Pro-Value 'QMAKE_TARGET_PRODUCT'
+          $copyright = Pro-Value 'QMAKE_TARGET_COPYRIGHT'
+          $folder = $title -replace '[\\/:*?"<>|]', ''
+          $version = $env:VERSION -replace '^v', ''
+          $num = if ($version -match '^(\d+)\.(\d+)\.(\d+)') { "$($Matches[1]).$($Matches[2]).$($Matches[3])" } else { '0.0.0' }
+          # an update first deletes the DLLs and the folders this version ships (see ci/installer.iss)
+          $del = @('[InstallDelete]', 'Type: files; Name: "{app}\*.dll"')
+          $del += Get-ChildItem deploy -Directory | ForEach-Object { "Type: filesandordirs; Name: ""{app}\$($_.Name)""" }
+          Set-Content -Path build\installer-delete.iss -Value $del -Encoding utf8
+          & $iscc.FullName /Qp "/DProgName=$env:APP" "/DProgTitle=$title" "/DProgFolder=$folder" `
+              "/DProgVersion=$version" "/DProgNumVersion=$num" "/DProgCopyright=$copyright" `
+              "/DProgUrl=$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" "/DDeployDir=$PWD\deploy" `
+              "/DOutDir=$PWD\dist" "/DOutName=$env:APP-$env:VERSION-windows-x64-setup" ci\installer.iss
+          if ($LASTEXITCODE) { throw "the installer didn't build (ISCC exit code $LASTEXITCODE)" }
+      - name: Check the installer installs, starts and uninstalls
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
+          $dir = Join-Path $env:RUNNER_TEMP 'installed'
+          $p = Start-Process -FilePath $setup.FullName -Wait -PassThru `
+              -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/DIR=$dir"
+          if ($p.ExitCode) { throw "$($setup.Name) failed (exit code $($p.ExitCode))" }
+          if (-not (Test-Path "$dir\$env:APP.exe")) { throw "$($setup.Name) didn't install $env:APP.exe" }
+          $env:PATH = "C:\Windows\System32;C:\Windows"
+          $a = Start-Process -FilePath "$dir\$env:APP.exe" -PassThru
+          Start-Sleep -Seconds 8
+          if ($a.HasExited) { throw "the installed $env:APP.exe exited at once (code $($a.ExitCode))" }
+          Stop-Process -Id $a.Id
+          Start-Sleep -Seconds 2
+          # the uninstaller hands over to a copy of itself and returns at once: wait for the program to go
+          Start-Process -FilePath "$dir\unins000.exe" -Wait -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          for ($i = 0; $i -lt 60 -and (Test-Path "$dir\$env:APP.exe"); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path "$dir\$env:APP.exe") { throw "the uninstaller left $env:APP.exe behind" }
       - uses: actions/upload-artifact@v7
         with:
           name: windows

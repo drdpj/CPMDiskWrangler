@@ -26,7 +26,7 @@ QMAKE_TARGET_DESCRIPTION = CP/M Disk Wrangler
 QMAKE_TARGET_COPYRIGHT = Copyright (C) 2026 Daniel Jameson. Licensed under the GNU GPL v3 or later.
 SOURCES += main.cpp mainwindow.cpp formatdialog.cpp newdisc.cpp viewer.cpp viewtext.cpp icon.cpp dragout.cpp licences.cpp \
            diskimage.cpp lzhuf.cpp cpmformat.cpp cpmfs.cpp torchfs.cpp detect.cpp
-HEADERS += appsettings.h buttonbar.h mainwindow.h mainwindow_p.h formatdialog.h newdisc.h viewer.h viewtext.h icon.h dragout.h licences.h \
+HEADERS += appsettings.h buttonbar.h fileopen.h mainwindow.h mainwindow_p.h formatdialog.h newdisc.h viewer.h viewtext.h icon.h dragout.h licences.h \
            diskimage.h cpmformat.h cpmfs.h torchfs.h detect.h
 RESOURCES += resources.qrc
 RESOURCES += licences.qrc                          # Help > Licences: LICENSE, notices, the LGPL for Qt

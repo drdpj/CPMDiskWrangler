@@ -70,7 +70,7 @@ For Qt 5, use Homebrew's `qt@5` (Apple Silicon only, and Homebrew drops it in Ma
 
 | Platform | Built with | Package |
 |---|---|---|
-| Windows 10+, x64 | MSYS2 UCRT64, Qt 6 | `.zip` of the program with its DLLs and plugins |
+| Windows 10+, x64 | MSYS2 UCRT64, Qt 6 | `.zip` of the program with its DLLs and plugins; for a release, also `...-setup.exe`, an Inno Setup installer of the same files (`ci/installer.iss`) |
 | macOS 12+, Intel and Apple Silicon | Qt's official Qt 6.8 LTS (universal) | `.dmg`, signed ad hoc only (right-click > Open the first time) |
 | Linux x86_64 | Ubuntu 22.04, Qt 6, linuxdeploy | AppImage (carries its own Qt) |
 | Ubuntu 22.04+ / Debian 12+, amd64 | the same build, `ci/make-deb.sh` | `.deb` using the system's Qt (about 300 KB) |
@@ -86,6 +86,12 @@ For Qt 5, use Homebrew's `qt@5` (Apple Silicon only, and Homebrew drops it in Ma
 
   To undo a tag before anyone has the release: `git tag -d <tag>`, `git push origin :refs/tags/<tag>`, and delete
   the release on GitHub.
+* **The Windows installer** is built only for a tag and for Run workflow (so it can be tried without a release),
+  and the workflow checks that it installs, starts and uninstalls. It installs for the current user by default (no
+  administrator needed), or for all users; a newer version installs over an older one. It isn't signed, so
+  Windows SmartScreen warns about it ("More info" > "Run anyway"). Inno Setup comes from the runner image, or
+  from Chocolatey when the image has none. Each program has its own fixed AppId in `ci/installer.iss`: never
+  change it, or Windows treats the next version as a different program.
 * **Qt 5 builds**: Actions > Build > Run workflow, Qt major version 5. Their packages are named `...-qt5`; the
   macOS one comes from Homebrew's `qt@5`, for Apple Silicon only.
 
