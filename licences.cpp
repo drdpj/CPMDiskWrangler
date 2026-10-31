@@ -18,6 +18,7 @@
 #include "licences.h"
 #include <QApplication>
 #include <QDialog>
+#include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QDirIterator>
 #include <QFile>
@@ -25,8 +26,9 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
-#include <QPlainTextEdit>
 #include <QSplitter>
+#include <QTextBrowser>
+#include <QUrl>
 #include <QVBoxLayout>
 
 static const char *const kRoot = ":/licences";
@@ -46,7 +48,8 @@ static QStringList licenceFiles() {
 }
 
 // "1 This program - GNU GPL v3" -> "This program - GNU GPL v3"; "Bundled/zlib/LICENSE" -> "zlib: LICENSE"
-static QString displayName(const QString &rel) {
+static QString displayName(QString rel) {
+    if (rel.endsWith(".md")) rel.chop(3);          // a Markdown text is marked by its name (see licences.qrc), not shown with it
     if (rel.startsWith("Bundled/")) {
         QString r = rel.mid(8).trimmed();       // the index's name starts with a space, to sort first
         int slash = r.indexOf('/');
@@ -62,10 +65,13 @@ void showLicences(QWidget *parent) {
                            ? QString("Licences")
                            : QApplication::applicationDisplayName() + " - Licences");
     auto *list = new QListWidget;
-    auto *text = new QPlainTextEdit;
-    text->setReadOnly(true);
-    text->setLineWrapMode(QPlainTextEdit::NoWrap);
-    text->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    // A text whose name ends in .md (the third-party notices) is shown as the Markdown it is; the licences themselves
+    // stay plain text in a fixed-width font. Links open in the system's browser.
+    auto *text = new QTextBrowser;
+    text->setOpenLinks(false);
+    QObject::connect(text, &QTextBrowser::anchorClicked, text, [](const QUrl &u) {
+        if (u.scheme() == "http" || u.scheme() == "https") QDesktopServices::openUrl(u);
+    });
 
     const QStringList files = licenceFiles();
     for (const QString &rel : files) {
@@ -74,8 +80,18 @@ void showLicences(QWidget *parent) {
     }
     QObject::connect(list, &QListWidget::currentItemChanged, text, [text](QListWidgetItem *cur) {
         if (!cur) { text->clear(); return; }
-        QFile f(cur->data(Qt::UserRole).toString());
-        text->setPlainText(f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.readAll()) : QString());
+        const QString path = cur->data(Qt::UserRole).toString();
+        QFile f(path);
+        const QString body = f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.readAll()) : QString();
+        if (path.endsWith(".md")) {
+            text->document()->setDefaultFont(QApplication::font());
+            text->setLineWrapMode(QTextEdit::WidgetWidth);
+            text->setMarkdown(body);
+        } else {
+            text->document()->setDefaultFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+            text->setLineWrapMode(QTextEdit::NoWrap);
+            text->setPlainText(body);
+        }
     });
 
     auto *split = new QSplitter;

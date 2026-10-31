@@ -3,7 +3,7 @@
 <RCC>
     <qresource prefix="/licences">
         <file alias="1 This program - GNU GPL v3">LICENSE</file>
-        <file alias="2 Third-party notices">THIRD-PARTY-NOTICES.md</file>
+        <file alias="2 Third-party notices.md">THIRD-PARTY-NOTICES.md</file>
         <file alias="3 Qt - GNU LGPL v3">licences/LGPL-3.0.txt</file>
     </qresource>
 </RCC>
