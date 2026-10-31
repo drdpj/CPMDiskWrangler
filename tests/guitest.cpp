@@ -30,6 +30,8 @@
 #include <QComboBox>
 #include <QDragEnterEvent>
 #include <QFormLayout>
+#include <QListWidget>
+#include <QScrollBar>
 #include <QLabel>
 #include <QPushButton>
 #include <QSpinBox>
@@ -552,6 +554,13 @@ int main(int argc, char **argv) {
         {
             QToolButton *nb = nullptr;
             for (QToolButton *b : N.findChildren<QToolButton *>()) if (b->text().startsWith("Characters:")) nb = b;
+            {   // the character set dialog: the list is as wide as its entries, the preview takes the rest
+                QVector<const Cpm::Volume *> vs{&N.volume()};
+                Nat::Dialog dlg(vs, "dk-no");
+                shot(&dlg, wd + "/shots/natdialog.png");
+                QListWidget *lw = dlg.findChild<QListWidget *>();
+                CHECK(lw && lw->width() < 340 && lw->horizontalScrollBar()->maximum() == 0, "character set list fits its entries, no sideways scrolling");
+            }
             CHECK(nb && nb->text().contains("Danish"), "the status bar says which character set is in use: " + (nb ? nb->text() : QString("(missing)")));
         }
         shot(&N, wd + "/shots/nat.png");

@@ -200,9 +200,11 @@ Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current,
         if (s.id == current) m_list->setCurrentItem(it);
     }
     if (!m_list->currentItem()) m_list->setCurrentRow(0);
+    m_list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);      // the list is as wide as its longest entry;
+    m_list->setFixedWidth(m_list->sizeHintForColumn(0) + 2 * m_list->frameWidth() + 12);   // the preview takes the rest
     m_preview = new QPlainTextEdit;
     m_preview->setReadOnly(true);
-    m_preview->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_preview->setLineWrapMode(QPlainTextEdit::NoWrap);                 // long lines scroll, not wrap
     m_preview->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
 
     QString note = "These discs are 7-bit: on machines sold in many countries the characters @ [ \\ ] ^ ` { | } ~ held that "
@@ -223,8 +225,8 @@ Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current,
 
     auto *bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     auto *row = new QHBoxLayout;
-    row->addWidget(m_list, 1);
-    row->addWidget(m_preview, 3);
+    row->addWidget(m_list);
+    row->addWidget(m_preview, 1);
     auto *lay = new QVBoxLayout(this);
     lay->addWidget(m_note);
     lay->addLayout(row, 1);
