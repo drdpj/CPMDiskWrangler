@@ -30,7 +30,8 @@ class ViewerDialog : public QDialog {
     Q_OBJECT
 public:
     enum Mode { Text = 0, Hex = 1 };
-    ViewerDialog(const QString &title, const QByteArray &data, QWidget *parent = nullptr);
+    // natId: the national character set (natchars.h) the text is shown in
+    ViewerDialog(const QString &title, const QByteArray &data, QWidget *parent = nullptr, const QString &natId = QString());
     Mode mode() const;
     QString shownText() const;
 
@@ -42,6 +43,7 @@ private slots:
 private:
     QString m_title;
     QByteArray m_data;
+    QString m_nat;
     QComboBox *m_mode;
     QCheckBox *m_wrap, *m_eof, *m_strip;
     QLabel *m_info;

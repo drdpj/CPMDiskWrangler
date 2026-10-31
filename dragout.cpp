@@ -89,7 +89,7 @@ void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderP
                 if (topLevel) topLevel->append(relDir);
             }
         }
-        QString host = unique(hostSafeName(x.name.toLower()), used[u]);
+        QString host = unique(hostSafeName((x.hostName.isEmpty() ? x.name : x.hostName).toLower()), used[u]);
         QString rel = relDir.isEmpty() ? host : relDir + "/" + host;
         QByteArray data = trimText ? trimCpmText(x.data) : x.data;
         QFile f(hostDir + "/" + rel);

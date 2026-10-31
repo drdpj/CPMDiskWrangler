@@ -64,16 +64,16 @@ void encodeStamp(QByteArray *b, int off, const QDateTime &t) {
 
 static const QString NameChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'()-@^`{}~+";
 
-QString Volume::toCpmName(const QString &hostName) {
+QString Volume::toCpmName(const QString &hostName, const QString &extra) {
     QString n = QFileInfo(hostName).fileName().toUpper();
     int dot = n.lastIndexOf('.');
     QString base = dot <= 0 ? n : n.left(dot), ext = dot <= 0 ? QString() : n.mid(dot + 1);
-    auto clean = [](const QString &s, int max) {
+    auto clean = [&extra](const QString &s, int max) {
         QString o;
         for (QChar c : s) {
             if (o.size() >= max) break;
             if (c == ' ') continue;
-            o += NameChars.contains(c) ? c : QChar('-');
+            o += NameChars.contains(c) || extra.contains(c) ? c : QChar('-');
         }
         return o;
     };
@@ -83,14 +83,14 @@ QString Volume::toCpmName(const QString &hostName) {
     return ext.isEmpty() ? base : base + "." + ext;
 }
 
-bool Volume::validName(const QString &name, QString *why) {
+bool Volume::validName(const QString &name, QString *why, const QString &extra) {
     int dot = name.indexOf('.');
     QString base = dot < 0 ? name : name.left(dot), ext = dot < 0 ? QString() : name.mid(dot + 1);
     if (base.isEmpty()) { *why = "the name is empty"; return false; }
     if (base.size() > 8) { *why = "the name part is longer than 8 characters"; return false; }
     if (ext.size() > 3 || ext.contains('.')) { *why = "the extension is longer than 3 characters"; return false; }
     for (QChar c : base + ext)
-        if (!NameChars.contains(c)) {
+        if (!NameChars.contains(c) && !extra.contains(c)) {
             *why = QString("'%1' is not allowed in a CP/M name (use A-Z, 0-9 and %2)").arg(c).arg(NameChars.mid(36));
             return false;
         }
@@ -467,7 +467,7 @@ bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, qu
                      bool replace, QString *err) {
     if (m_fmt.torch) return torchAdd(user, nameIn, data, attrs, replace, err);      // no time stamps on Torch discs
     QString name = nameIn.toUpper(), why;
-    if (!validName(name, &why)) { *err = name + ": " + why; return false; }
+    if (!validName(name, &why, m_extraNameChars)) { *err = name + ": " + why; return false; }
     int maxUser = m_fmt.os == Os::V3 ? 15 : 31;
     if (user < 0 || user > maxUser) { *err = QString("user number %1 is out of range (0-%2)").arg(user).arg(maxUser); return false; }
     TXN_BEGIN
@@ -575,7 +575,7 @@ bool Volume::rename(int user, const QString &name, int newUser, const QString &n
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1 is not in user %2").arg(name).arg(user); return false; }
     QString newName = newNameIn.toUpper(), why;
-    if (!validName(newName, &why)) { *err = newName + ": " + why; return false; }
+    if (!validName(newName, &why, m_extraNameChars)) { *err = newName + ": " + why; return false; }
     int maxUser = m_fmt.os == Os::V3 ? 15 : 31;
     if (newUser < 0 || newUser > maxUser) { *err = QString("user number %1 is out of range (0-%2)").arg(newUser).arg(maxUser); return false; }
     int clash = indexOf(newUser, newName);
@@ -618,7 +618,7 @@ bool Volume::setLabel(const QString &labelIn, QString *err) {
     if (m_fmt.torch) { *err = "Torch CP/N discs have no label"; return false; }
     if (!labelAllowed()) { *err = "disc labels are a CP/M 3 feature; this disc's format is CP/M 2.2"; return false; }
     QString label = labelIn.toUpper().trimmed(), why;
-    if (!label.isEmpty() && !validName(label, &why)) { *err = label + ": " + why; return false; }
+    if (!label.isEmpty() && !validName(label, &why, m_extraNameChars)) { *err = label + ": " + why; return false; }
     TXN_BEGIN
     QByteArray n11 = name11(label.isEmpty() ? QString() : label);
     QString er;

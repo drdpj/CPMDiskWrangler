@@ -27,9 +27,9 @@ if(APPLE)
     set_source_files_properties(${CPMDW_ICNS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 endif()
 add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} resources.qrc licences.qrc licences.cpp licences.h
-    main.cpp mainwindow.cpp formatdialog.cpp newdisc.cpp viewer.cpp viewtext.cpp icon.cpp dragout.cpp
+    main.cpp mainwindow.cpp formatdialog.cpp newdisc.cpp natchars.cpp viewer.cpp viewtext.cpp icon.cpp dragout.cpp
     diskimage.cpp lzhuf.cpp cpmformat.cpp cpmfs.cpp torchfs.cpp detect.cpp
-    appsettings.h buttonbar.h fileopen.h mainwindow.h mainwindow_p.h formatdialog.h newdisc.h viewer.h viewtext.h icon.h dragout.h
+    appsettings.h buttonbar.h fileopen.h mainwindow.h mainwindow_p.h formatdialog.h newdisc.h natchars.h viewer.h viewtext.h icon.h dragout.h
     diskimage.h cpmformat.h cpmfs.h torchfs.h detect.h)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/licences-bundled.qrc)   # a release build's library licences (ci/)
     target_sources(cpmdiskwrangler PRIVATE licences-bundled.qrc)

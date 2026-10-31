@@ -263,6 +263,11 @@ path. `name` is the 8.3 name without padding (`"README.TXT"`, `"PIP.COM"`, `"NOE
 cleared, bytes as characters as described under *Names*. Two files with the same name in different user numbers
 are different files: the sender makes their host paths unique.
 
+Some CP/M discs were written on machines with a national variant of ASCII, where `[ \ ] { | }` were letters
+(Danish `br|kregning` is *brøkregning*). `name` is still the bytes as written, never converted to Unicode; a
+sender may show the national letters in the host file name (`path`), which is a separate thing, but never in
+`name`.
+
 A CP/M file's length is a whole number of 128-byte records unless the disc records the bytes used in the last
 record (CP/M 3 does; cpmtools writes it on every disc). `size` is the length the sender read, so a text file
 may end in `^Z` padding; CP/M Disk Wrangler sends the padding unless its *Trim the ^Z padding* option is on.
@@ -276,6 +281,9 @@ disc keeps them.
 * `acorn`: `L` (owner locked) -> `readonly`; load and exec addresses have no place on a CP/M disc and are dropped.
 * `name`: kept if it is a valid CP/M 8.3 name (upper-cased), otherwise turned into one (invalid characters
   become `-`, the name part is cut to 8 and the extension to 3 characters). A DFS name loses its directory letter.
+  A name from a `cpm` source is kept exactly, including `[ \ ] |`, which were letters on the disc it came from
+  (it is not converted, whatever national variant either disc uses); only the name of a file dropped from the
+  host is read as Unicode and, if the disc has a national variant chosen, put into it.
 * Directories: a directory named `userN`, `user N`, `uN` or `N` (as CP/M Disk Wrangler's *Extract* writes them)
   puts its files in user number N; any other directory is flattened into the user number the files were
   dropped on.
@@ -308,3 +316,5 @@ here.
 * Version 1 (2026): first version, Acorn Disk Wrangler. The `cpm` namespace was settled with CP/M Disk Wrangler,
   which produces it (adding the optional `f1`-`f4` keys); no change of version was needed.
 * The clipboard (Copy / Paste) carries the same document; no change of version was needed.
+* National variants of ASCII (CP/M Disk Wrangler, 2026): `name` stays the disc's bytes; clarified above, no
+  change of version was needed.

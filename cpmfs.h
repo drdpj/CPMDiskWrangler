@@ -92,6 +92,7 @@ public:
     int usedEntries() const;
     bool hasStamps() const { return m_stamps; }        // SFCB (0x21) entries present
     const Label &label() const { return m_label; }
+    void setExtraNameChars(const QString &c) { m_extraNameChars = c; }   // see validName
     bool labelAllowed() const;                          // CP/M 3 / ZSDOS, or a label already exists
     QString stampKinds() const;                         // e.g. "create, update"
     const QVector<QByteArray> &directory() const { return m_dir; }   // raw 32-byte entries
@@ -112,8 +113,9 @@ public:
 
     // ----- names
     // Turns any host name into a CP/M 8.3 name (upper case, invalid characters replaced, truncated).
-    static QString toCpmName(const QString &hostName);
-    static bool validName(const QString &name, QString *why);
+    static QString toCpmName(const QString &hostName, const QString &extra = QString());
+    // extra: name characters beyond the usual ones that are allowed (a national character set's letters, natchars.h)
+    static bool validName(const QString &name, QString *why, const QString &extra = QString());
     static QByteArray name11(const QString &name);    // "NAME.EXT" -> 11 space-padded bytes
     static QString nameFrom11(const QByteArray &n11); // 11 bytes -> "NAME.EXT" ("NAME" with no extension)
 
@@ -155,6 +157,7 @@ private:
     QVector<QByteArray> m_dir;
     QVector<File> m_files;
     Label m_label;
+    QString m_extraNameChars;          // national letters allowed in names (natchars.h)
     bool m_stamps = false;
 };
 

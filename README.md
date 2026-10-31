@@ -88,6 +88,15 @@ format with no close rival, one you've confirmed, or a disc made by this program
   file was changed by something else meanwhile, and a `.bak` copy of the previous file is kept (Tools; on unless
   you turn it off).
 
+* **Tools > Character set for names and text** chooses the national variant of ASCII a disc was written in (Danish/
+  Norwegian, Swedish/Finnish, German, French, Italian, Spanish, Portuguese). On those machines `[ \\ ] { | }` were the
+  letters Æ Ø Å æ ø å and so on, so a file called `br|kregning` is really *brøkregning*. With a set chosen, names and
+  text files are shown, exported and imported as Unicode; the disc itself is unchanged. The program suggests it when
+  names or text use those characters between letters, and remembers the choice for that disc. `#` and `$` are not
+  mapped, as the sets differ on them and they appear in too many ordinary names. Dragging between programs follows [retro-files](docs/retro-files-format.md): the
+  name travels as the disc holds it, so files moved between CP/M discs keep their names exactly whatever set each
+  disc uses; only the name of a file written to the host is shown in the national letters.
+
 ### Settings, and carrying the program with you
 Options (Tools menu), the last folders used and the formats you confirmed for each image are saved in
 the usual place for your system: the registry (`HKEY_CURRENT_USER\Software\cpmdiskwrangler\cpmdiskwrangler`) on Windows,

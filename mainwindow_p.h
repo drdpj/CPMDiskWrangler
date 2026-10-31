@@ -55,6 +55,7 @@ inline QList<QKeySequence> deleteKeys() {
 // ready to be written to the host. The attribute fields are filled from whatever the source knows.
 struct XItem {
     QString name;               // the name in the source (CP/M "NAME.EXT", an Acorn or DOS name, a host file name)
+    QString hostName;           // what to call it on the host when that differs from name (a CP/M name shown in a national set)
     QString srcFs;              // "cpm", "adfs", "dfs", "fat", or empty for a host file
     bool isDir = false;
     QByteArray data;

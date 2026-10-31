@@ -269,6 +269,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_actFormat->setIconText("Format");
     m_actInfo = tools->addAction("Disc &information", this, &MainWindow::discInfo);
     m_actInfo->setShortcut(QKeySequence("Ctrl+I"));
+    m_actNat = tools->addAction("&Character set for names and text...", this, &MainWindow::natDialog);
+    m_actNat->setToolTip("The national letters ([ \\ ] { | } for \u00C6\u00D8\u00C5 \u00E6\u00F8\u00E5 and so on) this disc's names and text use");
     tools->addAction("Add a &diskdefs file to the format library...", this, &MainWindow::addDiskdefsDialog);
     tools->addSeparator();
     AppSettings st;
@@ -368,6 +370,33 @@ void MainWindow::rememberFormat() {
     st.setValue(key, QString::number(QFileInfo(m_img.path()).size()) + "|" + f.toDiskdef());
 }
 
+QString MainWindow::rememberedNat() const {
+    if (m_img.path().isEmpty()) return QString();
+    return AppSettings().value("charset/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
+                                                                     QCryptographicHash::Sha1).toHex()).toString();
+}
+
+void MainWindow::setNat(const QString &id, bool remember) {
+    m_natId = Nat::find(id).id;
+    for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(Nat::extraNameChars(nat()));
+    if (remember && !m_img.path().isEmpty()) {
+        AppSettings st;
+        const QString key = "charset/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
+                                                                  QCryptographicHash::Sha1).toHex();
+        if (m_natId == "ascii") st.remove(key); else st.setValue(key, m_natId);
+    }
+    if (m_natId != "ascii") m_natHint.clear();
+    refresh();
+}
+
+void MainWindow::natDialog() {
+    if (!m_nvols) return;
+    QVector<const Cpm::Volume *> vols;
+    for (int side = 0; side < m_nvols; ++side) vols << &m_vols[side];
+    Nat::Dialog d(vols, m_natId, this);
+    if (d.exec() == QDialog::Accepted) setNat(d.chosen(), true);
+}
+
 bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
     if (m_img.kind() == Disk::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, err)) return false;
     detachAll();
@@ -384,6 +413,7 @@ bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
         }
     }
     m_nvols = n;
+    for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(Nat::extraNameChars(nat()));
     m_current = c;
     m_checkOk = true;
     for (int side = 0; side < n; ++side) m_checkOk = m_checkOk && m_vols[side].check().ok();
@@ -417,6 +447,16 @@ bool MainWindow::openImage(const QString &path) {
         return false;
     }
     if (m_img.needsPadding()) m_img.markForSave();
+    m_natId = Nat::find(rememberedNat()).id;
+    for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(Nat::extraNameChars(nat()));
+    m_natHint.clear();
+    if (m_natId == "ascii") {
+        QVector<const Cpm::Volume *> vols;
+        for (int side = 0; side < m_nvols; ++side) vols << &m_vols[side];
+        const Nat::Evidence ev = Nat::scan(vols);
+        if (ev.any())
+            m_natHint = "its names or text use [ \\ ] { | } between letters: Tools > Character set... shows them as national letters";
+    }
     refresh();
     return true;
 }
@@ -430,6 +470,8 @@ bool MainWindow::newImage(const QString &path, Disk::Kind kind, const Cpm::Forma
     }
     detachAll();
     m_img = img;
+    m_natId = "ascii";
+    m_natHint.clear();
     m_det = Detect::Result();
     Detect::Candidate c = Detect::evaluate(m_img, f, false);
     c.fmt = f;
@@ -607,7 +649,7 @@ void MainWindow::refresh() {
     for (int side = 0; side < m_nvols; ++side) {
         const Cpm::Volume &v = m_vols[side];
         auto *root = new QTreeWidgetItem(m_tree);
-        QString title = v.label().present ? v.label().name : (m_nvols == 1 ? QFileInfo(m_img.path()).fileName() : QString());
+        QString title = v.label().present ? toHostName(v.label().name) : (m_nvols == 1 ? QFileInfo(m_img.path()).fileName() : QString());
         root->setText(0, rootLabel(m_nvols == 1 ? QString("A:") : QString("Side %1").arg(side), title));
         root->setData(0, RoleKind, RowRoot);
         root->setData(0, RoleUser, -1);
@@ -625,7 +667,7 @@ void MainWindow::refresh() {
             for (const Cpm::File &f : v.files()) {
                 if (f.user != u) continue;
                 auto *it = new QTreeWidgetItem(g);
-                it->setText(0, f.name);
+                it->setText(0, toHostName(f.name));
                 it->setData(0, RoleKind, RowFile);
                 it->setData(0, RoleUser, f.user);
                 it->setData(0, RoleName, f.name);
@@ -664,6 +706,7 @@ void MainWindow::updateUi() {
     m_actView->setEnabled(have && oneFile);
     m_actCheck->setEnabled(have);
     m_actInfo->setEnabled(m_img.isOpen());
+    m_actNat->setEnabled(have);
     m_actFormat->setEnabled(m_img.isOpen());
     setWindowTitle(title());
     if (!have) {
@@ -683,6 +726,7 @@ void MainWindow::updateUi() {
             s += QString(" - side %1: %2 file%3, %4 free").arg(side).arg(m_vols[side].files().size())
                      .arg(m_vols[side].files().size() == 1 ? "" : "s").arg(fmtBytes(m_vols[side].freeBytes()));
     }
+    if (!m_natHint.isEmpty() && m_natId == "ascii") s += "  -  " + m_natHint;
     if (!w) s += "  -  read-only: " + readOnlyReason();
     if (m_img.needsPadding()) s += "  -  the image file is short; it will be padded to full size when saved";
     m_status->setText(s);
@@ -734,7 +778,8 @@ bool MainWindow::exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, 
         if (i < 0) { *err = QString("%1:%2 is no longer on the disc").arg(r.user).arg(r.name); return false; }
         const Cpm::File &f = v.files()[i];
         XItem x;
-        x.name = f.name;
+        x.name = f.name;                        // retro-files: the name as the disc holds it, never converted
+        x.hostName = toHostName(f.name);        // only the file written to the host is shown in the national set
         x.srcFs = "cpm";
         x.user = f.user;
         x.readOnly = f.attrs & Cpm::AttrRO;
@@ -772,9 +817,9 @@ void MainWindow::viewSelected() {
     QVector<XItem> items;
     QString err;
     if (!exportFiles(refs, &items, &err)) { message("View", err); return; }
-    QString t = QString("%1:%2").arg(refs[0].user).arg(refs[0].name);
+    QString t = QString("%1:%2").arg(refs[0].user).arg(toHostName(refs[0].name));
     if (m_nvols > 1) t = QString("side %1 ").arg(refs[0].side) + t;
-    auto *v = new ViewerDialog(t, items[0].data, this);
+    auto *v = new ViewerDialog(t, items[0].data, this, m_natId);
     v->show();
 }
 
@@ -892,9 +937,14 @@ void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &
     Cpm::Volume &vol = m_vols[side];
     int user = targetUser >= 0 ? targetUser : (x.user >= 0 ? x.user : 0);
     if (user > maxUser()) user = 0;
-    QString why, name = x.name.toUpper();
-    if (!Cpm::Volume::validName(name, &why)) {
-        name = Cpm::Volume::toCpmName(x.name);
+    // A name from another CP/M disc is kept exactly (its [ \ ] | were letters there); only a host file name is read as
+    // Unicode and put into this disc's national set. Names from other filesystems are bytes: no set applies.
+    const bool fromCpm = x.srcFs == "cpm", fromHost = x.srcFs.isEmpty();
+    const QString extra = fromCpm ? QStringLiteral("[\\]|") : Nat::extraNameChars(nat());
+    const QString want = fromHost ? toDiscName(x.name) : x.name.toUpper();
+    QString why, name = want;
+    if (!Cpm::Volume::validName(name, &why, extra)) {
+        name = Cpm::Volume::toCpmName(fromHost ? want : x.name, extra);
         c.renamed << QString("%1 -> %2").arg(x.name, name);
     }
     quint16 attrs = quint16((x.readOnly ? Cpm::AttrRO : 0) | (x.system ? Cpm::AttrSYS : 0) | (x.archive ? Cpm::AttrARC : 0) |
@@ -929,7 +979,10 @@ void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &
         }
     }
     QString err;
-    if (!vol.addFile(user, name, x.data, attrs, x.when, replace, &err)) { c.errors << err; return; }
+    vol.setExtraNameChars(extra);               // this file's own rules; put back to the disc's below
+    const bool added = vol.addFile(user, name, x.data, attrs, x.when, replace, &err);
+    vol.setExtraNameChars(Nat::extraNameChars(nat()));
+    if (!added) { c.errors << err; return; }
     c.files++;
     if (replace) c.replaced++;
 }
@@ -1072,10 +1125,12 @@ void MainWindow::renameSelected() {
     QVector<FileRef> refs = selectedRefs();
     if (refs.size() != 1) return;
     bool ok;
-    QString n = QInputDialog::getText(this, "Rename", QString("New name for %1 (8.3):").arg(refs[0].name), QLineEdit::Normal, refs[0].name, &ok);
+    QString n = QInputDialog::getText(this, "Rename", QString("New name for %1 (8.3):").arg(toHostName(refs[0].name)), QLineEdit::Normal,
+                                      toHostName(refs[0].name), &ok);
     if (!ok || n.trimmed().isEmpty()) return;
     QString err;
-    if (!m_vols[refs[0].side].rename(refs[0].user, refs[0].name, refs[0].user, n.trimmed(), &err)) message("Rename", err);
+    if (!m_vols[refs[0].side].rename(refs[0].user, refs[0].name, refs[0].user, toDiscName(n.trimmed(), m_natId != "ascii"), &err))
+        message("Rename", err);
     refresh();
 }
 
@@ -1083,12 +1138,12 @@ void MainWindow::editProperties() {
     QVector<FileRef> refs = selectedRefs();
     if (refs.isEmpty()) return;
     QDialog d(this);
-    d.setWindowTitle(refs.size() == 1 ? "Properties - " + refs[0].name : QString("Properties - %1 files").arg(refs.size()));
+    d.setWindowTitle(refs.size() == 1 ? "Properties - " + toHostName(refs[0].name) : QString("Properties - %1 files").arg(refs.size()));
     auto *fl = new QFormLayout;
     const Cpm::File *one = refs.size() == 1 ? &m_vols[refs[0].side].files()[m_vols[refs[0].side].indexOf(refs[0].user, refs[0].name)] : nullptr;
     QLineEdit *name = nullptr;
     if (one) {
-        name = new QLineEdit(one->name);
+        name = new QLineEdit(toHostName(one->name));
         fl->addRow("Name", name);
         const QString unit = m_vols[refs[0].side].format().torch ? "sector" : "block";   // Torch: index sectors included
         fl->addRow("Size", new QLabel(QString("%1 bytes (%2 records%3), %4 %8%5, %6 directory entr%7")
@@ -1139,7 +1194,7 @@ void MainWindow::editProperties() {
             else if (b.cb->checkState() == Qt::Unchecked) a &= quint16(~b.bit);
         }
         if (ok && a != v.files()[i].attrs) ok = v.setAttrs(r.user, r.name, a, &err);
-        QString newName = name ? name->text().trimmed().toUpper() : r.name;
+        QString newName = name ? toDiscName(name->text().trimmed()) : r.name;
         int newUser = user->value() >= 0 ? user->value() : r.user;
         if (ok && (newName != r.name || newUser != r.user)) ok = v.rename(r.user, r.name, newUser, newName, &err);
     }

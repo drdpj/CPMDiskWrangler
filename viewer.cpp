@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "viewer.h"
+#include "natchars.h"
 #include "viewtext.h"
 
 #include <QApplication>
@@ -34,8 +35,8 @@
 
 static const int kMaxShown = 1024 * 1024;
 
-ViewerDialog::ViewerDialog(const QString &title, const QByteArray &data, QWidget *parent)
-    : QDialog(parent), m_title(title), m_data(data) {
+ViewerDialog::ViewerDialog(const QString &title, const QByteArray &data, QWidget *parent, const QString &natId)
+    : QDialog(parent), m_title(title), m_data(data), m_nat(natId) {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("View - " + title);
     resize(860, 620);
@@ -90,7 +91,7 @@ void ViewerDialog::render() {
     m_strip->setEnabled(mode() == Text);
     if (mode() == Text) {
         int eof = -1;
-        m_edit->setPlainText(ViewText::cpmText(d, m_eof->isChecked(), m_strip->isChecked(), &eof));
+        m_edit->setPlainText(Nat::toHost(ViewText::cpmText(d, m_eof->isChecked(), m_strip->isChecked(), &eof), Nat::find(m_nat)));
         if (eof >= 0) note = QString("^Z (end of text) at byte %1").arg(eof);
     } else {
         m_edit->setPlainText(ViewText::hexDump(d));

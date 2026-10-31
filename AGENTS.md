@@ -20,6 +20,7 @@ with its terms (and in About if it ships in the program); material only consulte
 | File | Role |
 |---|---|
 | `diskimage.h/.cpp` | `Disk::Image`: the physical disc (tracks of sectors keyed by sector ID), the containers (raw, IMD, DSK, EDSK, TD0), staged writes, serialising, atomic commit |
+| `natchars.h/.cpp` | `Nat`: ISO 646 national character sets (map `@ [ \\ ] ^ ` { | } ~`, never `#` `$`), host<->disc name/text conversion, evidence scan and language guess, the chooser dialog. Per disc, remembered in settings (`charset/<sha1 of path>`); Volume accepts `[ \\ ] |` in names only while a national set is chosen (`setExtraNameChars`). Not done: SE-C/DEC variants, UK (`#`->£) |
 | `lzhuf.cpp` | TeleDisk 2.x "advanced compression" decoder (Okumura's LZHUF; tables generated, not copied) |
 | `cpmformat.h/.cpp` | `Cpm::Format`: a diskdef plus the derived DPB (DSM, EXM, pointer width, skew table, `locate()`); the diskdefs parser; the library |
 | `cpmfs.h/.cpp` | `Cpm::Volume`: directory, files, extents, CP/M 3 / P2DOS stamps and labels, add/delete/rename/attrs, `check()`, `makeBlank()` |
@@ -229,6 +230,9 @@ starts on the filter for the kind the image already is, and the kind saved is th
 * Exact file sizes are kept where the disc can record them: the last-record byte count used by CP/M 3 and
   cpmtools.
 * A short raw image is padded in memory and saved full size.
+
+* National character sets and retro-files: `XItem::name` is always the raw disc name (the spec says bytes unchanged); `XItem::hostName` is the national-set name used only for the file written to the host. `importOne` keeps a `cpm` source name exactly (allowing `[ \ ] |` for it), converts only host file names (`srcFs` empty) through the disc's set, and treats other filesystems' names as bytes.
+* National character sets are display/transfer only: the directory always holds the raw 7-bit bytes. Tests: `tests/chartest` (needs COMAL discs in `real/nat` for the guess), and a section in guitest.
 
 ## How detection works (detect.cpp)
 1. Physical layouts: the container's own; for raw images every library format whose size fits (exactly, or

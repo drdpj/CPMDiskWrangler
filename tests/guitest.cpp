@@ -501,6 +501,63 @@ int main(int argc, char **argv) {
         CHECK(cb->mimeData()->data("x-special/gnome-copied-files").startsWith("copy\nfile://"), "... and GNOME's list of it");
     }
 
+    printf("== national character sets\n");
+    {
+        MainWindow N;
+        CHECK(N.newImage(wd + "/nat.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "new disc for the character set test");
+        CHECK(N.natId() == "ascii", "a new disc starts on plain ASCII");
+        N.setNat("dk-no", false);
+        QDir().mkpath(wd + "/host/nat");
+        { QFile f(wd + "/host/nat/" + QString::fromUtf8("br\xC3\xB8" "d.txt")); f.open(QIODevice::WriteOnly); f.write("m\xC3\xA6lk\r\n"); }
+        N.importPaths({wd + "/host/nat/" + QString::fromUtf8("br\xC3\xB8" "d.txt")}, -1);
+        CHECK(N.volume().indexOf(0, "BR\\D.TXT") >= 0, "brød.txt is stored as BR\\D.TXT with Danish chosen");
+        N.setNat("ascii", false);
+        QDir().mkpath(wd + "/host/nat2");
+        { QFile f(wd + "/host/nat2/" + QString::fromUtf8("br\xC3\xB8" "e.txt")); f.open(QIODevice::WriteOnly); f.write("x\r\n"); }
+        N.importPaths({wd + "/host/nat2/" + QString::fromUtf8("br\xC3\xB8" "e.txt")}, -1);
+        CHECK(N.volume().indexOf(0, "BR-E.TXT") >= 0, "without a set the same sort of name becomes BR-E.TXT as before");
+        CHECK(N.volume().indexOf(0, "BR\\D.TXT") >= 0, "the earlier file is untouched");
+        N.setNat("dk-no", false);
+        // retro-files: a name travels as the disc holds it; only the host file takes the national letters
+        {
+            N.tree()->clearSelection();
+            findRow(N.tree(), RowRoot, -1)->setSelected(true);
+            QMimeData *dm = N.tree()->makeMime(N.tree()->selectedItems());
+            QByteArray dj = dm->data(RetroFiles::MimeType);
+            QList<QUrl> du = dm->urls();
+            bool rawName = false, hostName = false;
+            QString hostPath;
+            for (const QJsonValue &v : QJsonDocument::fromJson(dj).object()["items"].toArray()) {
+                QJsonObject it = v.toObject();
+                if (it["name"].toString() == "BR\\D.TXT") {
+                    rawName = true;
+                    hostName = it["path"].toString() == QString::fromUtf8("br\xC3\xB8" "d.txt");
+                    hostPath = it["path"].toString();
+                }
+            }
+            CHECK(rawName, "retro-files name is BR\\D.TXT, unconverted");
+            CHECK(hostName, "...while the file written to the host is brød.txt (" + hostPath + ")");
+            CHECK(!du.isEmpty(), "dragged files listed");
+            MainWindow P;                                       // a disc using plain ASCII
+            CHECK(P.newImage(wd + "/natp.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "an ASCII disc to drop on");
+            CHECK(P.importRetroFiles(dj, -1), "drop on the ASCII disc");
+            CHECK(P.volume().indexOf(0, "BR\\D.TXT") >= 0, "a name moved between CP/M discs stays exactly as it was");
+            MainWindow Q;
+            CHECK(Q.newImage(wd + "/natq.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a Swedish disc to drop on");
+            Q.setNat("se-fi", false);
+            CHECK(Q.importRetroFiles(dj, -1) && Q.volume().indexOf(0, "BR\\D.TXT") >= 0, "...and the same on a disc with another set chosen");
+            delete dm;
+        }
+        N.setNat("dk-no", true);
+        CHECK(N.save(), "save");
+        MainWindow N2;
+        CHECK(N2.openImage(wd + "/nat.imd"), "reopen it");
+        CHECK(N2.natId() == "dk-no", "the choice is remembered for that disc");
+        N2.setNat("ascii", true);
+        MainWindow N3;
+        CHECK(N3.openImage(wd + "/nat.imd") && N3.natId() == "ascii", "choosing ASCII again forgets it");
+    }
+
     printf("== files opened from the Finder (fileopen.h)\n");
     {
         FileOpen::FileOpenFilter filter;

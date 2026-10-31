@@ -11,7 +11,7 @@ step() { echo; echo "######## $*"; }
 build() { mkdir -p "$b/$1" && (cd "$b/$1" && qmake "$2" ${3:+"$3"} >/dev/null && make -j8 >/dev/null 2>"$b/$1.log") || { echo "BUILD FAILED: $1 (see $b/$1.log)"; fail=1; }; }
 step build
 build app "$src/cpmdiskwrangler.pro"
-for t in detecttest fstest guitest mkicon settingstest; do build $t "$src/tests/$t.pro"; done
+for t in detecttest fstest guitest mkicon settingstest chartest; do build $t "$src/tests/$t.pro"; done
 [ -n "$adw" ] && build interop "$src/tests/interop_adw/interop_adw.pro" "ADW=$adw"
 export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)
@@ -36,6 +36,11 @@ for f in rm-dd rm-qd; do   # independent: cpmtools reads each side of the raw fi
   python3 -I "$src/tests/verify_rm_sides.py" "$W/fsds/raw/$f+ds.img" "$W/fsds/raw/$f+ds.diskdef" $f "$W/rmout/$f" \
       "$W/fsds/raw/$f+ds.expect" "$W/fsds/raw/$f+ds.expect1" || { echo "FAIL independent check of $f+ds"; fail=1; }
 done
+step "national character sets: mappings, names, and the evidence scan"
+if [ -n "$real" ] && ls "$real"/nat/*.imd >/dev/null 2>&1; then
+  args=(); for z in "$real"/nat/*.imd; do args+=("$z" dk-no); done
+else args=(); fi
+"$b/chartest/chartest" "${args[@]}" 2>&1 | grep -E "FAIL|all ok|FAILED" ; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "settings: installed vs AppImage (portable mode)"
 "$b/settingstest/settingstest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "settings: ok" || { "$b/settingstest/settingstest"; fail=1; }
 step "not CP/M: Acorn DFS discs, and DFS discs with the catalogue wiped"
