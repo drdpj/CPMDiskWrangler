@@ -45,5 +45,5 @@ private:
     QListWidget *m_list;
     QLabel *m_info;
     QComboBox *m_kind;
-    QCheckBox *m_stamps;
+    QCheckBox *m_stamps, *m_twoSided;
 };

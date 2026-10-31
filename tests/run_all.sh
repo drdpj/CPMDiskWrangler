@@ -26,6 +26,16 @@ echo "independent checks: $(grep -c '^ok' "$W/verify.log") passed, $(grep -c '^F
 "$b/fstest/fstest" atomic "$W/atomic" | tail -1 | grep -q ok || { echo "FAIL atomic"; fail=1; }
 "$b/fstest/fstest" library | tail -1 | grep -q ok || { echo "FAIL library"; fail=1; }
 "$b/fstest/fstest" roundtrip "$W"/fs/imd/*.imd "$W"/fs/edsk/*.dsk | grep -v "^same" && fail=1
+step "Research Machines double-sided discs: a separate filesystem on each side, made new"
+for k in raw imd edsk; do
+  for f in rm-dd+ds rm-qd+ds; do
+    "$b/fstest/fstest" "$W/fsds/$k" $f $k > "$W/fsds-$k-$f.log" 2>&1 || { echo "FAIL fstest $f $k"; cat "$W/fsds-$k-$f.log"; fail=1; }
+  done
+done
+for f in rm-dd rm-qd; do   # independent: cpmtools reads each side of the raw file; every file back exactly
+  python3 -I "$src/tests/verify_rm_sides.py" "$W/fsds/raw/$f+ds.img" "$W/fsds/raw/$f+ds.diskdef" $f "$W/rmout/$f" \
+      "$W/fsds/raw/$f+ds.expect" "$W/fsds/raw/$f+ds.expect1" || { echo "FAIL independent check of $f+ds"; fail=1; }
+done
 step "settings: installed vs AppImage (portable mode)"
 "$b/settingstest/settingstest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "settings: ok" || { "$b/settingstest/settingstest"; fail=1; }
 step "not CP/M: Acorn DFS discs, and DFS discs with the catalogue wiped"
@@ -45,6 +55,11 @@ $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0
   grep -q 'check: [1-9][0-9]* errors' "$W/detect.log" && fail=1
   (cd "$W" && "$src/tests/cmp_cpmtools.sh" "$b/detecttest/detecttest" ibm-3740 "$Z"/cpm1*.dsk "$Z"/cpm22-2.dsk "$Z"/cpm22-62khd.dsk "$Z"/cpm3-2.dsk "$Z"/mpm*.dsk "$Z"/*tests.dsk) | tee "$W/cmp.log"
   grep -q "[1-9][0-9]* differ" "$W/cmp.log" && fail=1
+  for z in $(ls "$real"/rm/*.img 2>/dev/null); do         # the owner's Research Machines discs: cpmtools reads both sides
+    printf 'RM %s: ' "$(basename "$z")"
+    k=rm-qd; [ "$(stat -c %s "$z")" = 363520 ] && k=rm-dd      # 40 cylinders a side, else 80
+    rm -rf "$W/rmreal"; python3 -I "$src/tests/verify_rm_sides.py" "$z" "$W/fsds/raw/$k+ds.diskdef" $k "$W/rmreal" | tr '\n' ' ' | grep -q FAIL && { echo FAIL; fail=1; } || echo ok
+  done
   for z in $(ls "$real"/acorn/*.dsd 2>/dev/null); do
     n=$(basename "$z"); rm -rf "$W/az"; mkdir -p "$W/az/py"
     "$b/detecttest/detecttest" -x "$W/az" "$z" > "$W/az.log" 2>&1

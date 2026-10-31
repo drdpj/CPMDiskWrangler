@@ -24,6 +24,7 @@
 //       <outdir>/<format>.logical        the same disc as a raw image in logical track order (what cpmtools reads)
 //       <outdir>/<format>.diskdef        the format in diskdefs syntax
 //       <outdir>/<format>.expect/<u>/<name>   what every file should contain
+//       <outdir>/<format>.expect1/<u>/<name>  the same for side 1 of a two-sided disc ("rm-qd+ds": a filesystem per side)
 //   fstest roundtrip <image>     opens a container and serialises it with no changes: must be byte-identical
 //   fstest atomic <outdir>       a failed add (disc full / directory full) must leave the image exactly as it was
 #include <QCoreApplication>
@@ -83,10 +84,17 @@ static Disk::Kind kindOf(const QString &k) {
 }
 
 static int formatTest(const QString &outdir, const QString &fname, const QString &kname) {
-    const Cpm::Format *lf = Cpm::findFormat(fname);
+    // "NAME+ds": the double-sided disc of a format that has one (Research Machines': a separate filesystem per side)
+    const bool ds = fname.endsWith("+ds");
+    const Cpm::Format *lf = Cpm::findFormat(ds ? fname.chopped(3) : fname);
     if (!lf) { printf("no format %s\n", qPrintable(fname)); return 2; }
     Cpm::Format f = *lf;
     QString err;
+    if (ds) {
+        if (!f.twoSidedOk) { printf("%s has no double-sided disc\n", qPrintable(fname)); return 2; }
+        f.separateSides = true;
+        f.heads = 2;
+    }
     f.derive(&err);
     Disk::Kind kind = kindOf(kname);
     QString ext = kname == "raw" ? "img" : kname == "imd" ? "imd" : "dsk";
@@ -96,7 +104,7 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     bool stamps = f.os == Cpm::Os::V3;
     Disk::Image img;
     if (!Cpm::makeBlank(&img, kind, f, stamps, "TESTDISC", &err)) {
-        if (f.t0sectrk > 0 && kind == Disk::Kind::Raw) { printf("  refused as raw, as it should be: %s\nok\n", qPrintable(err)); return 0; }
+        if (f.t0sectrk > 0 && kind == Disk::Kind::Raw && !ds) { printf("  refused as raw, as it should be: %s\nok\n", qPrintable(err)); return 0; }
         printf("  FAIL makeBlank: %s\n", qPrintable(err));
         return 1;
     }
@@ -105,16 +113,18 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     // reopen with the named format
     Disk::Image im2;
     CHECK(im2.open(path, &err), "open: " + err);
-    if (f.t0sectrk > 0) {
-        const Disk::Track *t0 = im2.track(0, 0), *t1 = im2.track(1, 0);
-        CHECK(t0 && t0->secs.size() == f.t0sectrk && t0->secs[0].size == f.t0seclen, "track 0 has its own shape");
-        if (kind == Disk::Kind::Imd) CHECK(t0 && t1 && (t0->mode <= 2) == f.t0fm && t1->mode >= 3, QString("track 0 mode %1, track 1 mode %2").arg(t0 ? t0->mode : -1).arg(t1 ? t1->mode : -1));
-    }
     if (kind == Disk::Kind::Raw) {
         Disk::RawLayout l;
         l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
+        if (ds) { l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }
         CHECK(im2.setRawLayout(l, &err), err);
     }
+    if (f.t0sectrk > 0)
+        for (int h = 0; h < (ds ? 2 : 1); ++h) {
+            const Disk::Track *t0 = im2.track(0, h), *t1 = im2.track(1, h);
+            CHECK(t0 && t0->secs.size() == f.t0sectrk && t0->secs[0].size == f.t0seclen, QString("track 0 of side %1 has its own shape").arg(h));
+            if (kind == Disk::Kind::Imd) CHECK(t0 && t1 && (t0->mode <= 2) == f.t0fm && t1->mode >= 3, QString("side %1: track 0 mode %2, track 1 mode %3").arg(h).arg(t0 ? t0->mode : -1).arg(t1 ? t1->mode : -1));
+        }
     Cpm::Volume v;
     CHECK(v.attach(&im2, f, &err), "attach: " + err);
     CHECK(v.files().isEmpty(), "blank disc has files");
@@ -185,6 +195,53 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         else CHECK(false, "attach after detection: " + err);
     }
 
+    QVector<Expect> ex1;                                   // what side 1 of a two-sided disc holds
+    if (ds) {
+        // the other side is a disc of its own: untouched so far, empty, and takes files without disturbing side 0
+        auto rawLayout = [&](Disk::Image &im) {        // a raw file has no tracks until it is given its layout
+            if (kind != Disk::Kind::Raw) return;
+            Disk::RawLayout l;
+            l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
+            l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen;
+            CHECK(im.setRawLayout(l, &err), err);
+        };
+        Disk::Image im4;
+        CHECK(im4.open(path, &err), "open for side 1: " + err);
+        rawLayout(im4);
+        Cpm::Format g = f;
+        g.fixedHead = 1;
+        g.derived = false;
+        CHECK(g.derive(&err), "derive side 1: " + err);
+        Cpm::Volume w;
+        CHECK(w.attach(&im4, g, &err), "attach side 1: " + err);
+        CHECK(w.files().isEmpty(), "side 1 of a new disc has files");
+        CHECK(w.check().ok(), "side 1 blank check: " + w.check().errors.join("; "));
+        for (int k = 0; k < 4; ++k) {
+            Expect e;
+            e.user = 0;
+            e.name = QString("S1F%1.DAT").arg(k);
+            e.data = content(3000 + 9000 * k, quint32(500 + k), false);
+            e.attrs = 0;
+            CHECK(w.addFile(e.user, e.name, e.data, e.attrs, when, false, &err), "side 1 add " + e.name + ": " + err);
+            ex1 << e;
+        }
+        CHECK(verify(w, ex1, "side 1 after adding"), "");
+        CHECK(im4.commit(&err, false), "commit side 1: " + err);
+        Disk::Image im5;
+        CHECK(im5.open(path, &err), "reopen both sides: " + err);
+        rawLayout(im5);
+        Cpm::Volume a0, a1;
+        CHECK(a0.attach(&im5, f, &err), "attach side 0 again: " + err);
+        CHECK(a1.attach(&im5, g, &err), "attach side 1 again: " + err);
+        CHECK(verify(a0, ex, "side 0 after side 1 was written"), "");
+        CHECK(verify(a1, ex1, "side 1 after reopening"), "");
+        Disk::Image im6;
+        CHECK(im6.open(path, &err), "open for detection: " + err);
+        Detect::Result rr = Detect::detect(im6);
+        CHECK(!rr.ranked.isEmpty() && rr.ranked.first().fmt.separateSides && rr.ranked.first().fmt.sameLayout(f),
+              "detection of the finished two-sided disc: " + (rr.ranked.isEmpty() ? rr.why : rr.ranked.first().fmt.summary()));
+    }
+
     // leave the material for the independent checks
     QFile dd(outdir + "/" + fname + ".diskdef");
     if (dd.open(QIODevice::WriteOnly)) {
@@ -213,6 +270,12 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         QDir().mkpath(d);
         QFile o(d + "/" + e.name.toLower());
         if (o.open(QIODevice::WriteOnly)) o.write(asStored(f, e.data));
+    }
+    for (const Expect &e : ex1) {                         // side 1 of a two-sided disc: <format>.expect1/<u>/<name>
+        QString d = outdir + "/" + fname + ".expect1/" + QString::number(e.user);
+        QDir().mkpath(d);
+        QFile o(d + "/" + e.name.toLower());
+        if (o.open(QIODevice::WriteOnly)) o.write(e.data);
     }
     return 0;
 }

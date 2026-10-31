@@ -25,6 +25,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
@@ -49,12 +50,18 @@ NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
     m_kind->addItem("Extended DSK image (.DSK)", int(Disk::Kind::Edsk));
     m_kind->setItemData(1, "The DSK format CPCEMU introduced, now used by emulators and tools for many machines", Qt::ToolTipRole);
     m_kind->addItem("Raw sector image (.IMG)", int(Disk::Kind::Raw));
+    m_twoSided = new QCheckBox("Double-sided: a separate disc on each side");
+    m_twoSided->setToolTip("Research Machines double-sided discs hold two separate CP/M discs, one on each side, each with its "
+                           "own single-density boot track.\nTick this to make one: both sides are formatted and each is its own "
+                           "drive in the window.\nLeft unticked you get a single-sided disc. Only formats that exist as "
+                           "double-sided discs can be ticked.");
     m_stamps = new QCheckBox("CP/M 3 time stamps (a label and stamp entries in the directory)");
     m_label = new QLineEdit;
     m_label->setMaxLength(12);
     m_label->setPlaceholderText("label (CP/M 3), e.g. WORK.DSK");
     auto *fl = new QFormLayout;
     fl->addRow("Container", m_kind);
+    fl->addRow(m_twoSided);
     fl->addRow(m_stamps);
     fl->addRow("Disc label", m_label);
     auto *bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -71,6 +78,7 @@ NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
     connect(m_filter, &QLineEdit::textChanged, this, &NewDiscDialog::filter);
     connect(m_list, &QListWidget::currentRowChanged, this, &NewDiscDialog::changed);
     connect(m_stamps, &QCheckBox::toggled, m_label, &QWidget::setEnabled);
+    connect(m_twoSided, &QCheckBox::toggled, this, &NewDiscDialog::changed);
     selectFormat("ibm-3740");
 }
 
@@ -84,7 +92,10 @@ void NewDiscDialog::changed() {
     if (!it) return;
     const Cpm::Format *f = Cpm::findFormat(it->data(Qt::UserRole).toString());
     if (!f) return;
-    QString s = f->summary();
+    const bool twoOk = f->twoSidedOk && f->physHeads == 1;
+    if (!twoOk && m_twoSided->isChecked()) { QSignalBlocker b(m_twoSided); m_twoSided->setChecked(false); }
+    m_twoSided->setEnabled(twoOk);
+    QString s = format().summary();
     if (f->heads == 0 && f->tracks % 2 == 0 && f->tracks <= 86)
         s += QString("\nThis definition doesn't say how many sides the disc has; it will be made with %1.").arg(f->physHeads == 1 ? "one" : "two");
     if (!f->source.isEmpty()) s += "\nSource: " + f->source;
@@ -105,7 +116,16 @@ void NewDiscDialog::setKind(Disk::Kind k) { m_kind->setCurrentIndex(qMax(0, m_ki
 Cpm::Format NewDiscDialog::format() const {
     QListWidgetItem *it = m_list->currentItem();
     const Cpm::Format *f = it ? Cpm::findFormat(it->data(Qt::UserRole).toString()) : nullptr;
-    return f ? *f : Cpm::Format();
+    if (!f) return Cpm::Format();
+    if (m_twoSided->isChecked() && f->twoSidedOk && f->physHeads == 1) {
+        Cpm::Format g = *f;                        // the same disc on both sides, each with a filesystem of its own
+        g.separateSides = true;
+        g.heads = 2;
+        g.derived = false;
+        QString e;
+        if (g.derive(&e)) return g;
+    }
+    return *f;
 }
 
 Disk::Kind NewDiscDialog::kind() const { return Disk::Kind(m_kind->currentData().toInt()); }

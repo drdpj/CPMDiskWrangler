@@ -311,6 +311,8 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
             f.acornDfs = val.toLower().startsWith('y');
         } else if (key == "ptr16") {
             f.ptr16Forced = val.toLower().startsWith('y');
+        } else if (key == "twosided") {
+            f.twoSidedOk = val.toLower().startsWith('y');
         } else if (key == "torchcpn") {
             f.torch = val.toLower().startsWith('y');
         } else if (key == "fm") {

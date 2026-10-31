@@ -686,33 +686,43 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
     l.cyls = f.cylinders;
     l.firstId = f.secbase >= 0 ? f.secbase : 1;
     l.mode = defaultImdMode(f);
-    if (f.t0sectrk > 0 && kind == Disk::Kind::Raw) {
+    if (f.t0sectrk > 0 && kind == Disk::Kind::Raw && !f.separateSides) {
         *err = QString("%1 has a track 0 of its own shape (%2 x %3 %4), which a raw image can't hold: make it as ImageDisk or DSK")
                    .arg(f.name).arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM");
         return false;
     }
-    img->createBlank(kind, l, QString("Made by CP/M Disk Wrangler, format %1").arg(f.name));
-    if (f.t0sectrk > 0) {
+    if (kind == Disk::Kind::Raw && f.separateSides) {
+        // a disc with a filesystem per side: the file holds all of side 0, then all of side 1, each side with its own
+        // track 0 (the layout detection reads real Research Machines images in)
+        l.sideBySide = true;
+        l.t0sectrk = f.t0sectrk;
+        l.t0seclen = f.t0seclen;
+    }
+    img->createBlank(kind, l, QString("Made by CP/M Disk Wrangler, format %1%2").arg(f.name, f.separateSides ? ", a separate disc on each side" : ""));
+    if (f.t0sectrk > 0 && kind != Disk::Kind::Raw) {
         // the same data rate as the other tracks, in FM or MFM (ImageDisk modes 0-2 FM, 3-5 MFM)
         int rate = l.mode % 3;
         int mode = f.t0fm ? rate : 3 + rate;
         int first = f.t0firstId >= 0 ? f.t0firstId : l.firstId;
-        if (!img->reshapeTrack(0, 0, f.t0sectrk, f.t0seclen, first, mode, err)) return false;
+        // On double-sided discs only cylinder 0 head 0 has it, unless each side is a disc of its own (Research Machines):
+        // then cylinder 0 of each side does.
+        for (int h = 0; h < (f.separateSides ? f.physHeads : 1); ++h)
+            if (!img->reshapeTrack(0, h, f.t0sectrk, f.t0seclen, first, mode, err)) return false;
     }
-    if (f.dataId >= 0 && f.dataId != l.firstId && kind != Disk::Kind::Raw) {
-        // the data tracks (everything after the reserved area) are numbered from datasect, as on a Microbee DS80;
-        // a raw image records no sector IDs, so there is nothing to do for one
-        for (int t = f.dataStart / f.sectrk; t < f.tracks; ++t) {
-            int cyl = 0, head = 0, idx = 0;
-            if (!f.locate(t * f.sectrk, &cyl, &head, &idx)) continue;
-            if (!img->reshapeTrack(cyl, head, f.sectrk, f.seclen, f.dataId, l.mode, err)) return false;
+    // attach reads an all-E5 directory; then write the empty directory properly (stamps, label), on each side of a
+    // disc with a filesystem per side
+    for (int side = 0; side < (f.separateSides ? 2 : 1); ++side) {
+        Format g = f;
+        if (f.separateSides) {
+            g.fixedHead = side;
+            g.derived = false;
+            if (!g.derive(err)) return false;
         }
+        Volume v;
+        if (!v.attach(img, g, err)) return false;
+        if (g.torch && !v.initDirectory(false, QString(), err)) return false;     // directory, map, formatter's sectors
+        if (stamps && !g.torch && !v.initDirectory(true, label, err)) return false;
     }
-    Volume v;
-    // attach reads an all-E5 directory; then write the empty directory properly (stamps, label)
-    if (!v.attach(img, f, err)) return false;
-    if (f.torch && !v.initDirectory(false, QString(), err)) return false;     // directory, map, formatter's sectors
-    if (stamps && !f.torch && !v.initDirectory(true, label, err)) return false;
     if (f.acornDfs) {
         QByteArray cat = acornDfsCatalogue(f.cylinders * f.sectrk);
         if (!img->write(0, 0, 0, cat.left(256), err) || !img->write(0, 0, 1, cat.mid(256), err)) return false;

@@ -43,6 +43,8 @@
 #include <QUrl>
 #include <cstdio>
 #include "../formatdialog.h"
+#include "../newdisc.h"
+#include <QCheckBox>
 #include "../fileopen.h"
 #include "../mainwindow.h"
 
@@ -115,6 +117,43 @@ int main(int argc, char **argv) {
     CHECK(B.newImage(wd + "/b.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "new IBM 3740 disc (IMD)");
     CHECK(A.writable() && B.writable(), "new discs are writable");
     CHECK(A.volume().label().name == "DISCA", "label on the new CP/M 3 disc");
+
+    printf("== new Research Machines double-sided disc: a separate filesystem on each side\n");
+    {
+        NewDiscDialog nd;
+        QCheckBox *two = nullptr;
+        for (QCheckBox *c : nd.findChildren<QCheckBox *>()) if (c->text().startsWith("Double-sided")) two = c;
+        CHECK(two, "the new-disc dialog has a double-sided box");
+        if (two) {
+            CHECK(nd.selectFormat("ibm-3740") && !two->isEnabled(), "not offered for a format with no double-sided disc");
+            CHECK(nd.selectFormat("rm-qd") && two->isEnabled() && !two->isChecked(), "offered for rm-qd, unticked");
+            CHECK(!nd.format().separateSides && nd.format().physHeads == 1, "unticked: a single-sided disc");
+            two->setChecked(true);
+            Cpm::Format g = nd.format();
+            CHECK(g.separateSides && g.physHeads == 2 && g.cylinders == 80, "ticked: two sides of 80 cylinders, a disc on each");
+            nd.selectFormat("ibm-3740");
+            CHECK(!two->isChecked(), "choosing a format with no double-sided disc unticks it");
+        }
+        Cpm::Format ds = *Cpm::findFormat("rm-qd");
+        ds.separateSides = true; ds.heads = 2; ds.derived = false;
+        CHECK(ds.derive(&err), err);
+        for (Disk::Kind k : {Disk::Kind::Imd, Disk::Kind::Raw}) {
+            const QString p = wd + (k == Disk::Kind::Imd ? "/rmds.imd" : "/rmds.img");
+            MainWindow R;
+            R.show();
+            CHECK(R.newImage(p, k, ds, false, QString()), "new double-sided rm-qd disc");
+            CHECK(R.sides() == 2 && R.writable(), "two filesystems, writable");
+            QFile::remove(wd + "/side1.txt");
+            QFile f1(wd + "/side1.txt"); f1.open(QIODevice::WriteOnly); f1.write("on the second side\r\n"); f1.close();
+            CHECK(R.volume(0).files().isEmpty() && R.volume(1).files().isEmpty(), "both sides empty");
+            CHECK(R.volume(1).addFile(0, "SIDE1.TXT", "on the second side\r\n", 0, QDateTime(), false, &err), "a file on side 1: " + err);
+            CHECK(R.volume(0).files().isEmpty() && R.volume(1).files().size() == 1, "side 0 untouched by it");
+            CHECK(R.save(), "save");
+            MainWindow R2;
+            CHECK(R2.openImage(p), "reopen it");
+            CHECK(R2.sides() == 2 && R2.volume(0).files().isEmpty() && R2.volume(1).files().size() == 1, "reopened: a disc on each side, the file on side 1");
+        }
+    }
 
     printf("== host files and folders\n");
     QDir().mkpath(wd + "/host/user3");

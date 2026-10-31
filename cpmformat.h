@@ -73,6 +73,9 @@ struct Format {
     // double-sided discs do); tracks etc. describe one side. fixedHead (not in the file) picks the side read.
     bool separateSides = false;
     int fixedHead = 0;
+    // "twosided yes": this single-sided definition also exists as a two-sided disc holding a separate filesystem on
+    // each side (Research Machines'), which File > New disc image can make (separateSides, each side its own track 0).
+    bool twoSidedOk = false;
     // "acorndfs yes": side 0's track 0 holds the Acorn DFS catalogue Acorn's CP/M writes ("Acorn CP/M", one
     // locked file $.CPMDISC covering the side) so the BBC's DFS sees the disc as full. In the boot area, so the
     // filesystem never reads it; new discs get it; detection takes it as evidence. cpmtools ignores the key.

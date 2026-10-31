@@ -44,7 +44,8 @@ file is opened as a DSK image only if it carries a DSK header, and as a raw imag
 
 It copes with interleaved and rotated tracks, with discs whose track 0 is single density (FM) and the rest
 double density (Osborne, Research Machines 480Z), and with double-sided discs that hold a separate filesystem on
-each side (shown as **Side 0** and **Side 1**).
+each side (shown as **Side 0** and **Side 1**). New double-sided Research Machines discs can be made too: tick
+"Double-sided" in File > New disc image (ImageDisk, DSK or raw).
 
 It also opens and writes **Torch CP/N** discs (the Torch Z80 second processor for the BBC Micro). Their files are
 CP/M files, but the disc keeps them its own way rather than in a CP/M directory; the program recognises such a disc

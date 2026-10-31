@@ -12,6 +12,8 @@
 #   imdmode N      ImageDisk mode for a new disc: 0/1/2 = FM 500/300/250 kbps, 3/4/5 = MFM 500/300/250 kbps
 #   desc "text"    description shown in menus
 #   source "text"  where the definition comes from and how far it has been checked
+#   twosided yes   a single-sided definition that also exists as a two-sided disc with a separate filesystem on each side
+#                  (Research Machines): File > New disc image offers the double-sided disc
 #   torchcpn yes   the disc holds Torch CP/N's own filesystem, not a CP/M directory (see torch-cpn below)
 # and a top-level line
 #   describe NAME "text"   gives a description to a definition loaded later (e.g. from cpmtools' file).
@@ -289,6 +291,7 @@ diskdef rm-dd
   skew 5
   boottrk 3
   track0 16 128 fm
+  twosided yes
   imdmode 5
   os 2.2
 end
@@ -305,6 +308,7 @@ diskdef rm-qd
   skew 5
   boottrk 3
   track0 16 128 fm
+  twosided yes
   imdmode 5
   os 2.2
 end

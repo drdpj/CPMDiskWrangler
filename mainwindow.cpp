@@ -500,7 +500,7 @@ void MainWindow::newImageDialog() {
     if (d.exec() != QDialog::Accepted) return;
     Cpm::Format f = d.format();
     QString ext = Disk::kindExtension(d.kind());
-    QString p = QFileDialog::getSaveFileName(this, "New disc image", AppSettings().value("lastDir").toString() + "/" + f.name + "." + ext,
+    QString p = QFileDialog::getSaveFileName(this, "New disc image", AppSettings().value("lastDir").toString() + "/" + f.name + (f.separateSides ? "-2sides" : "") + "." + ext,
                                              QString("Disc image (*.%1)").arg(ext));
     if (p.isEmpty()) return;
     MainWindow *w = this;

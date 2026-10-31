@@ -165,7 +165,16 @@ starts on the filter for the kind the image already is, and the kind saved is th
   two-sided disc (scoring side 0, plus side 1 if it reads sensibly, plus each side's track 0 shape); the window
   then attaches one `Cpm::Volume` per side (`m_vols[2]`), and every row, `FileRef`, drag payload and import
   carries the side. Drags between the two sides of one window are allowed; drags back onto the same side are not.
-  Not yet: generic search for separate sides (only library formats), new discs of this kind.
+  Not yet: generic search for separate sides (only library formats).
+  **New discs of this kind**: a single-sided definition with `twosided yes` (`rm-dd`, `rm-qd`) gets a "Double-sided: a
+  separate disc on each side" box in File > New disc image; ticking it gives `separateSides` + 2 heads, and `makeBlank`
+  formats both sides (each side its own directory, stamps and label if asked) and, as IMD/DSK, gives cylinder 0 of
+  **each** side the track 0 shape (FM 16 x 128). As a raw image the file is side 0 then side 1 (`RawLayout::sideBySide`)
+  with a track 0 on each, 732,160 bytes for `rm-qd` - the size of the real discs (`BASIC-disk1.img`, `basiczasm.img`),
+  detected back as `rm-qd`, a separate disc on each side. A single-sided format with its own track 0 is still refused as
+  raw. The boot track is made blank (E5), not with RM's boot code. Tests: `fstest rm-qd+ds raw|imd|edsk` (both sides
+  written, committed, reopened, detected), `tests/verify_rm_sides.py` (cpmtools reads each side of the raw file: first
+  track padded to 9 x 512, `fsck.cpm` clean, every file exact; also run on the real images), and guitest.
 - **Research Machines 480Z** (checked on three of the owner's real discs: `BASIC-disk1.img`, `BASIC-disk2.img`,
   `basiczasm.img`, raw, 732,160 bytes): side 0 then side 1 in the file; each side = FM track 0 of 16 x 128 (RM
   boot code, "Quad density disc"), then 79 tracks of 9 x 512; each side is an `rm-qd` disc (skew 5, 3 boot
