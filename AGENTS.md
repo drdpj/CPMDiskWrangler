@@ -157,6 +157,9 @@ starts on the filter for the kind the image already is, and the kind saved is th
   nine such names (`brøkregning`, `årsløn_1`, ...) that used to count as nonsense entries. Names are shown and
   extracted as they are on the disc (`br|kregning`); `|` is not a legal Windows file name, so extracting to Windows has
   not been checked.
+- **Names with no base name**: `.HEX` / `.PRN` (the assembler leaves them, empty, when run without a file name) are
+  files, not nonsense: `blankNamedFile` in `detect.cpp` accepts a blank base name with a valid extension, with or
+  without blocks, and a name of eleven spaces only when it holds blocks (the Einstein Jet Set Willy disc).
 - **A separate disc on each side** (`separatesides yes`; `Format::fixedHead` picks the side; cpmtools ignores the
   key): `tracks` etc. describe one side. Detection tries every single-sided library format this way on a
   two-sided disc (scoring side 0, plus side 1 if it reads sensibly, plus each side's track 0 shape); the window

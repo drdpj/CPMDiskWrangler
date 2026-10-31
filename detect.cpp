@@ -75,11 +75,20 @@ bool nameOk(const unsigned char *e) {
     return true;
 }
 
-// A file whose name is eleven spaces: nothing but a program or a protection scheme makes one, and the CCP can never
-// name it, but the BDOS keeps it like any other (the Tatung Einstein Jet Set Willy disc has one). Taken as a file only
-// when it holds blocks, so a run of spaces in text that is not a directory doesn't pass for one.
+// Names nothing can type but the BDOS keeps like any other. An extension with no base name (".HEX", ".PRN": the
+// assembler leaves them when it is run without a file name, usually empty): fine when the extension's characters are.
+// A name of eleven spaces (the Tatung Einstein Jet Set Willy disc has one): taken as a file only when it holds blocks,
+// so a run of spaces in text that is not a directory doesn't pass for one.
 bool blankNamedFile(const unsigned char *e) {
-    for (int k = 1; k <= 11; ++k) if ((e[k] & 0x7F) != ' ') return false;
+    for (int k = 1; k <= 8; ++k) if ((e[k] & 0x7F) != ' ') return false;
+    if ((e[9] & 0x7F) != ' ') {
+        for (int k = 9; k <= 11; ++k) {
+            int c = e[k] & 0x7F;
+            if (c < 0x20 || c == 0x7F || strchr("<>,;:=?*", c)) return false;
+        }
+        return true;
+    }
+    if ((e[10] & 0x7F) != ' ' || (e[11] & 0x7F) != ' ') return false;
     for (int k = 16; k < 32; ++k) if (e[k]) return e[15] != 0;
     return false;
 }
