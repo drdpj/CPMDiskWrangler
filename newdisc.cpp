@@ -46,7 +46,8 @@ NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
     m_info->setTextInteractionFlags(Qt::TextSelectableByMouse);
     m_kind = new QComboBox;
     m_kind->addItem("ImageDisk (.IMD)", int(Disk::Kind::Imd));
-    m_kind->addItem("Extended CPCEMU DSK (.DSK)", int(Disk::Kind::Edsk));
+    m_kind->addItem("Extended DSK image (.DSK)", int(Disk::Kind::Edsk));
+    m_kind->setItemData(1, "The DSK format CPCEMU introduced, now used by emulators and tools for many machines", Qt::ToolTipRole);
     m_kind->addItem("Raw sector image (.IMG)", int(Disk::Kind::Raw));
     m_stamps = new QCheckBox("CP/M 3 time stamps (a label and stamp entries in the directory)");
     m_label = new QLineEdit;

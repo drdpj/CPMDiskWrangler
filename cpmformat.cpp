@@ -139,7 +139,8 @@ bool Format::sameLayout(const Format &o) const {
     return torch == o.torch && seclen == o.seclen && sectrk == o.sectrk && tracks == o.tracks && physHeads == o.physHeads &&
            separateSides == o.separateSides &&
            (physHeads == 1 || sides == o.sides) && blocksize == o.blocksize && maxdir == o.maxdir &&
-           dirBlocks == o.dirBlocks && dataStart == o.dataStart && xlat == o.xlat && dsm == o.dsm && exm == o.exm;
+           dirBlocks == o.dirBlocks && dataStart == o.dataStart && xlat == o.xlat && dsm == o.dsm && exm == o.exm &&
+           ptr16 == o.ptr16;
 }
 
 static QString kb(qint64 b) {
@@ -159,9 +160,11 @@ QString Format::summary() const {
     QString sideText = separateSides ? "per side; 2 sides, a disc on each" : physHeads == 1 ? "1 side" : QString("2 sides, %1").arg(sideOrderName(sides));
     QString boot = bootsec >= 0 ? QString("%1 boot sectors").arg(bootsec) : QString("%1 boot track%2").arg(boottrk).arg(boottrk == 1 ? "" : "s");
     QString t0 = t0sectrk > 0 ? QString(" (track 0: %1 x %2 %3)").arg(t0sectrk).arg(t0seclen).arg(t0fm ? "FM" : "MFM") : QString();
-    return QString("%1 x %2 bytes/track, %3 tracks (%4), %5, %6, %7 blocks, %8 directory entries, CP/M %9, %10")
+    QString r = QString("%1 x %2 bytes/track, %3 tracks (%4), %5, %6, %7 blocks, %8 directory entries, CP/M %9, %10")
         .arg(sectrk).arg(seclen).arg(tracks).arg(sideText, skewText, boot + t0, kb(blocksize)).arg(maxdir)
         .arg(osName(os), kb(capacityBytes()));
+    if (ptr16Forced) r += ", two-byte block pointers";
+    return r;
 }
 
 QString Format::shortSummary() const {

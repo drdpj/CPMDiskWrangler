@@ -117,7 +117,7 @@ EInfo classify(const unsigned char *e, int index) {
 
 struct DirScore {
     double score = 0;
-    int fileEntries = 0, bad = 0, badPtr = 0, cross = 0, exact = 0, mismatch = 0, labels = 0, stamps = 0, inert = 0;
+    int fileEntries = 0, bad = 0, badPtr = 0, cross = 0, exact = 0, mismatch = 0, widePtr = 0, labels = 0, stamps = 0, inert = 0;
     int files = 0, lowest = INT_MAX;
 };
 
@@ -159,6 +159,21 @@ DirScore scoreDir(const Cpm::Format &f, const QVector<EInfo> &ent) {
             }
             int need = (recs * 128 + f.blocksize - 1) / f.blocksize;
             if (nz == need) d.exact++; else d.mismatch++;
+            // Two-byte pointers read as one-byte ones come out as block, 0, block, 0, ...: read as words, at least two
+            // small numbers in a row, then zeros, as many as the records need. A disc that really has one-byte
+            // pointers has a nonzero byte next to each of them, so its words are 256 or more.
+            if (!f.ptr16) {
+                int words = 0;
+                for (int k = 0; k < 8; ++k) {
+                    int w = x.raw[16 + 2 * k] | x.raw[17 + 2 * k] << 8;
+                    if (w == 0) break;
+                    if (w > 255) { words = 0; break; }
+                    ++words;
+                }
+                bool tail = true;
+                for (int k = 2 * words; k < 16; ++k) if (x.raw[16 + k]) tail = false;
+                if (words >= 2 && tail && words == need) d.widePtr++;
+            }
             break;
         }
         }
@@ -532,6 +547,7 @@ Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
     c.badPointers = d.badPtr;
     c.crossLinks = d.cross;
     c.exactCounts = d.exact;
+    c.widePointers = d.widePtr;
     c.evidence << QString("%1 files in %2 directory entries").arg(d.files).arg(d.fileEntries);
     if (d.bad) c.evidence << QString("%1 directory entries make no sense").arg(d.bad);
     if (d.badPtr) c.evidence << QString("%1 block pointers out of range").arg(d.badPtr);
@@ -571,7 +587,7 @@ Candidate reevaluate(const Disk::Image &img, const Candidate &old) {
     c.score = old.score - old.base + fresh.score;
     c.base = fresh.score;
     c.files = fresh.files; c.fileEntries = fresh.fileEntries; c.badEntries = fresh.badEntries;
-    c.badPointers = fresh.badPointers; c.crossLinks = fresh.crossLinks; c.exactCounts = fresh.exactCounts;
+    c.badPointers = fresh.badPointers; c.crossLinks = fresh.crossLinks; c.exactCounts = fresh.exactCounts; c.widePointers = fresh.widePointers;
     c.textGood = fresh.textGood; c.textBad = fresh.textBad; c.startsBlank = fresh.startsBlank;
     c.evidence = fresh.evidence + old.evidence.mid(old.baseLines);
     c.baseLines = fresh.baseLines;
@@ -586,6 +602,33 @@ Candidate evaluateSide(const Disk::Image &img, const Cpm::Format &f, int head) {
     return evaluate(img, g, false);
 }
 } // namespace
+
+void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const Disk::Image &img) {
+    Candidate &c = *cp;
+    const bool haveIds = img.kind() != Disk::Kind::Raw;
+    const Disk::Shape sh = img.shape();
+    c.fromLibrary = true;
+    c.score += 3;
+    c.evidence << "a known format (" + lib.origin + ")";
+    if (lib.t0sectrk > 0) {
+        const Disk::Track *t0 = img.track(0, 0);
+        bool same = t0 && t0->secs.size() == lib.t0sectrk && !t0->secs.isEmpty() && t0->secs[0].size == lib.t0seclen &&
+                    (t0->mode < 0 || (t0->mode <= 2) == lib.t0fm);
+        if (same) { c.score += 3; c.evidence << QString("track 0 is %1 x %2 %3, as this format's is").arg(lib.t0sectrk).arg(lib.t0seclen).arg(lib.t0fm ? "FM" : "MFM"); }
+        else { c.score -= 3; c.evidence << "track 0 is not the shape this format gives it"; }
+    }
+    if (lib.acornDfs) {
+        int sl = 0;
+        if (Cpm::isAcornDfsCatalogue(discStart(img, 512, &sl))) {
+            c.score += 6;
+            c.evidence << "track 0 holds the DFS catalogue Acorn's CP/M writes ($.CPMDISC)";
+        }
+    }
+    if (haveIds && lib.secbase >= 0) {
+        if (lib.secbase == sh.firstId) { c.score += 4; c.evidence << QString("sector IDs start at %1, as this format's do").arg(lib.secbase); }
+        else { c.score -= 6; c.evidence << QString("sector IDs start at %1, this format's at %2").arg(sh.firstId).arg(lib.secbase); }
+    }
+}
 
 Result detect(Disk::Image &img, const QString &remembered, int keep) {
     Result res;
@@ -720,27 +763,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             }
             Candidate c = evaluate(img, f, true);
             if (c.score < -1e8) continue;
-            c.fromLibrary = true;
-            c.score += 3;
-            c.evidence << "a known format (" + f.origin + ")";
-            if (f.t0sectrk > 0) {
-                const Disk::Track *t0 = img.track(0, 0);
-                bool same = t0 && t0->secs.size() == f.t0sectrk && !t0->secs.isEmpty() && t0->secs[0].size == f.t0seclen &&
-                            (t0->mode < 0 || (t0->mode <= 2) == f.t0fm);
-                if (same) { c.score += 3; c.evidence << QString("track 0 is %1 x %2 %3, as this format's is").arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM"); }
-                else { c.score -= 3; c.evidence << "track 0 is not the shape this format gives it"; }
-            }
-            if (f.acornDfs) {
-                int sl = 0;
-                if (Cpm::isAcornDfsCatalogue(discStart(img, 512, &sl))) {
-                    c.score += 6;
-                    c.evidence << "track 0 holds the DFS catalogue Acorn's CP/M writes ($.CPMDISC)";
-                }
-            }
-            if (haveIds && f.secbase >= 0) {
-                if (f.secbase == sh.firstId) { c.score += 4; c.evidence << QString("sector IDs start at %1, as this format's do").arg(f.secbase); }
-                else { c.score -= 6; c.evidence << QString("sector IDs start at %1, this format's at %2").arg(sh.firstId).arg(f.secbase); }
-            }
+            scoreKnownFormat(&c, f, img);
             all.append(c);
         }
         // ----- the Amstrad boot-sector spec
@@ -933,8 +956,10 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
     // - block size, pointer width - even when nothing else is: a two-byte-pointer directory read with one-byte
     // pointers lists every file at the right size with half its blocks missing. None of the real discs we test on has one.
     const int unevenEntries = best.fileEntries - best.exactCounts;
+    // block, 0, block, 0, ... in most entries: two-byte pointers read as one-byte ones (the Tatung Einstein's)
+    const bool widePointers = best.widePointers > 0 && best.widePointers * 2 >= best.fileEntries;
     bool clean = best.badEntries == 0 && best.badPointers == 0 && best.crossLinks == 0 && best.textBad * 4 <= best.textGood &&
-                 unevenEntries * 4 <= best.fileEntries;
+                 unevenEntries * 4 <= best.fileEntries && !widePointers;
     const Candidate *rival = nullptr, *sameReading = nullptr;
     for (int i = 1; i < res.ranked.size(); ++i) {
         const Candidate &o = res.ranked[i];
@@ -972,6 +997,9 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         if (res.confidence == "high") res.confidence = "medium";
         res.why += " The best reading still has inconsistencies (see Tools > Check disc).";
     }
+    if (widePointers)
+        res.why += " The directory's block pointers look two bytes wide: tick \"Two-byte block pointers\" in Tools > Disc format "
+                   "and try again.";
     // Writing needs a known (or confirmed) format that nothing else with a different layout competes with: a layout
     // that lists the same files but would place new files differently (another directory size, say) is a risk too,
     // unless it is only a search result and the known format is the sensible reading.

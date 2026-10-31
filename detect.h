@@ -41,6 +41,7 @@ struct Candidate {
     bool fromLibrary = false;        // the layout equals a library format
     bool remembered = false;         // the user chose this format for this image before
     int files = 0, fileEntries = 0, badEntries = 0, badPointers = 0, crossLinks = 0, exactCounts = 0;
+    int widePointers = 0;            // entries whose block pointers read as two bytes wide (see scoreDir)
     int textGood = 0, textBad = 0, startsBlank = 0;
     QStringList evidence;            // for the format dialog
     double base = 0;                 // the part of score that evaluate() gave (the rest: known format, IDs, ...)
@@ -59,6 +60,10 @@ struct Result {
 // Scores one format against an image (raw images must already have their layout set). Used by detect() and by
 // the format dialog when the user picks or edits a format by hand.
 Candidate evaluate(const Disk::Image &img, const Cpm::Format &f, bool deep);
+// The points detection adds to a reading that has the layout of a library format (its definition in lib): +3 for being a
+// known format, track 0's shape, the Acorn DFS catalogue, whether the sector IDs start where the definition says. The
+// format dialog uses it too, so a format typed by hand that equals a library one scores the same as the detected one.
+void scoreKnownFormat(Candidate *c, const Cpm::Format &lib, const Disk::Image &img);
 
 // The same reading scored again on the disc as it is now (files added or deleted since detection, a new disc
 // that has been filled): what evaluate() found is replaced, the bonuses detection added are kept. A raw image

@@ -34,8 +34,69 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QSplitter>
+#include <QTextBrowser>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+
+// What the scores mean: kept next to the numbers in detect.cpp (scoreDir, scoreContents, the known-format bonuses and
+// the confidence rules at the end of detect()). Change one, change the other.
+static void showScoringHelp(QWidget *parent) {
+    const QString html = QStringLiteral(
+        "<h3>How the readings are scored</h3>"
+        "<p>Each row is one way of laying a CP/M filesystem over this disc: sides, reserved tracks, skew, block size and "
+        "directory size. The program reads the directory with that layout, checks what it finds and adds up points. A "
+        "higher score means the layout explains the disc better. Only the differences between rows matter: a score is not "
+        "a percentage, and scores are only comparable within one list, for one disc.</p>"
+        "<h4>The directory (each entry in use)</h4>"
+        "<ul>"
+        "<li>+4 for each file entry, and +2 more when the number of block pointers matches the file's record count "
+        "(-3 when it does not)</li>"
+        "<li>-15 for an entry that makes no sense (control characters in a name, impossible counts)</li>"
+        "<li>-8 for a block pointer outside the disc or inside the directory, for a block used by two entries, and for the "
+        "same extent listed twice; -1 for each gap in a pointer list</li>"
+        "<li>+6 when the lowest file block is the first one after the directory</li>"
+        "<li>a little for a disc label or time-stamp entry</li>"
+        "</ul>"
+        "<h4>The files (the first 8K of up to 32 of them)</h4>"
+        "<ul>"
+        "<li>+3 for a text file that stays text up to its end mark, -8 for one that does not</li>"
+        "<li>+1 for a .COM file that starts with a plausible instruction, -1 if not</li>"
+        "<li>-4 for a file that starts in never-written (E5) space, -1 for each never-written sector inside a file, and -4 "
+        "for a file of nothing but zeros. A wrong side order or reserved-track count sends file blocks to places that were "
+        "never written. Real files have a few such sectors, so this only separates rival readings.</li>"
+        "</ul>"
+        "<h4>Known formats</h4>"
+        "<ul>"
+        "<li>+3 when the layout equals a built-in or cpmtools format; +4 if the disc's sector numbers start where that "
+        "format's do, -6 if they do not</li>"
+        "<li>+3 or -3 when the format has a track 0 of its own shape and the disc does or does not match it; +6 for the DFS "
+        "catalogue Acorn's CP/M writes</li>"
+        "<li>+15 when the Amstrad boot sector describes the disc; +20 for the format you chose for this disc before</li>"
+        "<li>A format you type in by hand gets exactly the same points if it equals a known format.</li>"
+        "</ul>"
+        "<h4>Confidence, and whether the disc may be changed</h4>"
+        "<p><b>High</b>: no other layout comes close. <b>Medium</b>: another reading lists the same files but would write "
+        "new ones differently, or the best reading has inconsistencies. <b>Low</b>: another layout reads a different "
+        "directory and scores within 6 points of the best.</p>"
+        "<p>A reading has inconsistencies when it has nonsense entries, bad pointers, a block used twice, text files that "
+        "stop being text, more than a quarter of its file entries whose pointer count disagrees with the records, or block "
+        "pointers that look two bytes wide (see \"Two-byte block pointers\").</p>"
+        "<p>The program only lets you change a disc when the reading is clean, the disc has no bad sectors, nothing "
+        "competes with it, and the format is a known one or one you have confirmed with the box at the bottom.</p>");
+    QDialog d(parent);
+    d.setWindowTitle("How scoring works");
+    auto *view = new QTextBrowser;
+    view->setHtml(html);
+    view->setOpenLinks(false);
+    auto *bb = new QDialogButtonBox(QDialogButtonBox::Close);
+    auto *lay = new QVBoxLayout(&d);
+    lay->addWidget(view);
+    lay->addWidget(bb);
+    QObject::connect(bb, &QDialogButtonBox::rejected, &d, &QDialog::reject);
+    QObject::connect(bb, &QDialogButtonBox::accepted, &d, &QDialog::accept);
+    d.resize(560, 560);
+    d.exec();
+}
 
 FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int currentIndex, bool writable, QWidget *parent)
     : QDialog(parent), m_img(img) {
@@ -68,6 +129,13 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
     m_maxdir = new QSpinBox; m_maxdir->setRange(16, 8192);
     m_dirblks = new QSpinBox; m_dirblks->setRange(0, 64); m_dirblks->setSpecialValueText("auto");
     m_os = new QComboBox; m_os->addItems({"2.2", "3", "p2dos", "zsys"});
+    m_ptr16 = new QCheckBox("Two-byte block pointers");
+    m_ptr16->setToolTip("A directory entry holds block numbers: normally sixteen one-byte numbers, or eight two-byte numbers "
+                        "on a disc of more than 256 blocks.\n"
+                        "Tick this for a smaller disc that uses two-byte numbers anyway (the Tatung Einstein does).\n"
+                        "A sign: read as one-byte numbers, the pointers come out as 1, 0, 2, 0, 3, 0 ... with a zero after "
+                        "each block number.\n"
+                        "It only changes how the directory is read; the disc's real size still limits the blocks.");
     m_formErr = new QLabel; m_formErr->setWordWrap(true);
     auto *fl = new QFormLayout;
     fl->addRow("Sector size", m_seclen);
@@ -82,6 +150,7 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
     fl->addRow("Directory entries", m_maxdir);
     fl->addRow("Directory blocks", m_dirblks);
     fl->addRow("CP/M version", m_os);
+    fl->addRow(QString(), m_ptr16);
     auto *tryBtn = new QPushButton("Try these settings");
     auto *fv = new QVBoxLayout(form);
     fv->addLayout(fl);
@@ -104,6 +173,8 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
     auto *bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     bb->button(QDialogButtonBox::Ok)->setText("Use this format");
     auto *copyBtn = bb->addButton("Copy as diskdef", QDialogButtonBox::ActionRole);
+    auto *helpBtn = bb->addButton("How scoring works", QDialogButtonBox::HelpRole);
+    helpBtn->setToolTip("What the scores mean, and how a reading is chosen");
     auto *lay = new QVBoxLayout(this);
     lay->addWidget(phys);
     lay->addWidget(mid, 1);
@@ -112,6 +183,7 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
     connect(bb, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(bb, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(copyBtn, &QPushButton::clicked, this, &FormatDialog::copyDiskdef);
+    connect(helpBtn, &QPushButton::clicked, this, [this] { showScoringHelp(this); });
     connect(tryBtn, &QPushButton::clicked, this, &FormatDialog::tryCustom);
     connect(m_list, &QTreeWidget::currentItemChanged, this, &FormatDialog::selectionChanged);
 
@@ -189,6 +261,7 @@ void FormatDialog::fillForm(const Cpm::Format &f) {
     m_maxdir->setValue(f.maxdir);
     m_dirblks->setValue(f.dirblks);
     m_os->setCurrentIndex(int(f.os));
+    m_ptr16->setChecked(f.ptr16Forced);
     m_formErr->clear();
 }
 
@@ -213,6 +286,7 @@ bool FormatDialog::formFormat(Cpm::Format *f, QString *err) const {
     x.maxdir = m_maxdir->value();
     x.dirblks = m_dirblks->value();
     x.os = Cpm::Os(m_os->currentIndex());
+    x.ptr16Forced = m_ptr16->isChecked();
     if (!x.derive(err)) return false;
     *f = x;
     return true;
@@ -256,8 +330,17 @@ void FormatDialog::tryCustom() {
     if (!formFormat(&f, &err)) { m_formErr->setText("<font color=#b00>" + err.toHtmlEscaped() + "</font>"); return; }
     Detect::Candidate c;
     if (!evaluateFormat(f, &c, &err)) { m_formErr->setText("<font color=#b00>" + err.toHtmlEscaped() + "</font>"); return; }
+    // The same layout as a known format: score it as detection scores that format, so the number in the list means
+    // the same thing whether the reading was found or typed.
     for (const Cpm::Format &l : Cpm::library())
-        if (l.sameLayout(f)) { c.fmt.name = l.name; c.fmt.desc = l.desc; c.fromLibrary = true; break; }
+        if (l.sameLayout(f)) {
+            Detect::Candidate k = Detect::evaluate(*m_img, l, true);
+            if (k.score > -1e8) {
+                Detect::scoreKnownFormat(&k, l, *m_img);
+                c = k;
+            }
+            break;
+        }
     c.evidence << "set by hand";
     // Select the new reading without refilling the form from it: the form keeps exactly what was typed, so the
     // next try starts from the same settings (deriving a format normalises some of them).

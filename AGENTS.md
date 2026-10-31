@@ -37,6 +37,10 @@ with its terms (and in About if it ships in the program); material only consulte
 | `torchfs.h/.cpp` | Torch CP/N's filesystem (format key `torchcpn`): `Torch::walk`/`scan` (shared with detection) and the `Cpm::Volume` methods `torch...` that every public `Volume` method hands over to when `Format::torch` is set, so the window, drags, Copy/Paste and the tests see one `Volume` |
 | `icon.*`, `icons/` | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
+**Container by content, not by name.** `Image::open` recognises ImageDisk, DSK / extended DSK and TeleDisk by their
+headers and treats anything else as raw, whatever the suffix (`.dsk` is used for raw dumps by many emulators). Save As
+starts on the filter for the kind the image already is, and the kind saved is the filter chosen, never the typed name.
+
 ## The rules that must not be broken
 1. **Nothing is written to the file except by `Image::commit()` / `saveAs()`.** Filesystem code writes through
    `Image::write`, which stages; every read overlays the staging.
@@ -141,6 +145,10 @@ with its terms (and in About if it ships in the program); material only consulte
   changes (the real block count still limits the disc). cpmtools has no such key (Damien Guard's workaround is to fake
   `tracks 103`), so `fstest` / `verify_independent.sh` leave `einstein` out. Before the definition existed, `amp1`
   (same geometry, one-byte pointers) matched and read files as blocks 1,0,2,0,... - high confidence, wrong data.
+  Now such a reading is flagged (`DirScore::widePtr`: two or more small block numbers in a row then zeros, as many
+  as the records need; a real one-byte directory has a nonzero byte beside each pointer), is never "clean", and says
+  so in its explanation. Tools > Disc format has a "Two-byte block pointers" box for trying it by hand (`ptr16`);
+  the summary line says "two-byte block pointers" for a forced reading. No real image trips the signal.
   Checked on `JSWSHOW_SHOWJUMPER.dsk` and `JSWSHOW_JETSETWILLY.dsk` (the latter has a CRC-error sector on the last
   track, so it opens read-only, and a file whose name is eleven spaces: `blankNamedFile` in `detect.cpp` accepts one
   with blocks instead of calling it nonsense).
@@ -239,6 +247,11 @@ with its terms (and in About if it ships in the program); material only consulte
    disagrees with their record count ("block counts match record counts in N of M"). A wrong pointer width or block
    size shows up that way first: a two-byte-pointer directory (the Tatung Einstein's) read with one-byte pointers
    gave 1 of 2, and files with half their blocks missing. All 58 real images we test on have 0 such entries.
+5c. The known-format points (+3 known, track 0 shape, DFS catalogue, sector-ID base) are one function,
+   `Detect::scoreKnownFormat`: detection uses it for library formats and the format dialog for a format typed by hand
+   that equals one (`Format::sameLayout`), so a score means the same whichever way the reading was made. The dialog's
+   "How scoring works" button (`showScoringHelp` in `formatdialog.cpp`) lists every weight; change the numbers in
+   `detect.cpp` and that text together.
 6. Not CP/M at all: an empty directory fits every layout of the right shape, so a disc whose directory area is
    just E5 (an Acorn DFS disc formatted by Acorn's FORM, for one) used to open as an empty CP/M disc. Now (a) an
    empty reading whose directory is one repeated byte is dropped if the rest of the disc (outside that format's

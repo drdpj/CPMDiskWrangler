@@ -3,7 +3,7 @@
 
 # CP/M Disk Wrangler
 
-View and edit CP/M disc images. It reads raw sector dumps, ImageDisk, CPCEMU and extended DSK, and TeleDisk images,
+View and edit CP/M disc images. It reads raw sector dumps, ImageDisk, standard and extended DSK (the format CPCEMU introduced), and TeleDisk images,
 **works out the disc's format from its contents**, and lets you add, extract, view, rename and delete files, change
 user numbers and attributes, set CP/M 3 labels, convert between image types, and make new discs in about 140
 formats. Files can be dragged between discs, to and from your desktop, and to and from
@@ -36,8 +36,11 @@ Help > About shows the version, and Help > Licences the licences of the program 
 |---|---|---|
 | Raw sector image (`.img`, `.dsk`, `.h8d`, ...) | yes | yes |
 | ImageDisk (`.imd`) | yes | yes - everything it doesn't change is kept exactly |
-| CPCEMU and extended DSK (`.dsk`) | yes | yes - only the changed sectors are rewritten |
+| Standard and extended DSK images (`.dsk`; the format CPCEMU introduced, now used for many machines) | yes | yes - only the changed sectors are rewritten |
 | TeleDisk (`.td0`) | yes | no - use Save As to make an ImageDisk, DSK or raw copy, then edit that |
+
+A file's type comes from what is in it, never from its name: many emulators use `.dsk` for a plain sector dump, so a `.dsk`
+file is opened as a DSK image only if it carries a DSK header, and as a raw image otherwise.
 
 It copes with interleaved and rotated tracks, with discs whose track 0 is single density (FM) and the rest
 double density (Osborne, Research Machines 480Z), and with double-sided discs that hold a separate filesystem on

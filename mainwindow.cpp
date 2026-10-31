@@ -570,12 +570,23 @@ bool MainWindow::saveAs(const QString &path, Disk::Kind kind) {
 
 void MainWindow::saveAsDialog() {
     if (!m_img.isOpen()) return;
-    QString base = QFileInfo(m_img.path()).completeBaseName();
-    QString filter;
-    QString p = QFileDialog::getSaveFileName(this, "Save as", QFileInfo(m_img.path()).absolutePath() + "/" + base + ".imd",
-                                             "ImageDisk (*.imd);;Extended CPCEMU DSK (*.dsk);;Raw sector image (*.img *.raw *.bin)", &filter);
+    // .dsk is not only the Amstrad CPC's: emulators of many machines use it for plain sector dumps too. What a file is comes from
+    // the filter chosen here, never from the name typed, so the dialog starts on the kind this image already is (and a raw
+    // image keeps its own file name, .dsk and all) and the raw filter lists .dsk and the other common raw suffixes.
+    const QString imd = "ImageDisk (*.imd)";
+    const QString dsk = "Extended DSK image (*.dsk)";
+    const QString raw = "Raw sector image (*.img *.raw *.bin *.dsk *.h8d *.ima)";
+    QString filter = imd;
+    QString name = QFileInfo(m_img.path()).completeBaseName() + ".imd";
+    switch (m_img.kind()) {
+    case Disk::Kind::Raw: filter = raw; name = QFileInfo(m_img.path()).fileName(); break;
+    case Disk::Kind::Dsk: case Disk::Kind::Edsk: filter = dsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
+    default: break;
+    }
+    QString p = QFileDialog::getSaveFileName(this, "Save as", QFileInfo(m_img.path()).absolutePath() + "/" + name,
+                                             imd + ";;" + dsk + ";;" + raw, &filter);
     if (p.isEmpty()) return;
-    Disk::Kind k = filter.startsWith("ImageDisk") ? Disk::Kind::Imd : filter.startsWith("Extended") ? Disk::Kind::Edsk : Disk::Kind::Raw;
+    Disk::Kind k = filter == imd ? Disk::Kind::Imd : filter == dsk ? Disk::Kind::Edsk : Disk::Kind::Raw;
     saveAs(p, k);
 }
 
@@ -1276,7 +1287,7 @@ void MainWindow::about() {
     QMessageBox::about(this, "About CP/M Disk Wrangler",
                        "<b>CP/M Disk Wrangler</b><br>Version " + QApplication::applicationVersion().toHtmlEscaped() +
                        "<br><br>View and edit CP/M disc images: raw sector dumps, ImageDisk (.IMD), "
-                       "CPCEMU and extended DSK, and TeleDisk (.TD0, read-only). Works out each disc's format from its contents, "
+                       "standard and extended DSK (the format CPCEMU introduced), and TeleDisk (.TD0, read-only). Works out each disc's format from its contents, "
                        "and exchanges files with Acorn Disk Wrangler and other tools by drag and drop (retro-files format).<br><br>"
                        "Copyright &copy; 2026 Daniel Jameson.<br>Licensed under the GNU General Public License v3 or later.<br><br>"
                        "Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later). "

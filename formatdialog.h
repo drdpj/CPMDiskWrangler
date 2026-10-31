@@ -56,7 +56,7 @@ private:
     QVector<Detect::Candidate> m_cands;
     QTreeWidget *m_list;
     QPlainTextEdit *m_details;
-    QCheckBox *m_allow;
+    QCheckBox *m_allow, *m_ptr16;
     QLabel *m_formErr;
     QComboBox *m_seclen, *m_sides, *m_bls, *m_os;
     QSpinBox *m_sectrk, *m_tracks, *m_heads, *m_boot, *m_skew, *m_maxdir, *m_dirblks;

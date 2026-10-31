@@ -29,8 +29,8 @@ QString kindName(Kind k) {
     switch (k) {
     case Kind::Raw: return "raw sector image";
     case Kind::Imd: return "ImageDisk (.IMD)";
-    case Kind::Dsk: return "CPCEMU disc (.DSK)";
-    case Kind::Edsk: return "extended CPCEMU disc (.DSK)";
+    case Kind::Dsk: return "standard DSK image";
+    case Kind::Edsk: return "extended DSK image";
     case Kind::Td0: return "TeleDisk (.TD0)";
     default: return "none";
     }
