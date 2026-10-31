@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <QCheckBox>
 #include <QToolButton>
 
 #include <QDateTime>
@@ -86,6 +87,8 @@ public:
     static QList<MainWindow *> &windows();
 
     // ----- for the menus, and for tests
+    void setLowerNames(bool on, bool remember);       // allow lower-case file names on this disc
+    bool lowerNames() const { return m_lowerOk; }
     void setNat(const QString &id, bool remember);     // the disc's national character set (natchars.h)
     QString natId() const { return m_natId; }
     QString natHint() const { return m_natHint; }
@@ -147,14 +150,21 @@ private slots:
 private:
     bool attachFormat(const Detect::Candidate &c, QString *err);
     // The disc's national character set (natchars.h): how names and text are shown, extracted, added and viewed.
-    const Nat::Set &nat() const { return Nat::find(m_natId); }
+    Nat::Set nat() const { return Nat::find(m_natId); }
     QString rememberedNat() const;
     void natDialog();
+    bool m_lowerOk = false;            // Tools > Allow lower-case file names: ticked for a disc that has any (or as chosen)
+    bool lowerDisc() const { return m_lowerOk; }
+    void showLower(bool on);
+    void autoLower();                  // set it from what the disc holds, or from what was chosen for this disc before
+    QVector<const Cpm::Volume *> volumePtrs() const { QVector<const Cpm::Volume *> v; for (int i = 0; i < m_nvols; ++i) v << &m_vols[i]; return v; }
+    QString nameRules() const { return Nat::extraNameChars(nat()) + (lowerDisc() ? Nat::lowerLetters() : QString()); }
+    void applyNameRules() { const QString r = nameRules(); for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(r); }
     bool askNatForNames(const QVector<XItem> &items);
     QString m_natId = "ascii";
     QString m_natHint;                 // shown in the status bar: this disc looks as if it uses a national character set
     QString toHostName(const QString &discName) const { return Nat::toHost(discName, nat()); }
-    QString toDiscName(const QString &hostName, bool upper = true) const { return Nat::fromHost(hostName, nat(), upper); }
+    QString toDiscName(const QString &hostName) const { return Nat::fromHost(hostName, nat(), !lowerDisc()); }   // case as the disc keeps it
     void rememberFormat();
     QString rememberedFormat() const;
     int targetUser(QTreeWidgetItem *it) const;
@@ -182,8 +192,9 @@ private:
     qint64 m_fileSize = -1;
     DropTree *m_tree;
     StatusLabel *m_status;
+    QCheckBox *m_lowerBtn;
     QToolButton *m_natBtn;          // right of the status line: which character set this disc is shown in; click to change
     QAction *m_actSave, *m_actSaveAs, *m_actRevert, *m_actAdd, *m_actDelete, *m_actProps, *m_actRename,
         *m_actLabel, *m_actExtract, *m_actView, *m_actCheck, *m_actInfo, *m_actFormat, *m_actCopy, *m_actPaste;
-    QAction *m_optTrim, *m_optFolders, *m_optBackup, *m_actNat;
+    QAction *m_optTrim, *m_optFolders, *m_optBackup, *m_actNat, *m_actLower;
 };

@@ -232,6 +232,7 @@ starts on the filter for the kind the image already is, and the kind saved is th
 * A short raw image is padded in memory and saved full size.
 
 * National character sets and retro-files: `XItem::name` is always the raw disc name (the spec says bytes unchanged); `XItem::hostName` is the national-set name used only for the file written to the host. `importOne` keeps a `cpm` source name exactly (allowing `[ \ ] |` for it), converts only host file names (`srcFs` empty) through the disc's set, and treats other filesystems' names as bytes.
+* Lower-case names: `Volume` upper-cases names unless its extra name characters include `a`-`z` (`Nat::lowerLetters()`); MainWindow sets that from `m_lowerOk` (Tools > Allow lower-case file names + status bar tick box; auto from `Nat::usesLowerCase` = any lower-case name, else the per-disc `lowercase/<sha1>` setting). Drag-out keeps a name with lower-case letters as is, else lower-cases it. A name from a `cpm` source is never case-changed.
 * National character sets are display/transfer only: the directory always holds the raw 7-bit bytes. Tests: `tests/chartest` (needs COMAL discs in `real/nat` for the guess), and a section in guitest.
 
 ## How detection works (detect.cpp)

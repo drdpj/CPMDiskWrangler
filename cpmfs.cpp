@@ -65,7 +65,8 @@ void encodeStamp(QByteArray *b, int off, const QDateTime &t) {
 static const QString NameChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'()-@^`{}~+";
 
 QString Volume::toCpmName(const QString &hostName, const QString &extra) {
-    QString n = QFileInfo(hostName).fileName().toUpper();
+    QString n = QFileInfo(hostName).fileName();
+    if (!extra.contains('a')) n = n.toUpper();           // a disc that takes lower-case names (extra has a-z) keeps the case
     int dot = n.lastIndexOf('.');
     QString base = dot <= 0 ? n : n.left(dot), ext = dot <= 0 ? QString() : n.mid(dot + 1);
     auto clean = [&extra](const QString &s, int max) {
@@ -466,7 +467,7 @@ bool Volume::writeStamps(int entry, const QDateTime &first, const QDateTime &upd
 bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, quint16 attrs, const QDateTime &when,
                      bool replace, QString *err) {
     if (m_fmt.torch) return torchAdd(user, nameIn, data, attrs, replace, err);      // no time stamps on Torch discs
-    QString name = nameIn.toUpper(), why;
+    QString name = m_extraNameChars.contains('a') ? nameIn : nameIn.toUpper(), why;   // a-z in the extras: lower-case names are kept
     if (!validName(name, &why, m_extraNameChars)) { *err = name + ": " + why; return false; }
     int maxUser = m_fmt.os == Os::V3 ? 15 : 31;
     if (user < 0 || user > maxUser) { *err = QString("user number %1 is out of range (0-%2)").arg(user).arg(maxUser); return false; }
@@ -574,7 +575,7 @@ bool Volume::rename(int user, const QString &name, int newUser, const QString &n
     if (m_fmt.torch) return torchRename(user, name, newUser, newNameIn, err);
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1 is not in user %2").arg(name).arg(user); return false; }
-    QString newName = newNameIn.toUpper(), why;
+    QString newName = m_extraNameChars.contains('a') ? newNameIn : newNameIn.toUpper(), why;
     if (!validName(newName, &why, m_extraNameChars)) { *err = newName + ": " + why; return false; }
     int maxUser = m_fmt.os == Os::V3 ? 15 : 31;
     if (newUser < 0 || newUser > maxUser) { *err = QString("user number %1 is out of range (0-%2)").arg(newUser).arg(maxUser); return false; }

@@ -88,6 +88,10 @@ format with no close rival, one you've confirmed, or a disc made by this program
   file was changed by something else meanwhile, and a `.bak` copy of the previous file is kept (Tools; on unless
   you turn it off).
 
+* **Tools > Allow lower-case file names** (also a tick box at the bottom right) lets names keep lower-case letters, for
+  discs that hold them (COMAL's do; BDOS doesn't enforce upper case, it is only the convention). It is ticked for a disc
+  with any lower-case name and unticked otherwise, remembered per disc. Ticked, names you add, rename or drop from the
+  host keep their case, so a name goes out to the host and back unchanged; unticked, they are made upper case.
 * **Tools > Character set for names and text** chooses the national variant of ASCII a disc was written in (Danish/
   Norwegian, Swedish/Finnish, German, French, Italian, Spanish, Portuguese). On those machines `[ \\ ] { | }` were the
   letters Æ Ø Å æ ø å and so on, so a file called `br|kregning` is really *brøkregning*. With a set chosen, names and

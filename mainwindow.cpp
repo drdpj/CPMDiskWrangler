@@ -209,6 +209,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(m_tree);
     m_status = new StatusLabel;
     statusBar()->addWidget(m_status, 1);
+    m_actLower = new QAction("Allow &lower-case file names", this);     // in Tools and, as a button, in the status bar
+    m_actLower->setCheckable(true);
+    m_actLower->setToolTip("CP/M upper-cases names; some discs (COMAL's) hold lower-case ones. Ticked for a disc that has any: names added "
+                           "keep their case, so they go back exactly as they came out. Unticked, names are made upper case.");
+    connect(m_actLower, &QAction::toggled, this, [this](bool on) { setLowerNames(on, true); });
+    m_lowerBtn = new QCheckBox("Allow lower-case names");          // a tick box, kept in step with the Tools menu item
+    m_lowerBtn->setToolTip(m_actLower->toolTip());
+    m_lowerBtn->setVisible(false);
+    connect(m_lowerBtn, &QCheckBox::toggled, m_actLower, &QAction::setChecked);
+    connect(m_actLower, &QAction::toggled, m_lowerBtn, &QCheckBox::setChecked);
+    statusBar()->addPermanentWidget(m_lowerBtn);
     m_natBtn = new QToolButton;
     m_natBtn->setAutoRaise(true);
     m_natBtn->setVisible(false);
@@ -279,6 +290,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     tools->addAction("Add a &diskdefs file to the format library...", this, &MainWindow::addDiskdefsDialog);
     tools->addSeparator();
     AppSettings st;
+    tools->addAction(m_actLower);
     m_optTrim = tools->addAction("Trim the ^Z padding from text files when extracting");
     m_optTrim->setCheckable(true);
     m_optTrim->setChecked(st.value("trimText", false).toBool());
@@ -381,9 +393,37 @@ QString MainWindow::rememberedNat() const {
                                                                      QCryptographicHash::Sha1).toHex()).toString();
 }
 
+static QString diskKey(const QString &what, const QString &path) {
+    return what + "/" + QCryptographicHash::hash(QFileInfo(path).canonicalFilePath().toUtf8(), QCryptographicHash::Sha1).toHex();
+}
+
+void MainWindow::autoLower() {
+    bool on = Nat::usesLowerCase(volumePtrs());
+    if (!m_img.path().isEmpty()) {
+        const QVariant v = AppSettings().value(diskKey("lowercase", m_img.path()));
+        if (v.isValid()) on = v.toBool();
+    }
+    m_lowerOk = on;
+    showLower(on);
+}
+
+void MainWindow::showLower(bool on) {            // the Tools item and the status bar tick box, without acting on the change
+    QSignalBlocker a(m_actLower), b(m_lowerBtn);
+    m_actLower->setChecked(on);
+    m_lowerBtn->setChecked(on);
+}
+
+void MainWindow::setLowerNames(bool on, bool remember) {
+    m_lowerOk = on;
+    showLower(on);
+    applyNameRules();
+    if (remember && !m_img.path().isEmpty()) AppSettings().setValue(diskKey("lowercase", m_img.path()), on);
+    refresh();
+}
+
 void MainWindow::setNat(const QString &id, bool remember) {
     m_natId = Nat::find(id).id;
-    for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(Nat::extraNameChars(nat()));
+    applyNameRules();
     if (remember && !m_img.path().isEmpty()) {
         AppSettings st;
         const QString key = "charset/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
@@ -399,6 +439,7 @@ void MainWindow::natDialog() {
     QVector<const Cpm::Volume *> vols;
     for (int side = 0; side < m_nvols; ++side) vols << &m_vols[side];
     Nat::Dialog d(vols, m_natId, this);
+    d.setLowerNames(m_lowerOk);
     if (d.exec() == QDialog::Accepted) setNat(d.chosen(), true);
 }
 
@@ -418,7 +459,7 @@ bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
         }
     }
     m_nvols = n;
-    for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(Nat::extraNameChars(nat()));
+    applyNameRules();
     m_current = c;
     m_checkOk = true;
     for (int side = 0; side < n; ++side) m_checkOk = m_checkOk && m_vols[side].check().ok();
@@ -453,7 +494,8 @@ bool MainWindow::openImage(const QString &path) {
     }
     if (m_img.needsPadding()) m_img.markForSave();
     m_natId = Nat::find(rememberedNat()).id;
-    for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(Nat::extraNameChars(nat()));
+    autoLower();
+    applyNameRules();
     m_natHint.clear();
     if (m_natId == "ascii") {
         QVector<const Cpm::Volume *> vols;
@@ -477,6 +519,9 @@ bool MainWindow::newImage(const QString &path, Disk::Kind kind, const Cpm::Forma
     m_img = img;
     m_natId = "ascii";
     m_natHint.clear();
+    m_lowerOk = false;                          // a new disc has no lower-case names; forget any choice made for an old file of this name
+    AppSettings().remove(diskKey("lowercase", path));
+    showLower(false);
     m_det = Detect::Result();
     Detect::Candidate c = Detect::evaluate(m_img, f, false);
     c.fmt = f;
@@ -712,6 +757,8 @@ void MainWindow::updateUi() {
     m_actCheck->setEnabled(have);
     m_actInfo->setEnabled(m_img.isOpen());
     m_actNat->setEnabled(have);
+    m_actLower->setEnabled(have);
+    m_lowerBtn->setVisible(have);
     m_actFormat->setEnabled(m_img.isOpen());
     setWindowTitle(title());
     {   // which character set the names and text are shown in (the choice is per disc; ASCII until one is chosen)
@@ -960,6 +1007,7 @@ bool MainWindow::askNatForNames(const QVector<XItem> &items) {
     QVector<const Cpm::Volume *> vols;
     for (int s = 0; s < m_nvols; ++s) vols << &m_vols[s];
     Nat::Dialog d(vols, m_natId, this, names);
+    d.setLowerNames(m_lowerOk);
     if (d.exec() != QDialog::Accepted) return false;
     setNat(d.chosen(), true);
     return true;
@@ -992,8 +1040,8 @@ void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &
     // A name from another CP/M disc is kept exactly (its [ \ ] | were letters there); only a host file name is read as
     // Unicode and put into this disc's national set. Names from other filesystems are bytes: no set applies.
     const bool fromCpm = x.srcFs == "cpm", fromHost = x.srcFs.isEmpty();
-    const QString extra = fromCpm ? QStringLiteral("[\\]|") : Nat::extraNameChars(nat());
-    const QString want = fromHost ? toDiscName(x.name) : x.name.toUpper();
+    const QString extra = fromCpm ? QStringLiteral("[\\]|") + Nat::lowerLetters() : nameRules();
+    const QString want = fromHost ? toDiscName(x.name) : fromCpm ? x.name : x.name.toUpper();
     QString why, name = want;
     if (!Cpm::Volume::validName(name, &why, extra)) {
         name = Cpm::Volume::toCpmName(fromHost ? want : x.name, extra);
@@ -1033,7 +1081,7 @@ void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &
     QString err;
     vol.setExtraNameChars(extra);               // this file's own rules; put back to the disc's below
     const bool added = vol.addFile(user, name, x.data, attrs, x.when, replace, &err);
-    vol.setExtraNameChars(Nat::extraNameChars(nat()));
+    applyNameRules();
     if (!added) { c.errors << err; return; }
     c.files++;
     if (replace) c.replaced++;
@@ -1181,7 +1229,7 @@ void MainWindow::renameSelected() {
                                       toHostName(refs[0].name), &ok);
     if (!ok || n.trimmed().isEmpty()) return;
     QString err;
-    if (!m_vols[refs[0].side].rename(refs[0].user, refs[0].name, refs[0].user, toDiscName(n.trimmed(), m_natId != "ascii"), &err))
+    if (!m_vols[refs[0].side].rename(refs[0].user, refs[0].name, refs[0].user, (m_natId != "ascii" ? toDiscName(n.trimmed()) : n.trimmed()), &err))
         message("Rename", err);
     refresh();
 }

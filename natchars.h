@@ -50,6 +50,10 @@ QString toHost(const QString &s, const Set &set);
 QString fromHost(const QString &s, const Set &set, bool upper = true);
 // Name characters a set needs that Volume's normal list does not allow ("[\]|"); empty for ascii.
 QString extraNameChars(const Set &set);
+// Some discs (COMAL's, for one) hold lower-case names. CP/M tools upper-case what you type, so a disc with any lower-case
+// name is offered "Allow lower-case file names" (ticked), and names then go back exactly as they came out.
+QString lowerLetters();                                          // "a".."z": allowed in names on such a disc
+bool usesLowerCase(const QVector<const Cpm::Volume *> &vols);
 
 // Letters in host file names that plain ASCII cannot hold (ø, å, ü ...), upper-cased, each once; and the national set
 // that has a place for all of them (the first in the list if several do; empty if none does).
@@ -78,12 +82,15 @@ public:
     // previews how each name would be written to the disc in the chosen set.
     Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent = nullptr,
            const QStringList &incoming = QStringList());
-    QString chosen() const;                // the set's id
+    QString chosen() const;
+    void setLowerNames(bool on) { m_lower = on; render(); }   // the preview writes names in lower case                // the set's id
 private slots:
     void render();
 private:
     Evidence m_ev;
     QStringList m_incoming;
+    QVector<const Cpm::Volume *> m_vols;
+    bool m_lower = false;
     QListWidget *m_list;
     QPlainTextEdit *m_preview;
     QLabel *m_note;

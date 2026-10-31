@@ -586,6 +586,51 @@ int main(int argc, char **argv) {
             CHECK(asked && offered, "it asked, and offered Danish/Norwegian as the likely set");
             CHECK(H.natId() == "dk-no" && H.volume().indexOf(0, "L\\NSEDD.L") >= 0, "lønsedd.l comes onto the disc as L\\NSEDD.L");
         }
+        // Tools > Allow lower-case file names: off for a new disc, so names are made upper case; on, they keep their case
+        {
+            MainWindow L;
+            CHECK(L.newImage(wd + "/natl.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a disc for lower-case names");
+            L.setNat("dk-no", false);
+            CHECK(!L.lowerNames(), "lower-case names are not allowed on a new disc");
+            QDir().mkpath(wd + "/host/low");
+            const QString lp = wd + "/host/low/" + QString::fromUtf8("l\xC3\xB8nsedde.l");
+            { QFile f(lp); f.open(QIODevice::WriteOnly); f.write("again"); }
+            MainWindow::autoAnswer = true;
+            L.importPaths({lp}, -1, 0);
+            CHECK(L.volume().indexOf(0, "L\\NSEDDE.L") >= 0 && L.volume().indexOf(0, "l|nsedde.l") < 0, "unticked: lønsedde.l becomes L\\NSEDDE.L");
+            L.setLowerNames(true, false);
+            L.importPaths({lp}, -1, 0);
+            CHECK(L.volume().indexOf(0, "l|nsedde.l") >= 0 && L.volume().files().size() == 2, "ticked: lønsedde.l is written as l|nsedde.l, in lower case");
+            QString e;
+            CHECK(L.volume().rename(0, "l|nsedde.l", 0, "l|nsede2.l", &e) && L.volume().indexOf(0, "l|nsede2.l") >= 0, "a rename keeps lower case when allowed: " + e);
+            CHECK(L.volume().rename(0, "l|nsede2.l", 0, "l|nsedde.l", &e), "...and back: " + e);
+            L.tree()->clearSelection();
+            findRow(L.tree(), RowRoot, -1)->setSelected(true);
+            QMimeData *lm = L.tree()->makeMime(L.tree()->selectedItems());
+            QByteArray lj = lm->data(RetroFiles::MimeType);
+            bool lowName = false, lowPath = false;
+            for (const QJsonValue &v : QJsonDocument::fromJson(lj).object()["items"].toArray())
+                if (v.toObject()["name"].toString() == "l|nsedde.l") { lowName = true; lowPath = v.toObject()["path"].toString().startsWith(QString::fromUtf8("l\xC3\xB8nsedde")); }   // (L\\NSEDDE.L is on the disc too, so this may be lønsedde_1.l)
+            CHECK(lowName && lowPath, "dragged out: name l|nsedde.l, host file lønsedde.l");
+            delete lm;
+            shot(&L, wd + "/shots/lowercase.png");
+            CHECK(L.save(), "save the disc with a lower-case name");
+            MainWindow L2;
+            CHECK(L2.openImage(wd + "/natl.imd") && L2.lowerNames(), "reopened: ticked automatically because a name is lower case");
+            L2.setLowerNames(false, true);
+            MainWindow L3;
+            CHECK(L3.openImage(wd + "/natl.imd") && !L3.lowerNames(), "an untick is remembered for that disc");
+            L3.setLowerNames(true, true);
+            MainWindow L4;
+            CHECK(L4.openImage(wd + "/natl.imd") && L4.lowerNames(), "...and so is ticking it again");
+            QAction *act = nullptr;
+            for (QAction *x : L4.findChildren<QAction *>()) if (x->text().contains("lower-case file names")) act = x;
+            CHECK(act && act->isCheckable() && act->isChecked(), "the Tools menu has the ticked 'Allow lower-case file names'");
+            QCheckBox *tick = nullptr;
+            for (QCheckBox *x : L4.findChildren<QCheckBox *>()) if (x->text().contains("lower-case")) tick = x;
+            CHECK(tick && tick->isChecked(), "the status bar has the same tick box, ticked");
+            if (tick) { tick->click(); CHECK(!L4.lowerNames() && !act->isChecked(), "clicking it unticks the setting and the Tools item"); }
+        }
         N.setNat("dk-no", true);
         {
             QToolButton *nb = nullptr;

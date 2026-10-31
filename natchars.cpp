@@ -87,6 +87,20 @@ QString fromHost(const QString &s, const Set &set, bool upper) {
     return o;
 }
 
+QString lowerLetters() { return QStringLiteral("abcdefghijklmnopqrstuvwxyz"); }
+
+bool usesLowerCase(const QVector<const Cpm::Volume *> &vols) {
+    int total = 0, lower = 0;
+    for (const Cpm::Volume *v : vols) {
+        if (!v) continue;
+        for (const Cpm::File &f : v->files()) {
+            ++total;
+            for (QChar c : f.name) if (c >= 'a' && c <= 'z') { ++lower; break; }
+        }
+    }
+    return total > 0 && lower > 0;
+}
+
 QString extraNameChars(const Set &set) { return set.id == "ascii" ? QString() : QStringLiteral("[\\]|"); }
 
 QString foreignLetters(const QStringList &names) {
@@ -214,7 +228,7 @@ QString guessSet(const QString &discText) {
 // ------------------------------------------------------------------------------------------- the dialog
 
 Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent,
-               const QStringList &incoming) : QDialog(parent), m_incoming(incoming) {
+               const QStringList &incoming) : QDialog(parent), m_incoming(incoming), m_vols(vols), m_lower(usesLowerCase(vols)) {
     setWindowTitle("Character set for names and text");
     resize(720, 480);
     m_ev = scan(vols);
@@ -289,10 +303,11 @@ QString Dialog::chosen() const {
 void Dialog::render() {
     const Set s = Nat::find(chosen());
     QString t;
+    const bool lower = m_lower;
     if (!m_incoming.isEmpty()) {
         t += "Files being added, as they would be written to the disc:\n";
         for (int i = 0; i < m_incoming.size() && i < 12; ++i) {
-            const QString disc = Cpm::Volume::toCpmName(fromHost(m_incoming.at(i), s), extraNameChars(s));
+            const QString disc = Cpm::Volume::toCpmName(fromHost(m_incoming.at(i), s, !lower), extraNameChars(s) + (lower ? lowerLetters() : QString()));
             t += "  " + m_incoming.at(i) + "  ->  " + disc + "  (shown as " + toHost(disc, s) + ")\n";
         }
         if (m_incoming.size() > 12) t += QString("  ... and %1 more\n").arg(m_incoming.size() - 12);

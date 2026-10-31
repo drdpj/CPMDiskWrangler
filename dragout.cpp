@@ -69,6 +69,13 @@ static QJsonObject cpmAttrs(const XItem &x) {
     return a;
 }
 
+// CP/M names are upper case and look shouting on a host, so they are written in lower case - unless the disc's own name
+// has lower-case letters (COMAL discs do): then it goes out exactly as it is, and back in the same.
+static QString hostCase(const QString &n) {
+    for (QChar c : n) if (c >= 'a' && c <= 'z') return n;
+    return n.toLower();
+}
+
 void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderPerUser, bool trimText,
                QStringList *topLevel, QJsonArray *jsonItems, QStringList *errors) {
     QMap<int, QSet<QString>> used;            // per folder (user, or -1 for the top)
@@ -89,7 +96,7 @@ void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderP
                 if (topLevel) topLevel->append(relDir);
             }
         }
-        QString host = unique(hostSafeName((x.hostName.isEmpty() ? x.name : x.hostName).toLower()), used[u]);
+        QString host = unique(hostSafeName(hostCase(x.hostName.isEmpty() ? x.name : x.hostName)), used[u]);
         QString rel = relDir.isEmpty() ? host : relDir + "/" + host;
         QByteArray data = trimText ? trimCpmText(x.data) : x.data;
         QFile f(hostDir + "/" + rel);
