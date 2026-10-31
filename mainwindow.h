@@ -156,6 +156,7 @@ private:
     bool m_lowerOk = false;            // Tools > Allow lower-case file names: ticked for a disc that has any (or as chosen)
     bool lowerDisc() const { return m_lowerOk; }
     void showLower(bool on);
+    void refreshNamesButton();
     void autoLower();                  // set it from what the disc holds, or from what was chosen for this disc before
     QVector<const Cpm::Volume *> volumePtrs() const { QVector<const Cpm::Volume *> v; for (int i = 0; i < m_nvols; ++i) v << &m_vols[i]; return v; }
     QString nameRules() const { return Nat::extraNameChars(nat()) + (lowerDisc() ? Nat::lowerLetters() : QString()); }
@@ -192,8 +193,7 @@ private:
     qint64 m_fileSize = -1;
     DropTree *m_tree;
     StatusLabel *m_status;
-    QCheckBox *m_lowerBtn;
-    QToolButton *m_natBtn;          // right of the status line: which character set this disc is shown in; click to change
+    QToolButton *m_natBtn;          // right of the status line: "Names: <character set>, <case>"; its menu has the lower-case option and the character set dialog
     QAction *m_actSave, *m_actSaveAs, *m_actRevert, *m_actAdd, *m_actDelete, *m_actProps, *m_actRename,
         *m_actLabel, *m_actExtract, *m_actView, *m_actCheck, *m_actInfo, *m_actFormat, *m_actCopy, *m_actPaste;
     QAction *m_optTrim, *m_optFolders, *m_optBackup, *m_actNat, *m_actLower;

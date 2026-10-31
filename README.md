@@ -88,7 +88,7 @@ format with no close rival, one you've confirmed, or a disc made by this program
   file was changed by something else meanwhile, and a `.bak` copy of the previous file is kept (Tools; on unless
   you turn it off).
 
-* **Tools > Allow lower-case file names** (also a tick box at the bottom right) lets names keep lower-case letters, for
+* **Tools > Allow lower-case file names** (also in the menu of the **Names:** button at the bottom right of the window, which says which character set and case rule the disc is shown with) lets names keep lower-case letters, for
   discs that hold them (COMAL's do). CP/M's BDOS does not reject lower case: a program can put lower-case letters in a
   file control block and Make File will store them, and the directory search compares the bytes it is given, so
   `readme.txt` and `README.TXT` are different files. It is only the convention that names are upper case, because the

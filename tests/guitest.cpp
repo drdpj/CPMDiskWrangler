@@ -30,6 +30,7 @@
 #include <QComboBox>
 #include <QDragEnterEvent>
 #include <QFormLayout>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QListWidget>
 #include <QScrollBar>
@@ -614,6 +615,7 @@ int main(int argc, char **argv) {
             CHECK(lowName && lowPath, "dragged out: name l|nsedde.l, host file lønsedde.l");
             delete lm;
             shot(&L, wd + "/shots/lowercase.png");
+            L.resize(430, 300); pump(); L.grab().save(wd + "/shots/narrow.png");
             CHECK(L.save(), "save the disc with a lower-case name");
             MainWindow L2;
             CHECK(L2.openImage(wd + "/natl.imd") && L2.lowerNames(), "reopened: ticked automatically because a name is lower case");
@@ -626,10 +628,14 @@ int main(int argc, char **argv) {
             QAction *act = nullptr;
             for (QAction *x : L4.findChildren<QAction *>()) if (x->text().contains("lower-case file names")) act = x;
             CHECK(act && act->isCheckable() && act->isChecked(), "the Tools menu has the ticked 'Allow lower-case file names'");
-            QCheckBox *tick = nullptr;
-            for (QCheckBox *x : L4.findChildren<QCheckBox *>()) if (x->text().contains("lower-case")) tick = x;
-            CHECK(tick && tick->isChecked(), "the status bar has the same tick box, ticked");
-            if (tick) { tick->click(); CHECK(!L4.lowerNames() && !act->isChecked(), "clicking it unticks the setting and the Tools item"); }
+            QToolButton *nb4 = nullptr;
+            for (QToolButton *b : L4.findChildren<QToolButton *>()) if (b->text().startsWith("Names:")) nb4 = b;
+            CHECK(nb4 && nb4->text().contains("any case"), "the status bar button says names keep their case (lower case is allowed on this disc): " + (nb4 ? nb4->text() : QString()));
+            QMenu *nm = nb4 ? nb4->menu() : nullptr;
+            bool hasLower = false, hasSet = false;
+            if (nm) for (QAction *x : nm->actions()) { hasLower |= x == act; hasSet |= x->text().contains("Character set"); }
+            CHECK(hasLower && hasSet, "its menu has the lower-case option and the character set dialog");
+            if (act && nb4) { act->trigger(); CHECK(!L4.lowerNames() && nb4->text().contains("upper case"), "unticking it changes the setting and the button's text"); }
         }
         // two names that differ only in case, written to the host and dropped back
         {
@@ -664,7 +670,7 @@ int main(int argc, char **argv) {
         N.setNat("dk-no", true);
         {
             QToolButton *nb = nullptr;
-            for (QToolButton *b : N.findChildren<QToolButton *>()) if (b->text().startsWith("Characters:")) nb = b;
+            for (QToolButton *b : N.findChildren<QToolButton *>()) if (b->text().startsWith("Names:")) nb = b;
             {   // the character set dialog: the list is as wide as its entries, the preview takes the rest
                 QVector<const Cpm::Volume *> vs{&N.volume()};
                 Nat::Dialog dlg(vs, "dk-no");
@@ -691,6 +697,23 @@ int main(int argc, char **argv) {
         N2.setNat("ascii", true);
         MainWindow N3;
         CHECK(N3.openImage(wd + "/nat.imd") && N3.natId() == "ascii", "choosing ASCII again forgets it");
+    }
+
+    printf("== the status line fits its text to the width\n");
+    {
+        StatusLabel sl;
+        sl.setVariants({"rm-dd - 0 files, 164.0 KB free of 296.0 KB", "rm-dd - 0 files, 164.0 KB free", "0 files, 164.0 KB free", "164.0 KB free"});
+        const QFontMetrics fm = sl.fontMetrics();
+        sl.resize(fm.horizontalAdvance("rm-dd - 0 files, 164.0 KB free of 296.0 KB") + 4, 20);
+        CHECK(sl.shown() == "rm-dd - 0 files, 164.0 KB free of 296.0 KB", "wide enough: the whole text");
+        sl.resize(fm.horizontalAdvance("rm-dd - 0 files, 164.0 KB free") + 4, 20);
+        CHECK(sl.shown() == "rm-dd - 0 files, 164.0 KB free", "a little narrower: without the capacity");
+        sl.resize(fm.horizontalAdvance("0 files, 164.0 KB free") + 4, 20);
+        CHECK(sl.shown() == "0 files, 164.0 KB free", "narrower: without the format name");
+        sl.resize(fm.horizontalAdvance("164.0 KB free") + 4, 20);
+        CHECK(sl.shown() == "164.0 KB free" && sl.toolTip().startsWith("rm-dd - 0 files, 164.0 KB free of"), "narrowest: the free space; the tooltip keeps the whole text");
+        sl.resize(30, 20);
+        CHECK(sl.shown().endsWith(QString::fromUtf8("\xE2\x80\xA6")), "too narrow even for that: cut with an ellipsis");
     }
 
     printf("== files opened from the Finder (fileopen.h)\n");

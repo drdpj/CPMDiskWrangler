@@ -117,21 +117,26 @@ inline void setNumCell(QTreeWidgetItem *it, int col, const QString &text) {
     it->setTextAlignment(col, Qt::AlignRight | Qt::AlignVCenter);
 }
 
-// The status line: one line that is cut short with "..." when the window is narrow (the whole text is in the tooltip),
-// instead of forcing the window wider than the screen.
+// The status line: one line that never makes the window wider. It is given several versions of the text, longest first,
+// shows the longest that fits, and cuts the last with "..." if even that doesn't; the longest is always in the tooltip.
 class StatusLabel : public QLabel {
 public:
     explicit StatusLabel(QWidget *parent = nullptr) : QLabel(parent) { setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred); }
-    void setText(const QString &t) { m_full = t; setToolTip(t); update(); }
+    void setText(const QString &t) { setVariants({t}); }
+    void setVariants(const QStringList &v) { m_v = v; setToolTip(v.isEmpty() ? QString() : v.first()); update(); }
+    QString shown() const {                       // the version that fits the width now
+        for (const QString &t : m_v) if (fontMetrics().horizontalAdvance(t) <= width()) return t;
+        return m_v.isEmpty() ? QString() : fontMetrics().elidedText(m_v.last(), Qt::ElideRight, width());
+    }
     QSize minimumSizeHint() const override { return QSize(0, QLabel::minimumSizeHint().height()); }
     QSize sizeHint() const override { return QSize(0, QLabel::sizeHint().height()); }
 protected:
     void paintEvent(QPaintEvent *) override {
         QPainter p(this);
-        p.drawText(rect(), int(alignment()) | Qt::AlignVCenter, fontMetrics().elidedText(m_full, Qt::ElideRight, width()));
+        p.drawText(rect(), int(alignment()) | Qt::AlignVCenter, shown());
     }
 private:
-    QString m_full;
+    QStringList m_v;
 };
 
 inline QString rootLabel(const QString &base, const QString &title) {

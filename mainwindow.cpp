@@ -215,16 +215,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_actLower->setToolTip("CP/M upper-cases names; some discs (COMAL's) hold lower-case ones. Ticked for a disc that has any: names added "
                            "keep their case, so they go back exactly as they came out. Unticked, names are made upper case.");
     connect(m_actLower, &QAction::toggled, this, [this](bool on) { setLowerNames(on, true); });
-    m_lowerBtn = new QCheckBox("Allow lower-case names");          // a tick box, kept in step with the Tools menu item
-    m_lowerBtn->setToolTip(m_actLower->toolTip());
-    m_lowerBtn->setVisible(false);
-    connect(m_lowerBtn, &QCheckBox::toggled, m_actLower, &QAction::setChecked);
-    connect(m_actLower, &QAction::toggled, m_lowerBtn, &QCheckBox::setChecked);
-    statusBar()->addPermanentWidget(m_lowerBtn);
     m_natBtn = new QToolButton;
     m_natBtn->setAutoRaise(true);
     m_natBtn->setVisible(false);
-    connect(m_natBtn, &QToolButton::clicked, this, &MainWindow::natDialog);
+    m_natBtn->setPopupMode(QToolButton::InstantPopup);                   // its menu is added with the Tools menu items below
+    m_natBtn->setStyleSheet("QToolButton::menu-indicator { image: none; }");
     statusBar()->addPermanentWidget(m_natBtn);
     resize(860, 600);
 
@@ -287,6 +282,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_actInfo = tools->addAction("Disc &information", this, &MainWindow::discInfo);
     m_actInfo->setShortcut(QKeySequence("Ctrl+I"));
     m_actNat = tools->addAction("&Character set for names and text...", this, &MainWindow::natDialog);
+    {   // the same two items as a menu on the status bar button
+        auto *nm = new QMenu(m_natBtn);
+        nm->addAction(m_actLower);
+        nm->addAction(m_actNat);
+        m_natBtn->setMenu(nm);
+    }
     m_actNat->setToolTip("The national letters ([ \\ ] { | } for \u00C6\u00D8\u00C5 \u00E6\u00F8\u00E5 and so on) this disc's names and text use");
     tools->addAction("Add a &diskdefs file to the format library...", this, &MainWindow::addDiskdefsDialog);
     tools->addSeparator();
@@ -408,10 +409,22 @@ void MainWindow::autoLower() {
     showLower(on);
 }
 
+void MainWindow::refreshNamesButton() {      // "Names: ASCII, upper case": which character set and case rule names are shown with
+    const Nat::Set ns = Nat::find(m_natId);
+    const bool suspect = m_natId == "ascii" && !m_natHint.isEmpty();
+    const QString setName = ns.id == "ascii" ? QStringLiteral("ASCII") : ns.name.section("  (", 0, 0);
+    m_natBtn->setVisible(m_nvols > 0);
+    m_natBtn->setText(QString("Names: %1, %2%3").arg(setName, m_lowerOk ? "any case" : "upper case", suspect ? " (national letters?)" : ""));
+    m_natBtn->setToolTip((suspect ? "This disc's " + m_natHint + ".\n" : QString()) +
+                         QString("Names and text are shown as %1; file names are %2. Click for the character set and lower-case options.")
+                             .arg(ns.id == "ascii" ? "plain ASCII, just as the disc holds them" : ns.name,
+                                  m_lowerOk ? "kept in the case you give them (lower case allowed)" : "made upper case"));
+}
+
 void MainWindow::showLower(bool on) {            // the Tools item and the status bar tick box, without acting on the change
-    QSignalBlocker a(m_actLower), b(m_lowerBtn);
+    QSignalBlocker a(m_actLower);
     m_actLower->setChecked(on);
-    m_lowerBtn->setChecked(on);
+    refreshNamesButton();
 }
 
 void MainWindow::setLowerNames(bool on, bool remember) {
@@ -759,37 +772,42 @@ void MainWindow::updateUi() {
     m_actInfo->setEnabled(m_img.isOpen());
     m_actNat->setEnabled(have);
     m_actLower->setEnabled(have);
-    m_lowerBtn->setVisible(have);
     m_actFormat->setEnabled(m_img.isOpen());
     setWindowTitle(title());
-    {   // which character set the names and text are shown in (the choice is per disc; ASCII until one is chosen)
-        const Nat::Set ns = Nat::find(m_natId);
-        const bool suspect = m_natId == "ascii" && !m_natHint.isEmpty();
-        m_natBtn->setVisible(have);
-        m_natBtn->setText(QString("Characters: %1%2").arg(ns.id == "ascii" ? QStringLiteral("ASCII") : ns.name.section("  (", 0, 0), suspect ? " (national letters?)" : ""));
-        m_natBtn->setToolTip((suspect ? "This disc's " + m_natHint + ".\n" : QString()) +
-                             QString("Names and text are shown as %1. Click to choose another character set for this disc.").arg(ns.id == "ascii" ? "plain ASCII, just as the disc holds them" : ns.name));
-    }
+    refreshNamesButton();
     if (!have) {
-        m_status->setText(m_img.isOpen() ? "Not read as CP/M: " + m_det.why + " Drop another image here to open it."
-                                         : "Open a disc image (File > Open), or drop one here.");
+        if (m_img.isOpen())
+            m_status->setVariants({"Not read as CP/M: " + m_det.why + " Drop another image here to open it.", "Not read as CP/M: " + m_det.why, "Not read as CP/M"});
+        else
+            m_status->setVariants({"Open a disc image (File > Open), or drop one here.", "Open or drop a disc image."});
         return;
     }
     const Cpm::Format &f = m_vols[0].format();
-    QString name = f.name == "detected" || f.name == "by-hand" ? QString("custom format") : f.name;
-    QString s;
+    const QString name = f.name == "detected" || f.name == "by-hand" ? QString("custom format") : f.name;
+    auto files = [](int n) { return QString("%1 file%2").arg(n).arg(n == 1 ? "" : "s"); };
+    QString longTail, shortTail;
+    if (!w) { longTail += "  -  read-only: " + readOnlyReason(); shortTail += "  -  read-only"; }
+    if (m_img.needsPadding()) { longTail += "  -  the image file is short; it will be padded to full size when saved"; shortTail += "  -  short image"; }
+    QStringList v;                                                     // longest first; the widest that fits is shown
     if (m_nvols == 1) {
-        s = QString("%1 - %2 file%3, %4 free of %5").arg(name).arg(m_vols[0].files().size())
-                .arg(m_vols[0].files().size() == 1 ? "" : "s").arg(fmtBytes(m_vols[0].freeBytes())).arg(fmtBytes(f.capacityBytes()));
+        const QString n = files(m_vols[0].files().size()), fr = fmtBytes(m_vols[0].freeBytes());
+        v << QString("%1 - %2, %3 free of %4").arg(name, n, fr, fmtBytes(f.capacityBytes())) + longTail
+          << QString("%1 - %2, %3 free").arg(name, n, fr) + shortTail
+          << QString("%1, %2 free").arg(n, fr) + shortTail
+          << QString("%1 free").arg(fr) + shortTail;
     } else {
-        s = name + " (a disc on each side)";
-        for (int side = 0; side < m_nvols; ++side)
-            s += QString(" - side %1: %2 file%3, %4 free").arg(side).arg(m_vols[side].files().size())
-                     .arg(m_vols[side].files().size() == 1 ? "" : "s").arg(fmtBytes(m_vols[side].freeBytes()));
+        QString full = name + " (a disc on each side)", mid, tot;
+        int nf = 0;
+        qint64 fb = 0;
+        for (int side = 0; side < m_nvols; ++side) {
+            full += QString(" - side %1: %2, %3 free").arg(side).arg(files(m_vols[side].files().size()), fmtBytes(m_vols[side].freeBytes()));
+            mid += QString("%1side %2: %3, %4 free").arg(side ? " - " : "").arg(side).arg(files(m_vols[side].files().size()), fmtBytes(m_vols[side].freeBytes()));
+            nf += m_vols[side].files().size();
+            fb += m_vols[side].freeBytes();
+        }
+        v << full + longTail << mid + shortTail << QString("%1, %2 free").arg(files(nf), fmtBytes(fb)) + shortTail << QString("%1 free").arg(fmtBytes(fb)) + shortTail;
     }
-    if (!w) s += "  -  read-only: " + readOnlyReason();
-    if (m_img.needsPadding()) s += "  -  the image file is short; it will be padded to full size when saved";
-    m_status->setText(s);
+    m_status->setVariants(v);
 }
 
 QVector<FileRef> MainWindow::selectedRefs() const {
