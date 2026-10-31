@@ -89,6 +89,29 @@ QString fromHost(const QString &s, const Set &set, bool upper) {
 
 QString extraNameChars(const Set &set) { return set.id == "ascii" ? QString() : QStringLiteral("[\\]|"); }
 
+QString foreignLetters(const QStringList &names) {
+    QString out;
+    for (const QString &n : names)
+        for (QChar c : n) {
+            if (c.unicode() < 128 || !c.isLetter()) continue;
+            const QChar u = c == QChar(0x00DF) ? c : c.toUpper();
+            if (!out.contains(u)) out += u;
+        }
+    return out;
+}
+
+QString suggestFor(const QStringList &names) {
+    const QString letters = foreignLetters(names);
+    if (letters.isEmpty()) return QString();
+    for (const Set &s : sets()) {
+        if (s.id == "ascii") continue;
+        bool all = true;
+        for (QChar c : letters) if (!s.shown.contains(c) && !s.shown.contains(c.toLower())) { all = false; break; }
+        if (all) return s.id;
+    }
+    return QString();
+}
+
 // ------------------------------------------------------------------------------------------- evidence
 
 static bool codeLike(const QByteArray &n11) {     // a source file or a listing: { | } mean what they mean in code
@@ -187,7 +210,8 @@ QString guessSet(const QString &discText) {
 
 // ------------------------------------------------------------------------------------------- the dialog
 
-Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent) : QDialog(parent) {
+Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent, const QString &suggest,
+               const QString &why) : QDialog(parent) {
     setWindowTitle("Character set for names and text");
     resize(720, 480);
     m_ev = scan(vols);
@@ -218,7 +242,11 @@ Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current,
     } else {
         note += "\n\nNothing on this disc clearly uses them.";
     }
+    if (!why.isEmpty()) note = why + "\n\n" + note;
     m_note->setText(note);
+    if (m_list->currentItem()->data(Qt::UserRole).toString() == "ascii" && !suggest.isEmpty())
+        for (int i = 0; i < m_list->count(); ++i)
+            if (m_list->item(i)->data(Qt::UserRole).toString() == suggest) { m_list->setCurrentRow(i); break; }
     if (m_list->currentItem()->data(Qt::UserRole).toString() == "ascii" && !m_ev.guess.isEmpty())
         for (int i = 0; i < m_list->count(); ++i)
             if (m_list->item(i)->data(Qt::UserRole).toString() == m_ev.guess) { m_list->setCurrentRow(i); break; }

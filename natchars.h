@@ -51,6 +51,11 @@ QString fromHost(const QString &s, const Set &set, bool upper = true);
 // Name characters a set needs that Volume's normal list does not allow ("[\]|"); empty for ascii.
 QString extraNameChars(const Set &set);
 
+// Letters in host file names that plain ASCII cannot hold (ø, å, ü ...), upper-cased, each once; and the national set
+// that has a place for all of them (the first in the list if several do; empty if none does).
+QString foreignLetters(const QStringList &names);
+QString suggestFor(const QStringList &names);
+
 struct Evidence {
     int nameFiles = 0;           // file names with [ \ ] { | } next to a letter
     int textHits = 0;            // such characters between letters in text files
@@ -68,7 +73,8 @@ QString guessSet(const QString &discText);
 class Dialog : public QDialog {
     Q_OBJECT
 public:
-    Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent = nullptr);
+    Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent = nullptr,
+           const QString &suggest = QString(), const QString &why = QString());
     QString chosen() const;                // the set's id
 private slots:
     void render();

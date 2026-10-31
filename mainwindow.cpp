@@ -929,9 +929,50 @@ void MainWindow::importPaths(const QStringList &paths, int user, int side) {
     importSummary(c);
 }
 
+// Host file names with letters plain ASCII can't hold (lønseddel.l): offer to choose the national character set for this
+// disc first, so the letters are written the way that country's machines wrote them. False if the user cancelled.
+static void hostNames(const QVector<XItem> &items, QStringList *out) {
+    for (const XItem &x : items) {
+        if (x.isDir) hostNames(x.kids, out);
+        else if (x.srcFs.isEmpty()) *out << x.name;
+    }
+}
+
+bool MainWindow::askNatForNames(const QVector<XItem> &items) {
+    if (m_natId != "ascii" || autoAnswer || m_nvols < 1) return true;
+    QStringList names;
+    hostNames(items, &names);
+    const QString letters = Nat::foreignLetters(names);
+    if (letters.isEmpty()) return true;
+    const QString suggest = Nat::suggestFor(names);
+    const QString shown = QStringList(letters.split("", Qt::SkipEmptyParts)).join(" ");
+    QMessageBox box(QMessageBox::Question, "Character set",
+                    QString("These file names have letters (%1) that a plain ASCII disc cannot hold, so they would be "
+                            "replaced with -.\n\nDiscs from machines sold in some countries wrote such letters using the "
+                            "characters [ \\ ] { | }. Choose the character set for this disc and they will be written that way.")
+                        .arg(shown), QMessageBox::NoButton, this);
+    QPushButton *choose = box.addButton("Choose character set...", QMessageBox::AcceptRole);
+    QPushButton *plain = box.addButton("Plain ASCII", QMessageBox::DestructiveRole);
+    box.addButton(QMessageBox::Cancel);
+    box.setDefaultButton(choose);
+    box.exec();
+    if (box.clickedButton() == plain) return true;
+    if (box.clickedButton() != choose) return false;
+    QVector<const Cpm::Volume *> vols;
+    for (int s = 0; s < m_nvols; ++s) vols << &m_vols[s];
+    Nat::Dialog d(vols, m_natId, this, suggest, "Adding files whose names have the letters " + shown + ".");
+    if (d.exec() != QDialog::Accepted) return false;
+    setNat(d.chosen(), true);
+    return true;
+}
+
 void MainWindow::importItems(const QVector<XItem> &items, int user, int side, ImportCtx &c) {
     side = qBound(0, side, qMax(0, m_nvols - 1));
     if (!writable()) { c.errors << "The disc is read-only: " + readOnlyReason(); return; }
+    if (!c.natAsked) {
+        c.natAsked = true;
+        if (!askNatForNames(items)) { c.cancelled = true; return; }
+    }
     for (const XItem &x : items) {
         if (c.cancelled) return;
         if (x.isDir) {

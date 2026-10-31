@@ -71,7 +71,7 @@ struct XItem {
 struct ImportCtx {
     int files = 0, replaced = 0, skipped = 0, flattened = 0;
     int policy = 0;             // 0 = ask, 1 = replace all, 2 = skip all
-    bool cancelled = false;
+    bool cancelled = false, natAsked = false;
     QStringList errors, renamed;
 };
 

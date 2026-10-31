@@ -150,6 +150,7 @@ private:
     const Nat::Set &nat() const { return Nat::find(m_natId); }
     QString rememberedNat() const;
     void natDialog();
+    bool askNatForNames(const QVector<XItem> &items);
     QString m_natId = "ascii";
     QString m_natHint;                 // shown in the status bar: this disc looks as if it uses a national character set
     QString toHostName(const QString &discName) const { return Nat::toHost(discName, nat()); }

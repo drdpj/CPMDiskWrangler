@@ -41,6 +41,7 @@
 #include <QJsonObject>
 #include <QMimeData>
 #include <QScreen>
+#include <QMessageBox>
 #include <QTimer>
 #include <QUrl>
 #include <cstdio>
@@ -549,6 +550,33 @@ int main(int argc, char **argv) {
             Q.setNat("se-fi", false);
             CHECK(Q.importRetroFiles(dj, -1) && Q.volume().indexOf(0, "BR\\D.TXT") >= 0, "...and the same on a disc with another set chosen");
             delete dm;
+        }
+        // dropping a host file whose name has letters ASCII can't hold offers the national set (answered here by a timer)
+        {
+            MainWindow H;
+            CHECK(H.newImage(wd + "/nath.imd", Disk::Kind::Imd, *Cpm::findFormat("rm-dd"), false, QString()), "an RM disc to drop a Danish name on");
+            QDir().mkpath(wd + "/host/nat3");
+            const QString hp = wd + "/host/nat3/" + QString::fromUtf8("l\xC3\xB8nsedd.l");
+            { QFile f(hp); f.open(QIODevice::WriteOnly); f.write("x"); }
+            bool asked = false, offered = false;
+            QTimer t;
+            QObject::connect(&t, &QTimer::timeout, [&] {
+                QWidget *m = QApplication::activeModalWidget();
+                if (auto *box = qobject_cast<QMessageBox *>(m)) {
+                    asked = true;
+                    for (QAbstractButton *b : box->buttons()) if (b->text().startsWith("Choose")) { b->click(); break; }
+                } else if (auto *d = qobject_cast<Nat::Dialog *>(m)) {
+                    offered = d->chosen() == "dk-no";
+                    d->accept();
+                }
+            });
+            t.start(50);
+            MainWindow::autoAnswer = false;
+            H.importPaths({hp}, -1);
+            MainWindow::autoAnswer = true;
+            t.stop();
+            CHECK(asked && offered, "it asked, and offered Danish/Norwegian as the likely set");
+            CHECK(H.natId() == "dk-no" && H.volume().indexOf(0, "L\\NSEDD.L") >= 0, "lønsedd.l comes onto the disc as L\\NSEDD.L");
         }
         N.setNat("dk-no", true);
         {

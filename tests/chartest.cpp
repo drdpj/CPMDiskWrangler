@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
         CHECK(Nat::toHost("#$", s) == "#$", s.id + ": # and $ are never mapped");
         printf("  %-6s %s\n", qPrintable(s.id), qPrintable(Nat::toHost("A[B\\C]D{E|F}G@H^I`J~K", s)));
     }
-    const Nat::Set &dk = Nat::find("dk-no"), &de = Nat::find("de"), &se = Nat::find("se-fi");
+    const Nat::Set dk = Nat::find("dk-no"), de = Nat::find("de"), se = Nat::find("se-fi");
     CHECK(Nat::toHost("br|kregning", dk) == QString::fromUtf8("br\xC3\xB8kregning"), "Danish: br|kregning is brøkregning");
     CHECK(Nat::toHost("}rsl|n", dk) == QString::fromUtf8("\xC3\xA5rsl\xC3\xB8n"), "Danish: }rsl|n is årsløn");
     CHECK(Nat::fromHost(QString::fromUtf8("br\xC3\xB8kregning"), dk) == "BR\\KREGNING", "importing brøkregning gives BR\\KREGNING");
@@ -61,6 +61,14 @@ int main(int argc, char **argv) {
     CHECK(Nat::fromHost(QString::fromUtf8("\xC3\xA4"), se) == "[", "Swedish: ä (upper-cased Ä) is [");
     CHECK(Nat::fromHost(QString::fromUtf8("\xC3\xA7"), dk) == QString::fromUtf8("\xC3\x87"), "a letter the set has no place for stays a letter");
     CHECK(Nat::extraNameChars(Nat::find("ascii")).isEmpty() && !Nat::extraNameChars(dk).isEmpty(), "extra name characters only for national sets");
+
+    printf("== which set a host name needs\n");
+    CHECK(Nat::foreignLetters({QString::fromUtf8("l\xC3\xB8nseddel.l"), "plain.txt"}) == QString::fromUtf8("\xC3\x98"), "lønseddel.l has the letter Ø");
+    CHECK(Nat::suggestFor({QString::fromUtf8("l\xC3\xB8nseddel.l")}) == "dk-no", "ø means Danish/Norwegian");
+    CHECK(Nat::suggestFor({QString::fromUtf8("\xC3\xA6\xC3\xB8\xC3\xA5")}) == "dk-no", "æøå means Danish/Norwegian");
+    CHECK(Nat::suggestFor({QString::fromUtf8("\xC3\xA4\xC3\xB6")}) == "se-fi", "äö: Swedish/Finnish comes first");
+    CHECK(Nat::suggestFor({QString::fromUtf8("stra\xC3\x9F" "e")}) == "de", "ß means German");
+    CHECK(Nat::suggestFor({"plain.txt"}).isEmpty() && Nat::suggestFor({QString::fromUtf8("\xD0\xB6")}).isEmpty(), "none for plain names or letters no set has");
 
     printf("== names on a disc\n");
     QString err;
