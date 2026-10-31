@@ -224,6 +224,11 @@ with its terms (and in About if it ships in the program); material only consulte
    don't, +-1 plausible .COM starts, -4 files starting in E5 space), then are named after an identical library
    format if there is one.
 5. Readings whose "directory" is mostly nonsense, or score below -5, are dropped. One per layout is kept.
+5a. Content checks also rank rivals by blocks landing on nothing: -1 per never-written (all E5) sector inside the first
+   8K of a file, -4 per file of only zeros. Not a verdict: real files have a few (Osborne DIAG/OS1 discs), so it only
+   separates readings of the same disc. It put the RC Piccolo COMAL discs on side order `alt`, 6 reserved tracks (0
+   never-written sectors; out-back and out-out gave 3-12) and moved nothing among the 58 real images. The idea is from
+   AutoArchaeologist's `fs_abc.py` (see `THIRD-PARTY-NOTICES.md`).
 5b. Confidence: a reading is "clean" (and so can be high confidence and writable) only with no nonsense entries, bad or
    shared pointers, text files that stay text, and no more than a quarter of the file entries whose pointer count
    disagrees with their record count ("block counts match record counts in N of M"). A wrong pointer width or block

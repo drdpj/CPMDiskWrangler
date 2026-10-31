@@ -195,7 +195,7 @@ bool textExtension(const QByteArray &n11) {
     return exts.contains(n11.mid(8, 3));
 }
 
-struct ContentScore { int textGood = 0, textBad = 0, startsBlank = 0, comGood = 0, comBad = 0; };
+struct ContentScore { int textGood = 0, textBad = 0, startsBlank = 0, comGood = 0, comBad = 0, blankSectors = 0, zeroFiles = 0; };
 
 ContentScore scoreContents(const Disk::Image &img, const Cpm::Format &f, const QVector<EInfo> &ent) {
     ContentScore cs;
@@ -235,6 +235,19 @@ ContentScore scoreContents(const Disk::Image &img, const Cpm::Format &f, const Q
             while (!data.isEmpty() && (data.endsWith(char(0)) || data.endsWith(char(0xE5)))) data.chop(1);
         if (data.isEmpty()) continue;
         ++examined;
+        // Sectors that were never written (all E5) inside a file, and files of nothing but zeros, mean the blocks came
+        // from the wrong place: a wrong side order or reserved-track count lands file blocks on unwritten sectors.
+        // Real files have the odd one (Osborne's diagnostic discs have a few), so this only ranks rival readings.
+        {
+            const int ss = f.seclen;
+            bool allZero = data.size() >= ss;
+            for (int o = 0; o + ss <= data.size(); o += ss) {
+                const QByteArray sct = data.mid(o, ss);
+                if (sct.count(char(0xE5)) == ss) cs.blankSectors++;
+                if (sct.count(char(0)) != ss) allZero = false;
+            }
+            if (allZero) cs.zeroFiles++;
+        }
         QByteArray first = data.left(128);
         if (first.size() == 128 && first.count(char(0xE5)) == 128) { cs.startsBlank++; continue; }
         QByteArray ext = x0.name.mid(8, 3);
@@ -535,7 +548,10 @@ Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
         c.textGood = cs.textGood;
         c.textBad = cs.textBad;
         c.startsBlank = cs.startsBlank;
-        c.score += 3.0 * cs.textGood - 8.0 * cs.textBad - 4.0 * cs.startsBlank + 1.0 * cs.comGood - 1.0 * cs.comBad;
+        c.score += 3.0 * cs.textGood - 8.0 * cs.textBad - 4.0 * cs.startsBlank + 1.0 * cs.comGood - 1.0 * cs.comBad -
+                   1.0 * cs.blankSectors - 4.0 * cs.zeroFiles;
+        if (cs.blankSectors) c.evidence << QString("%1 never-written sector%2 inside files").arg(cs.blankSectors).arg(cs.blankSectors == 1 ? "" : "s");
+        if (cs.zeroFiles) c.evidence << QString("%1 file%2 of nothing but zeros").arg(cs.zeroFiles).arg(cs.zeroFiles == 1 ? "" : "s");
         if (cs.textGood || cs.textBad) c.evidence << QString("text files read as text: %1 of %2").arg(cs.textGood).arg(cs.textGood + cs.textBad);
         if (cs.comGood || cs.comBad) c.evidence << QString(".COM files starting with a likely instruction: %1 of %2").arg(cs.comGood).arg(cs.comGood + cs.comBad);
         if (cs.startsBlank) c.evidence << QString("%1 files start in never-written (E5) space").arg(cs.startsBlank);

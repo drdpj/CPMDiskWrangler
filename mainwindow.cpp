@@ -1280,6 +1280,7 @@ void MainWindow::about() {
                        "and exchanges files with Acorn Disk Wrangler and other tools by drag and drop (retro-files format).<br><br>"
                        "Copyright &copy; 2026 Daniel Jameson.<br>Licensed under the GNU General Public License v3 or later.<br><br>"
                        "Includes the disc definitions from cpmtools 2.23 (Michael Haardt and contributors, GPL v3 or later). "
+                       "The way the format detection ranks rival readings by what their files contain is based on an idea in AutoArchaeologist (Datamuseum-DK, BSD 2-Clause). "
                        "The TeleDisk decoder follows LZHUF by Haruyasu Yoshizaki and Haruhiko Okumura. Uses Qt under the LGPL v3. "
                        "Help &gt; Licences shows the full licence texts and notices, including those of the libraries distributed with it.<br><br>" +
                            AppSettings::where().toHtmlEscaped());

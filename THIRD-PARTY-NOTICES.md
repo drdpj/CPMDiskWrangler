@@ -55,6 +55,7 @@ These were read for facts about formats. No code or text was copied from them.
 | Notes on the Torch CP/N directory, entries, address word and allocation map (a source comment the owner supplied) | the Torch CP/N filesystem (`torchfs.cpp`, `tests/torch_check.py`) | facts only |
 | Myrcurial/o1next research notes (GitHub) | confirming that IMD tracks must be placed by sector ID | facts only |
 | Damien Guard, "Extracting files from Tatung Einstein disk images" (damieng.com, 2023) | the Einstein disc geometry and its DPB (DSM 257, two-byte block pointers on a 40-track disc); checked against two real discs | facts only |
+| AutoArchaeologist, `autoarchaeologist/os/cpm/fs_auto.py` and `fs_abc.py` (Datamuseum-DK, Copyright (c) 2020-2023, BSD-2-Clause; <https://codeberg.org/Datamuseum-dk/AutoArchaeologist>) | the idea of ranking candidate CP/M readings by what their files contain (never-written sectors inside files, files of only zeros); its pointer-width and fill-order heuristics were read for comparison. Reimplemented here from the idea; no code copied; credited in Help > About | BSD-2-Clause |
 | uBee's patched cpmtools 2.10j diskdefs (snakebyte69/CPMTools-Microbee-Patch) | the Microbee ds80 and ds84 geometry and the `datasect` idea (see the cpmtools section above for the credit) | GPL (facts only; nothing copied) |
 
 ## Used only for testing (not included, not distributed)
