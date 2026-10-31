@@ -151,7 +151,7 @@ jobs:
           path: dist/*
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-15      # macOS 14 runner images are retired on 2 Nov 2026 (github.com/actions/runner-images/issues/13518); 15 is Apple Silicon too
     steps:
       - uses: actions/checkout@v5
         with:
