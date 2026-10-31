@@ -17,6 +17,7 @@
  */
 #include "dragout.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -50,13 +51,37 @@ QByteArray trimCpmText(const QByteArray &d) {
 
 // ------------------------------------------------------------------------------ writing to the host
 
-static QString unique(const QString &name, QSet<QString> &used) {
+// Is the folder's file system case sensitive (Linux usually; Windows and macOS usually not)? Found by trying it.
+static bool hostCaseSensitive(const QString &dir) {
+    const QString base = QString("cpmdw-case-probe-%1").arg(QCoreApplication::applicationPid());
+    QFile f(dir + "/" + base + "a");
+    if (!f.open(QIODevice::WriteOnly)) return false;
+    f.close();
+    const bool distinct = !QFileInfo::exists(dir + "/" + base + "A");
+    f.remove();
+    return distinct;
+}
+
+struct Used {                       // the names taken in one folder; compared ignoring case unless the host is case sensitive
+    bool sensitive = false;
+    QSet<QString> names;
+    QString key(const QString &n) const { return sensitive ? n : n.toLower(); }
+    bool has(const QString &n) const { return names.contains(key(n)); }
+    void add(const QString &n) { names.insert(key(n)); }
+};
+
+static QString unique(const QString &name, Used &used) {
     QString n = name;
     int dot = name.lastIndexOf('.');
-    for (int k = 2; used.contains(n.toLower()); ++k)
+    for (int k = 2; used.has(n); ++k)
         n = dot > 0 ? name.left(dot) + "_" + QString::number(k) + name.mid(dot) : name + "_" + QString::number(k);
-    used.insert(n.toLower());
+    used.add(n);
     return n;
+}
+
+static bool hasLower(const QString &n) {
+    for (QChar c : n) if (c >= 'a' && c <= 'z') return true;
+    return false;
 }
 
 static QJsonObject cpmAttrs(const XItem &x) {
@@ -69,18 +94,31 @@ static QJsonObject cpmAttrs(const XItem &x) {
     return a;
 }
 
-// CP/M names are upper case and look shouting on a host, so they are written in lower case - unless the disc's own name
-// has lower-case letters (COMAL discs do): then it goes out exactly as it is, and back in the same.
-static QString hostCase(const QString &n) {
-    for (QChar c : n) if (c >= 'a' && c <= 'z') return n;
-    return n.toLower();
-}
-
 void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderPerUser, bool trimText,
                QStringList *topLevel, QJsonArray *jsonItems, QStringList *errors) {
-    QMap<int, QSet<QString>> used;            // per folder (user, or -1 for the top)
+    QDir().mkpath(hostDir);
+    // The host names, worked out first so that names which keep their case (lower-case ones) get theirs before the
+    // upper-case ones, which are written in lower case ... unless that would clash: then they keep their case too, and
+    // only a host that can't tell the two apart (Windows, macOS) adds _2 (the importer takes it off again).
+    const bool sensitive = hostCaseSensitive(hostDir);
+    QMap<int, Used> used;                     // per folder (user, or -1 for the top)
+    QVector<QString> hostNames(items.size());
+    for (int pass = 0; pass < 2; ++pass)
+        for (int i = 0; i < items.size(); ++i) {
+            const XItem &x = items[i];
+            const QString src = x.hostName.isEmpty() ? x.name : x.hostName;
+            if (hasLower(src) != (pass == 0)) continue;
+            Used &u = used[folderPerUser ? qMax(0, x.user) : -1];
+            u.sensitive = sensitive;
+            if (pass == 0) { hostNames[i] = unique(hostSafeName(src), u); continue; }
+            const QString lowered = hostSafeName(src.toLower()), exact = hostSafeName(src);
+            if (!u.has(lowered)) { u.add(lowered); hostNames[i] = lowered; }
+            else if (!u.has(exact)) { u.add(exact); hostNames[i] = exact; }
+            else hostNames[i] = unique(exact, u);
+        }
     QSet<int> folders;
-    for (const XItem &x : items) {
+    for (int idx = 0; idx < items.size(); ++idx) {
+        const XItem &x = items[idx];
         int u = folderPerUser ? qMax(0, x.user) : -1;
         QString relDir;
         if (u >= 0) {
@@ -96,7 +134,7 @@ void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderP
                 if (topLevel) topLevel->append(relDir);
             }
         }
-        QString host = unique(hostSafeName(hostCase(x.hostName.isEmpty() ? x.name : x.hostName)), used[u]);
+        const QString host = hostNames[idx];
         QString rel = relDir.isEmpty() ? host : relDir + "/" + host;
         QByteArray data = trimText ? trimCpmText(x.data) : x.data;
         QFile f(hostDir + "/" + rel);

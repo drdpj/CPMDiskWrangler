@@ -47,6 +47,7 @@
 #include <QMimeData>
 #include <QPointer>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QSpinBox>
 #include <QStatusBar>
 #include <QTextBrowser>
@@ -1013,7 +1014,25 @@ bool MainWindow::askNatForNames(const QVector<XItem> &items) {
     return true;
 }
 
-void MainWindow::importItems(const QVector<XItem> &items, int user, int side, ImportCtx &c) {
+// Extracting to a host that can't tell LØNSEDDE.L from lønsedde.l adds _2 (or _1...) to one of them. Dropped back, that
+// suffix is taken off again - but only when what is left matches another name dropped with it, so a real foo_1.txt stays.
+static QVector<XItem> withoutClashSuffixes(const QVector<XItem> &items) {
+    QSet<QString> names;
+    for (const XItem &x : items) if (!x.isDir && x.srcFs.isEmpty()) names.insert(x.name.toLower());
+    static const QRegularExpression re("^(.*)_(\\d+)(\\.[^.]*)?$");
+    QVector<XItem> out = items;
+    for (XItem &x : out) {
+        if (x.isDir || !x.srcFs.isEmpty()) continue;
+        const QRegularExpressionMatch m = re.match(x.name);
+        if (!m.hasMatch()) continue;
+        const QString stem = m.captured(1) + m.captured(3);
+        if (names.contains(stem.toLower())) x.name = stem;
+    }
+    return out;
+}
+
+void MainWindow::importItems(const QVector<XItem> &itemsIn, int user, int side, ImportCtx &c) {
+    const QVector<XItem> items = withoutClashSuffixes(itemsIn);
     side = qBound(0, side, qMax(0, m_nvols - 1));
     if (!writable()) { c.errors << "The disc is read-only: " + readOnlyReason(); return; }
     if (!c.natAsked) {

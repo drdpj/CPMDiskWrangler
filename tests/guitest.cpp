@@ -631,6 +631,36 @@ int main(int argc, char **argv) {
             CHECK(tick && tick->isChecked(), "the status bar has the same tick box, ticked");
             if (tick) { tick->click(); CHECK(!L4.lowerNames() && !act->isChecked(), "clicking it unticks the setting and the Tools item"); }
         }
+        // two names that differ only in case, written to the host and dropped back
+        {
+            QVector<XItem> xi;
+            auto mk = [&](const QString &name, const QString &host) { XItem x; x.name = name; x.hostName = host; x.srcFs = "cpm"; x.user = 0; x.data = "z"; return x; };
+            xi << mk("L\\NSEDDE.L", QString::fromUtf8("L\xC3\x98NSEDDE.L")) << mk("l|nsedde.l", QString::fromUtf8("l\xC3\xB8nsedde.l")) << mk("PLAIN.TXT", "PLAIN.TXT");
+            QDir().mkpath(wd + "/host/out");
+            QStringList top, errs;
+            QJsonArray ja;
+            RetroFiles::writeHost(xi, wd + "/host/out", false, false, &top, &ja, &errs);
+            QDir od(wd + "/host/out");
+            const QStringList got = od.entryList(QDir::Files, QDir::Name);
+            const bool sensitive = got.size() == 3 && got.contains(QString::fromUtf8("l\xC3\xB8nsedde.l")) && got.contains(QString::fromUtf8("L\xC3\x98NSEDDE.L"));
+            printf("  host file names: %s\n", qPrintable(got.join(" | ")));
+            CHECK(errs.isEmpty() && got.contains("plain.txt") && got.contains(QString::fromUtf8("l\xC3\xB8nsedde.l")), "the lower-case name keeps its case; an upper-case name with no clash is lower-cased");
+            CHECK(sensitive || got.contains(QString::fromUtf8("L\xC3\x98NSEDDE_2.L")), "the upper-case one keeps its case too, and gets _2 only if the host can't tell them apart");
+            // dropped back with the suffix the host needed
+            MainWindow B2;
+            CHECK(B2.newImage(wd + "/natsuf.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a disc for the dropped-back names");
+            B2.setNat("dk-no", false);
+            B2.setLowerNames(true, false);
+            const QString p1 = wd + "/host/out/" + QString::fromUtf8("l\xC3\xB8nsedde.l");
+            QDir().mkpath(wd + "/host/out2");
+            { QFile f(p1); QFile g(wd + "/host/out2/" + QString::fromUtf8("l\xC3\xB8nsedde.l")); f.copy(g.fileName()); }
+            { QFile f(wd + "/host/out2/" + QString::fromUtf8("L\xC3\x98NSEDDE_2.L")); f.open(QIODevice::WriteOnly); f.write("z"); }
+            { QFile f(wd + "/host/out2/foo_1.txt"); f.open(QIODevice::WriteOnly); f.write("z"); }
+            MainWindow::autoAnswer = true;
+            B2.importPaths({wd + "/host/out2/" + QString::fromUtf8("l\xC3\xB8nsedde.l"), wd + "/host/out2/" + QString::fromUtf8("L\xC3\x98NSEDDE_2.L"), wd + "/host/out2/foo_1.txt"}, -1, 0);
+            CHECK(B2.volume().indexOf(0, "l|nsedde.l") >= 0 && B2.volume().indexOf(0, "L\\NSEDDE.L") >= 0, "the _2 is taken off again and the case kept: l|nsedde.l and L\\NSEDDE.L");
+            CHECK(B2.volume().indexOf(0, "foo-1.txt") >= 0, "a real foo_1.txt is left alone (becomes foo-1.txt)");
+        }
         N.setNat("dk-no", true);
         {
             QToolButton *nb = nullptr;
