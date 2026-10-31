@@ -120,7 +120,6 @@ bits, a DFS directory letter, DOS attributes, a CP/M user number. retro-files ca
 ## Limitations
 * TeleDisk images can't be saved back as TeleDisk, and TeleDisk 1.x "advanced compression" isn't supported.
 * A raw image can't hold a disc whose track 0 differs from the rest; use ImageDisk or DSK for those.
-* New discs with a separate filesystem on each side can't be made (copy an existing image instead).
 * Copy-protected tracks (duplicate sector numbers) are read but never written.
 * DateStamper's `!!!TIME&.DAT` time stamps are kept but not shown; CP/M 3 passwords are kept but not checked.
 
