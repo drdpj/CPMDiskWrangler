@@ -89,11 +89,17 @@ format with no close rival, one you've confirmed, or a disc made by this program
   you turn it off).
 
 * **Tools > Allow lower-case file names** (also a tick box at the bottom right) lets names keep lower-case letters, for
-  discs that hold them (COMAL's do; BDOS doesn't enforce upper case, it is only the convention). It is ticked for a disc
-  with any lower-case name and unticked otherwise, remembered per disc. Ticked, names you add, rename or drop from the
-  host keep their case, so a name goes out to the host and back unchanged; unticked, they are made upper case.
+  discs that hold them (COMAL's do). CP/M's BDOS does not reject lower case: a program can put lower-case letters in a
+  file control block and Make File will store them, and the directory search compares the bytes it is given, so
+  `readme.txt` and `README.TXT` are different files. It is only the convention that names are upper case, because the
+  command processor upper-cases what you type, so a lower-case file can't be named at the prompt. The box is ticked for
+  a disc with any lower-case name and unticked otherwise, remembered per disc. Ticked, names you add, rename or drop from
+  the host keep their case, so a name goes out to the host and back unchanged; unticked, they are made upper case, as
+  CP/M's own tools would. When extracting, names with lower-case letters keep them, upper-case names are written in lower
+  case unless that would clash with another name, and only a host that can't tell the two apart (Windows, macOS) adds `_2`,
+  which is taken off again when the files are dropped back.
 * **Tools > Character set for names and text** chooses the national variant of ASCII a disc was written in (Danish/
-  Norwegian, Swedish/Finnish, German, French, Italian, Spanish, Portuguese). On those machines `[ \\ ] { | }` were the
+  Norwegian, Swedish/Finnish, German, French, Italian, Spanish, Portuguese). On those machines `[ \ ] { | }` were the
   letters Æ Ø Å æ ø å and so on, so a file called `br|kregning` is really *brøkregning*. With a set chosen, names and
   text files are shown, exported and imported as Unicode; the disc itself is unchanged. The program suggests it when
   names or text use those characters between letters, and remembers the choice for that disc. `#` and `$` are not

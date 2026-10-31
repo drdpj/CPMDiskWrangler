@@ -20,7 +20,7 @@ with its terms (and in About if it ships in the program); material only consulte
 | File | Role |
 |---|---|
 | `diskimage.h/.cpp` | `Disk::Image`: the physical disc (tracks of sectors keyed by sector ID), the containers (raw, IMD, DSK, EDSK, TD0), staged writes, serialising, atomic commit |
-| `natchars.h/.cpp` | `Nat`: ISO 646 national character sets (map `@ [ \\ ] ^ ` { | } ~`, never `#` `$`), host<->disc name/text conversion, evidence scan and language guess, the chooser dialog. Per disc, remembered in settings (`charset/<sha1 of path>`); Volume accepts `[ \\ ] |` in names only while a national set is chosen (`setExtraNameChars`). Not done: SE-C/DEC variants, UK (`#`->£) |
+| `natchars.h/.cpp` | `Nat`: ISO 646 national character sets (map `@ [ \ ] ^ ` { | } ~`, never `#` `$`), host<->disc name/text conversion, evidence scan and language guess, the chooser dialog. Per disc, remembered in settings (`charset/<sha1 of path>`); Volume accepts `[ \ ] |` in names only while a national set is chosen (`setExtraNameChars`). Not done: SE-C/DEC variants, UK (`#`->£) |
 | `lzhuf.cpp` | TeleDisk 2.x "advanced compression" decoder (Okumura's LZHUF; tables generated, not copied) |
 | `cpmformat.h/.cpp` | `Cpm::Format`: a diskdef plus the derived DPB (DSM, EXM, pointer width, skew table, `locate()`); the diskdefs parser; the library |
 | `cpmfs.h/.cpp` | `Cpm::Volume`: directory, files, extents, CP/M 3 / P2DOS stamps and labels, add/delete/rename/attrs, `check()`, `makeBlank()` |
@@ -153,7 +153,7 @@ starts on the filter for the kind the image already is, and the kind saved is th
   Checked on `JSWSHOW_SHOWJUMPER.dsk` and `JSWSHOW_JETSETWILLY.dsk` (the latter has a CRC-error sector on the last
   track, so it opens read-only, and a file whose name is eleven spaces: `blankNamedFile` in `detect.cpp` accepts one
   with blocks instead of calling it nonsense).
-- **National character sets**: names on Danish / Norwegian / Swedish discs use `[ \\ ] { | }` for ÆØÅ æøå (German: ÄÖÜ äöü),
+- **National character sets**: names on Danish / Norwegian / Swedish discs use `[ \ ] { | }` for ÆØÅ æøå (German: ÄÖÜ äöü),
   so detection's name check allows `[`, `]` and `|` (`<>,;:=?*` are still refused). The RC Piccolo COMAL discs have
   nine such names (`brøkregning`, `årsløn_1`, ...) that used to count as nonsense entries. Names are shown and
   extracted as they are on the disc (`br|kregning`); `|` is not a legal Windows file name, so extracting to Windows has
@@ -232,7 +232,9 @@ starts on the filter for the kind the image already is, and the kind saved is th
 * A short raw image is padded in memory and saved full size.
 
 * National character sets and retro-files: `XItem::name` is always the raw disc name (the spec says bytes unchanged); `XItem::hostName` is the national-set name used only for the file written to the host. `importOne` keeps a `cpm` source name exactly (allowing `[ \ ] |` for it), converts only host file names (`srcFs` empty) through the disc's set, and treats other filesystems' names as bytes.
-* Lower-case names: `Volume` upper-cases names unless its extra name characters include `a`-`z` (`Nat::lowerLetters()`); MainWindow sets that from `m_lowerOk` (Tools > Allow lower-case file names + status bar tick box; auto from `Nat::usesLowerCase` = any lower-case name, else the per-disc `lowercase/<sha1>` setting). Drag-out keeps a name with lower-case letters as is, else lower-cases it. A name from a `cpm` source is never case-changed.
+* The status bar (right of the line): a tick box for lower-case names (kept in step with the Tools item by `showLower`) and a button saying which character set the disc is shown in (`Characters: ...`, with "(national letters?)" when `Nat::scan` suspects one; click opens the dialog). The status line itself is a `StatusLabel` (mainwindow_p.h) that elides with "..." and keeps the full text in its tooltip - never put a long message in a plain QLabel there. Settings keys per disc: `charset/<sha1>`, `lowercase/<sha1>`.
+* Adding host files with letters ASCII can't hold (`askNatForNames`, once per drop via `ImportCtx::natAsked`): a question, then the Character set dialog constructed with the incoming names - it says which letters, which sets have a place for them (`Nat::candidatesFor`, in list order; ä ö are both se-fi and de), preselects the first and previews each name as it would be written. `autoAnswer` skips the question (tests).
+* Lower-case names: `Volume` upper-cases names unless its extra name characters include `a`-`z` (`Nat::lowerLetters()`); MainWindow sets that from `m_lowerOk` (Tools > Allow lower-case file names + status bar tick box; auto from `Nat::usesLowerCase` = any lower-case name; a new disc starts off, else the per-disc `lowercase/<sha1>` setting). Drag-out keeps a name with lower-case letters as is, else lower-cases it. A name from a `cpm` source is never case-changed.
 * Host names on extraction (`writeHost`): names with lower-case letters keep them; upper-case names are lower-cased unless that clashes, then they keep their case; only a case-insensitive host (found by probing the folder) adds `_2`. `importItems` strips such a `_N` again when what is left matches another dropped name (case-insensitively), so a real `foo_1.txt` stays.
 * National character sets are display/transfer only: the directory always holds the raw 7-bit bytes. Tests: `tests/chartest` (needs COMAL discs in `real/nat` for the guess), and a section in guitest.
 
