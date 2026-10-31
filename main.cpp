@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <QApplication>
+#include <QLoggingCategory>
 #include "cpmformat.h"
 #include "appsettings.h"
 #include "dragout.h"
@@ -28,6 +29,10 @@
 #endif
 
 int main(int argc, char *argv[]) {
+    // Qt's Wayland text-input-v3 plugin warns "Try to disable surface ... with focusing surface" whenever focus moves
+    // between a window and a dialog. It is a harmless Qt-internal bookkeeping complaint, so hide that one category's
+    // warnings.
+    QLoggingCategory::setFilterRules("qt.qpa.wayland.textinput.warning=false");
     QGuiApplication::setDesktopFileName("cpmdiskwrangler");   // before QApplication: registers with the portal first
     QApplication app(argc, argv);
     QApplication::setOrganizationName("cpmdiskwrangler");

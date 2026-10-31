@@ -18,6 +18,14 @@ program as a resource.
 copy the parameters of cpmtools definitions of the same name (`cpcdata`, `cpcsys`, `pcw`, `kpii`, `kpiv`, `rm-dd`,
 `rm-qd`), as each one's `source` line says.
 
+The Microbee definitions `microbee-ds80` and `microbee-ds84` in that file take their parameters (block size,
+directory size, reserved tracks, skew, and the data-track sector numbering) from the `ds80` and `ds84` entries of the
+`diskdefs` in **uBee's patched cpmtools 2.10j** (uBee, 2016, for the Microbee Software Preservation Project,
+<http://www.microbee-mspp.org.au/repository>), as collected in snakebyte69's
+<https://github.com/snakebyte69/CPMTools-Microbee-Patch>. That patch is GPL, like cpmtools. The `datasect` key
+(first sector ID on the data tracks) is that patch's key of the same name, implemented here independently in
+`Format::dataId` and `makeBlank`; no code was taken from the patch. Both definitions were checked against real discs.
+
 ### LZHUF - `lzhuf.cpp`
 The TeleDisk "advanced compression" decoder implements the LZHUF algorithm and follows the structure of
 **LZHUF.C**, written by **Haruyasu Yoshizaki** (1988, with English comments by **Haruhiko Okumura**, 1989),
@@ -46,6 +54,7 @@ These were read for facts about formats. No code or text was copied from them.
 | Adam Sampson, "Archiving CP/M floppies" notes (offog.org) | Research Machines 480Z track 0 and side layout | facts only |
 | Notes on the Torch CP/N directory, entries, address word and allocation map (a source comment the owner supplied) | the Torch CP/N filesystem (`torchfs.cpp`, `tests/torch_check.py`) | facts only |
 | Myrcurial/o1next research notes (GitHub) | confirming that IMD tracks must be placed by sector ID | facts only |
+| uBee's patched cpmtools 2.10j diskdefs (snakebyte69/CPMTools-Microbee-Patch) | the Microbee ds80 and ds84 geometry and the `datasect` idea (see the cpmtools section above for the credit) | GPL (facts only; nothing copied) |
 
 ## Used only for testing (not included, not distributed)
 * **cpmtools** (`cpmls`, `cpmcp`, `fsck.cpm`; GPL v3+) and **libdsk** (`dsktrans`, `dskid`; Copyright John Elliott,

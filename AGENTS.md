@@ -129,6 +129,12 @@ with its terms (and in About if it ships in the program); material only consulte
     (offog.org); **not checked against a real RM disc**.
   - On double-sided discs `makeBlank` gives only cylinder 0 head 0 the track 0 shape. Raw layouts
     (`RawLayout::t0sectrk/t0seclen`) give cylinder 0 of **each** side the track 0 shape, as on the RM discs.
+- **Microbee DS80** (`microbee-ds80`, `microbee-ds84`; parameters from uBee's patched cpmtools, credited in
+  `THIRD-PARTY-NOTICES.md` and the diskdefs comments): 80 cylinders x 2 sides, 10 x 512, skew table `1,4,7,0,3,6,9,2,5,8`.
+  DS80 numbers the sectors of its reserved tracks (cylinders 0-1) 1-10 and those of every data track 21-30; the
+  diskdef key `datasect 21` (`Format::dataId`, same name as uBee's) makes `makeBlank` do that for new IMD / DSK
+  discs (a raw image records no IDs). Reading needs nothing: sectors are addressed by ID order. Checked on
+  `games_demo_ds80.dsk` (DS80) and `peter_broughton_v2.2p_2of2_ds84.dsk` (DS84).
 - **A separate disc on each side** (`separatesides yes`; `Format::fixedHead` picks the side; cpmtools ignores the
   key): `tracks` etc. describe one side. Detection tries every single-sided library format this way on a
   two-sided disc (scoring side 0, plus side 1 if it reads sensibly, plus each side's track 0 shape); the window

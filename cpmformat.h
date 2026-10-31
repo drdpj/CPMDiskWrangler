@@ -54,6 +54,8 @@ struct Format {
     QVector<int> skewtab;         // ... or an explicit table (logical sector -> physical, 0-based)
     Os os = Os::V22;
     int secbase = -1;             // first sector ID for a new disc (-1: 1, or what the image has)
+    int dataId = -1;              // first sector ID on the data tracks (after the reserved ones) of a new disc (-1: secbase);
+                                  // "datasect": Microbee DS80 numbers its data tracks from 21, its reserved ones from 1
     int imdMode = -1;             // ImageDisk mode for a new disc (-1: from fm/datarate or the geometry)
     bool fm = false;              // single density (cpmtools "fm yes")
     QString datarate;             // cpmtools "datarate" (SD, DD, HD, ED)

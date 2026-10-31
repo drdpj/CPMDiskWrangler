@@ -268,6 +268,7 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
         else if (key == "skew") num(&f.skew);
         else if (key == "heads") num(&f.heads);
         else if (key == "secbase") num(&f.secbase);
+        else if (key == "datasect") num(&f.dataId);
         else if (key == "imdmode") num(&f.imdMode);
         else if (key == "logicalextents") num(&f.logicalExtents);
         else if (key == "offset") offsetText = val;

@@ -699,6 +699,15 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
         int first = f.t0firstId >= 0 ? f.t0firstId : l.firstId;
         if (!img->reshapeTrack(0, 0, f.t0sectrk, f.t0seclen, first, mode, err)) return false;
     }
+    if (f.dataId >= 0 && f.dataId != l.firstId && kind != Disk::Kind::Raw) {
+        // the data tracks (everything after the reserved area) are numbered from datasect, as on a Microbee DS80;
+        // a raw image records no sector IDs, so there is nothing to do for one
+        for (int t = f.dataStart / f.sectrk; t < f.tracks; ++t) {
+            int cyl = 0, head = 0, idx = 0;
+            if (!f.locate(t * f.sectrk, &cyl, &head, &idx)) continue;
+            if (!img->reshapeTrack(cyl, head, f.sectrk, f.seclen, f.dataId, l.mode, err)) return false;
+        }
+    }
     Volume v;
     // attach reads an all-E5 directory; then write the empty directory properly (stamps, label)
     if (!v.attach(img, f, err)) return false;

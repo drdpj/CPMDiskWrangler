@@ -234,10 +234,13 @@ ContentScore scoreContents(const Disk::Image &img, const Cpm::Format &f, const Q
             if (starts.contains(first[0])) cs.comGood++; else cs.comBad++;
             continue;
         }
-        bool textual = textExtension(x0.name) || printable(first) >= 0.97;
-        if (!textual || printable(first) < 0.80) {
+        // a text file shorter than a record is its text, a ^Z, then padding: judge the text only
+        const int z = first.indexOf(char(0x1A));
+        const QByteArray head = z >= 16 ? first.left(z) : first;
+        bool textual = textExtension(x0.name) || printable(head) >= 0.97;
+        if (!textual || printable(head) < 0.80) {
             static const QSet<QByteArray> sure = {"TXT", "ASM", "MAC", "Z80", "SUB", "PRN", "LST"};
-            if (sure.contains(x0.name.mid(8, 3)) && printable(first) < 0.5) cs.textBad++;
+            if (sure.contains(x0.name.mid(8, 3)) && printable(head) < 0.5) cs.textBad++;
             continue;
         }
         // a text file should be text record after record until its end-of-file mark

@@ -5,6 +5,8 @@
 # can be copied into a cpmtools diskdefs file and vice versa. Extra keys, which cpmtools ignores:
 #   heads N        physical sides (default: 2 if tracks > 86 and even, else 1; "sides" also implies 2)
 #   secbase N      first sector ID, used when making a new disc (default 1)
+#   datasect N     first sector ID on the data tracks (those after the reserved ones) of a new disc (default: secbase).
+#                  The name and meaning are those of uBee's patched cpmtools (see THIRD-PARTY-NOTICES.md)
 #   imdmode N      ImageDisk mode for a new disc: 0/1/2 = FM 500/300/250 kbps, 3/4/5 = MFM 500/300/250 kbps
 #   desc "text"    description shown in menus
 #   source "text"  where the definition comes from and how far it has been checked
@@ -123,6 +125,41 @@ diskdef pcw720
   boottrk 1
   secbase 1
   os 3
+end
+
+# Microbee 80-track double-sided formats. The parameters come from the ds80 and ds84 entries of uBee's patched
+# cpmtools 2.10j diskdefs (uBee / Microbee Software Preservation Project; github.com/snakebyte69/CPMTools-Microbee-Patch;
+# GPL), and were checked on real discs. (cpmtools has microbee40, dreamdisk40 and dreamdisk80, which cover the
+# 40-track, single-sided 80-track and Dreamdisk discs). Sector n of a track is stored with ID n+1 and the skew table
+# 1,4,7,0,3,6,9,2,5,8 is cpmtools' "skew 3, skewstart 2" as uBee's patched cpmtools writes it.
+diskdef microbee-ds84
+  source "Microbee 3.5-inch DS84 (Peter Broughton's CP/M 2.2p discs): from uBee's patched-cpmtools diskdefs (ds84), checked on one real disc (peter_broughton_v2.2p_2of2): 80 cylinders x 2 sides, 4K blocks, 128 entries, 2 reserved tracks, all sector IDs 1-10"
+  seclen 512
+  tracks 160
+  heads 2
+  sides alt
+  sectrk 10
+  blocksize 4096
+  maxdir 128
+  skewtab 1,4,7,0,3,6,9,2,5,8
+  boottrk 2
+  os 2.2
+end
+
+diskdef microbee-ds80
+  source "Microbee 3.5-inch Modular DS80: from uBee's patched-cpmtools diskdefs (ds80), checked on one real disc (games_demo): 80 cylinders x 2 sides, 4K blocks, 128 entries, 4 reserved tracks (cylinders 0 and 1, sector IDs 1-10); the data tracks use sector IDs 21-30 (uBee's datasect 21), which a new disc made here also does (datasect 21)"
+  seclen 512
+  tracks 160
+  heads 2
+  sides alt
+  sectrk 10
+  blocksize 4096
+  maxdir 128
+  skewtab 1,4,7,0,3,6,9,2,5,8
+  boottrk 4
+  secbase 1
+  datasect 21
+  os 2.2
 end
 
 describe ibm-3740 "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)"
