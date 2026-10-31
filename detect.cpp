@@ -695,6 +695,21 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
                     l.seclen = sl; l.sectrk = st; l.heads = h; l.cyls = int(cyl);
                     addLayout(l);
                 }
+        // A first track of its own, single density (IBM 3740 and 8-inch double density discs, Osborne, Vector Graphic: 26 x 128
+        // FM; Research Machines: 16 x 128), then the rest in the disc's usual sectors, one side.
+        static const int t0shapes[][2] = {{26, 128}, {16, 128}};
+        for (const auto &t0 : t0shapes)
+            for (int sl : {256, 512, 1024})
+                for (int st : {8, 9, 10, 15, 16, 26}) {
+                    qint64 tb = qint64(sl) * st, t0b = qint64(t0[0]) * t0[1];
+                    if (size <= t0b || (size - t0b) % tb) continue;
+                    qint64 cyl = (size - t0b) / tb + 1;
+                    if (cyl < 30 || cyl > 86) continue;
+                    Disk::RawLayout l;
+                    l.seclen = sl; l.sectrk = st; l.heads = 1; l.cyls = int(cyl);
+                    l.t0sectrk = t0[0]; l.t0seclen = t0[1];
+                    addLayout(l);
+                }
         if (layouts.isEmpty()) {
             res.physical = QString("raw image of %1 bytes, a size no known format or common geometry has").arg(size);
             res.confidence = "none";

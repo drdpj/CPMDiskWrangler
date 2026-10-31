@@ -43,7 +43,7 @@ A file's type comes from what is in it, never from its name: many emulators use 
 file is opened as a DSK image only if it carries a DSK header, and as a raw image otherwise.
 
 It copes with interleaved and rotated tracks, with discs whose track 0 is single density (FM) and the rest
-double density (Osborne, Research Machines 480Z), and with double-sided discs that hold a separate filesystem on
+double density (Osborne, Research Machines 480Z, Vector Graphic), and with double-sided discs that hold a separate filesystem on
 each side (shown as **Side 0** and **Side 1**). New double-sided Research Machines discs can be made too: tick
 "Double-sided" in File > New disc image (ImageDisk, DSK or raw).
 
@@ -55,7 +55,7 @@ and handles it like any other, except that it has no labels or time stamps and k
 A CP/M disc doesn't record its own layout, so the program tries the possibilities - block size, directory size,
 reserved tracks, skew, side order - and keeps the reading that makes sense of the directory and the files. Known
 formats count for more: about 140 are built in, including cpmtools' library, the Amstrad CPC, PCW and +3, Kaypro,
-Osborne, Research Machines 480Z, Acorn's Z80 second processor and Torch CP/N.
+Osborne, Research Machines 480Z, Vector Graphic, Acorn's Z80 second processor and Torch CP/N.
 
 **Tools > Disc format** shows the ranked readings and their evidence, lets you pick one yourself (it's remembered
 for that file), and copies any of them as a cpmtools `diskdef`. Tools > Add a diskdefs file adds your own

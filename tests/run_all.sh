@@ -17,7 +17,7 @@ export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)
 step "fstest: every format in every container, then independent checks"
 for k in raw imd edsk; do
-  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd rm-dd rm-qd torch-cpn; do
+  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd vector-26x256 rm-dd rm-qd torch-cpn; do
     "$b/fstest/fstest" "$W/fs/$k" $f $k > "$W/fs-$k-$f.log" 2>&1 || { echo "FAIL fstest $f $k"; cat "$W/fs-$k-$f.log"; fail=1; }
   done
 done
@@ -58,6 +58,10 @@ if [ -n "$real" ]; then
 $(grep -c 'confidence high; read-only' "$W/detect.log") found by search (read-only until confirmed), \
 $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0-9]* errors' "$W/detect.log") with check errors"
   grep -q 'check: [1-9][0-9]* errors' "$W/detect.log" && fail=1
+  for v in "$real"/vector/*; do        # a Vector Graphic disc: track 0 FM 26 x 128, then 26 x 256, skew 5 (not in the repo)
+    [ -f "$v" ] || continue
+    "$b/detecttest/detecttest" "$v" 2>&1 | grep -q 'confidence high; writable' && echo "$(basename "$v"): found, writable" || { echo "FAIL: $(basename "$v") not found"; fail=1; }
+  done
   (cd "$W" && "$src/tests/cmp_cpmtools.sh" "$b/detecttest/detecttest" ibm-3740 "$Z"/cpm1*.dsk "$Z"/cpm22-2.dsk "$Z"/cpm22-62khd.dsk "$Z"/cpm3-2.dsk "$Z"/mpm*.dsk "$Z"/*tests.dsk) | tee "$W/cmp.log"
   grep -q "[1-9][0-9]* differ" "$W/cmp.log" && fail=1
   for z in $(ls "$real"/rm/*.img 2>/dev/null); do         # the owner's Research Machines discs: cpmtools reads both sides

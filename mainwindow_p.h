@@ -139,6 +139,16 @@ private:
     QStringList m_v;
 };
 
+// "*.dsk *.img" -> "*.dsk *.DSK *.img *.IMG": file dialogs match case-sensitively on Linux, and discs come as DISK.DSK too.
+inline QString anyCase(const QString &patterns) {
+    QStringList out;
+    for (const QString &p : patterns.split(' ', Qt::SkipEmptyParts)) {
+        out << p;
+        if (p.toUpper() != p && p.startsWith("*.")) out << "*." + p.mid(2).toUpper();
+    }
+    return out.join(' ');
+}
+
 inline QString rootLabel(const QString &base, const QString &title) {
     return title.isEmpty() ? base : base + "   [" + title + "]";
 }

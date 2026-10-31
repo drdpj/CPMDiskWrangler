@@ -699,6 +699,10 @@ int main(int argc, char **argv) {
         CHECK(N3.openImage(wd + "/nat.imd") && N3.natId() == "ascii", "choosing ASCII again forgets it");
     }
 
+    printf("== file dialog filters match upper-case names too\n");
+    CHECK(anyCase("*.imd *.dsk") == "*.imd *.IMD *.dsk *.DSK", "*.dsk also lists DISK.DSK: " + anyCase("*.imd *.dsk"));
+    CHECK(anyCase("*") == "*", "a bare * is left alone");
+
     printf("== the status line fits its text to the width\n");
     {
         StatusLabel sl;

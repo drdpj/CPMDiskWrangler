@@ -279,6 +279,23 @@ diskdef osborne-8dd
   os 2.2
 end
 
+diskdef vector-26x256
+  desc "Vector Graphic CP/M 2.2 (56K), 57 tracks: track 0 FM 26 x 128, then 26 x 256, skew 5"
+  source "Worked out from a Vector Graphic CP/M 2.2 56K system disc image (CPM22-56K-DSDD.DSK, 376064 bytes): the directory starts on the third track and its sectors are 5 apart in a 26-sector track; checked with cpmtools (offset 3328, boottrk 1, skew 5): all 39 files read, fsck.cpm clean."
+  seclen 256
+  tracks 57
+  heads 1
+  sectrk 26
+  blocksize 4096
+  maxdir 48
+  skew 5
+  boottrk 2
+  track0 26 128 fm
+  secbase 1
+  imdmode 3
+  os 2.2
+end
+
 diskdef rm-dd
   desc "Research Machines 480Z double density (MD), 40 track: track 0 FM 16 x 128"
   source "cpmtools rm-dd, plus the single-density track 0 described in Adam Sampson's RM archiving notes (offog.org)"

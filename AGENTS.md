@@ -126,6 +126,12 @@ starts on the filter for the kind the image already is, and the kind saved is th
   so the filesystem never reads it. `makeBlank` reshapes cylinder 0 head 0 (FM at the same data rate as the
   other tracks: IMD mode 0/1/2 for 3/4/5) and refuses raw containers. Detection: +3 when the disc's track 0
   matches a format's `track0`, -3 when it doesn't. `sameLayout` ignores it (it doesn't affect the filesystem).
+  - `vector-26x256`: Vector Graphic CP/M 2.2 56K (`CPM22-56K-DSDD.DSK`, 376064 bytes): track 0 FM 26 x 128, then 56 tracks of
+    26 x 256, skew 5 (sectors 5 apart: the directory is logical sectors 0-5 of the third track), 4K blocks, 48 directory
+    entries (the rest of the first block holds unrelated system data, which is why 128 would read junk), 2 boot tracks.
+    cpmtools reads it as `seclen 256 tracks 56 sectrk 26 blocksize 4096 maxdir 48 skew 5 boottrk 1 offset 3328` (fsck clean).
+    The generic search finds it too, read-only, with 128 entries: `detect()` also tries raw layouts of one track 0 of
+    26 x 128 or 16 x 128 FM and the rest in 256/512/1024-byte sectors (one side).
   - `osborne-8dd`: worked out by detection from 7 real Osborne 8-inch discs (track 0 FM 26 x 128, then MFM
     8 x 1024, skew 3, 2 boot tracks, 2K blocks); directory size 128 is the whole-block reading (96 would read
     the same discs). New discs made here have the same track structure as the real ones (checked with

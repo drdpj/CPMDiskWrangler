@@ -588,7 +588,7 @@ void MainWindow::closeEvent(QCloseEvent *e) {
 
 void MainWindow::openDialog() {
     QString p = QFileDialog::getOpenFileName(this, "Open CP/M disc image", AppSettings().value("lastDir").toString(),
-                                             "Disc images (*.imd *.dsk *.td0 *.img *.ima *.raw *.h8d *.ssd *.dsd *.bin);;All files (*)");
+                                             "Disc images (" + anyCase("*.imd *.dsk *.td0 *.img *.ima *.raw *.h8d *.ssd *.dsd *.bin") + ");;All files (*)");
     if (p.isEmpty()) return;
     AppSettings().setValue("lastDir", QFileInfo(p).absolutePath());
     if (m_img.isOpen()) {
