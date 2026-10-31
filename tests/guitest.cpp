@@ -549,6 +549,12 @@ int main(int argc, char **argv) {
             delete dm;
         }
         N.setNat("dk-no", true);
+        {
+            QToolButton *nb = nullptr;
+            for (QToolButton *b : N.findChildren<QToolButton *>()) if (b->text().startsWith("Characters:")) nb = b;
+            CHECK(nb && nb->text().contains("Danish"), "the status bar says which character set is in use: " + (nb ? nb->text() : QString("(missing)")));
+        }
+        shot(&N, wd + "/shots/nat.png");
         CHECK(N.save(), "save");
         MainWindow N2;
         CHECK(N2.openImage(wd + "/nat.imd"), "reopen it");

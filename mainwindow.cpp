@@ -207,8 +207,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setupTreeColumns(m_tree, {{"Name", "", false}, {"Attr", "R/O SYS ARC", false}, {"Size", "1048576", true},
                               {"Blocks", "00000", true}, {"Date", "2026-12-31 23:59", false}});
     setCentralWidget(m_tree);
-    m_status = new QLabel;
+    m_status = new StatusLabel;
     statusBar()->addWidget(m_status, 1);
+    m_natBtn = new QToolButton;
+    m_natBtn->setAutoRaise(true);
+    m_natBtn->setVisible(false);
+    connect(m_natBtn, &QToolButton::clicked, this, &MainWindow::natDialog);
+    statusBar()->addPermanentWidget(m_natBtn);
     resize(860, 600);
 
     // The menus, the context menu and the button bar keep the same order as Acorn Disk Wrangler's (which has a few
@@ -455,7 +460,7 @@ bool MainWindow::openImage(const QString &path) {
         for (int side = 0; side < m_nvols; ++side) vols << &m_vols[side];
         const Nat::Evidence ev = Nat::scan(vols);
         if (ev.any())
-            m_natHint = "its names or text use [ \\ ] { | } between letters: Tools > Character set... shows them as national letters";
+            m_natHint = "names or text use [ \\ ] { | } between letters, which may be national letters";
     }
     refresh();
     return true;
@@ -709,6 +714,14 @@ void MainWindow::updateUi() {
     m_actNat->setEnabled(have);
     m_actFormat->setEnabled(m_img.isOpen());
     setWindowTitle(title());
+    {   // which character set the names and text are shown in (the choice is per disc; ASCII until one is chosen)
+        const Nat::Set ns = Nat::find(m_natId);
+        const bool suspect = m_natId == "ascii" && !m_natHint.isEmpty();
+        m_natBtn->setVisible(have);
+        m_natBtn->setText(QString("Characters: %1%2").arg(ns.id == "ascii" ? QStringLiteral("ASCII") : ns.name.section("  (", 0, 0), suspect ? " (national letters?)" : ""));
+        m_natBtn->setToolTip((suspect ? "This disc's " + m_natHint + ".\n" : QString()) +
+                             QString("Names and text are shown as %1. Click to choose another character set for this disc.").arg(ns.id == "ascii" ? "plain ASCII, just as the disc holds them" : ns.name));
+    }
     if (!have) {
         m_status->setText(m_img.isOpen() ? "Not read as CP/M: " + m_det.why + " Drop another image here to open it."
                                          : "Open a disc image (File > Open), or drop one here.");
@@ -726,7 +739,6 @@ void MainWindow::updateUi() {
             s += QString(" - side %1: %2 file%3, %4 free").arg(side).arg(m_vols[side].files().size())
                      .arg(m_vols[side].files().size() == 1 ? "" : "s").arg(fmtBytes(m_vols[side].freeBytes()));
     }
-    if (!m_natHint.isEmpty() && m_natId == "ascii") s += "  -  " + m_natHint;
     if (!w) s += "  -  read-only: " + readOnlyReason();
     if (m_img.needsPadding()) s += "  -  the image file is short; it will be padded to full size when saved";
     m_status->setText(s);

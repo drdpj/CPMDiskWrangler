@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <QToolButton>
 
 #include <QDateTime>
 #include <QMainWindow>
@@ -179,7 +180,8 @@ private:
     QDateTime m_fileTime;
     qint64 m_fileSize = -1;
     DropTree *m_tree;
-    QLabel *m_status;
+    StatusLabel *m_status;
+    QToolButton *m_natBtn;          // right of the status line: which character set this disc is shown in; click to change
     QAction *m_actSave, *m_actSaveAs, *m_actRevert, *m_actAdd, *m_actDelete, *m_actProps, *m_actRename,
         *m_actLabel, *m_actExtract, *m_actView, *m_actCheck, *m_actInfo, *m_actFormat, *m_actCopy, *m_actPaste;
     QAction *m_optTrim, *m_optFolders, *m_optBackup, *m_actNat;

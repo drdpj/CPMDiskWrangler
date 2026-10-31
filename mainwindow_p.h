@@ -24,6 +24,8 @@
 #include <QFontMetrics>
 #include <QHeaderView>
 #include <QKeySequence>
+#include <QLabel>
+#include <QPainter>
 #include <QList>
 #include <QSet>
 #include <QString>
@@ -114,6 +116,23 @@ inline void setNumCell(QTreeWidgetItem *it, int col, const QString &text) {
     it->setText(col, text + NumPad);
     it->setTextAlignment(col, Qt::AlignRight | Qt::AlignVCenter);
 }
+
+// The status line: one line that is cut short with "..." when the window is narrow (the whole text is in the tooltip),
+// instead of forcing the window wider than the screen.
+class StatusLabel : public QLabel {
+public:
+    explicit StatusLabel(QWidget *parent = nullptr) : QLabel(parent) { setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred); }
+    void setText(const QString &t) { m_full = t; setToolTip(t); update(); }
+    QSize minimumSizeHint() const override { return QSize(0, QLabel::minimumSizeHint().height()); }
+    QSize sizeHint() const override { return QSize(0, QLabel::sizeHint().height()); }
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.drawText(rect(), int(alignment()) | Qt::AlignVCenter, fontMetrics().elidedText(m_full, Qt::ElideRight, width()));
+    }
+private:
+    QString m_full;
+};
 
 inline QString rootLabel(const QString &base, const QString &title) {
     return title.isEmpty() ? base : base + "   [" + title + "]";
