@@ -144,6 +144,11 @@ with its terms (and in About if it ships in the program); material only consulte
   Checked on `JSWSHOW_SHOWJUMPER.dsk` and `JSWSHOW_JETSETWILLY.dsk` (the latter has a CRC-error sector on the last
   track, so it opens read-only, and a file whose name is eleven spaces: `blankNamedFile` in `detect.cpp` accepts one
   with blocks instead of calling it nonsense).
+- **National character sets**: names on Danish / Norwegian / Swedish discs use `[ \\ ] { | }` for ÆØÅ æøå (German: ÄÖÜ äöü),
+  so detection's name check allows `[`, `]` and `|` (`<>,;:=?*` are still refused). The RC Piccolo COMAL discs have
+  nine such names (`brøkregning`, `årsløn_1`, ...) that used to count as nonsense entries. Names are shown and
+  extracted as they are on the disc (`br|kregning`); `|` is not a legal Windows file name, so extracting to Windows has
+  not been checked.
 - **A separate disc on each side** (`separatesides yes`; `Format::fixedHead` picks the side; cpmtools ignores the
   key): `tracks` etc. describe one side. Detection tries every single-sided library format this way on a
   two-sided disc (scoring side 0, plus side 1 if it reads sensibly, plus each side's track 0 shape); the window

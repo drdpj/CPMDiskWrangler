@@ -68,7 +68,9 @@ bool nameOk(const unsigned char *e) {
     for (int k = 1; k <= 11; ++k) {
         int c = e[k] & 0x7F;
         if (c < 0x20 || c == 0x7F) return false;
-        if (strchr("<>,;:=?*[]|", c)) return false;
+        // [ ] | are letters in the national 7-bit sets (Danish, Norwegian, Swedish: ÆØÅ are [ \ ], æøå are { | }; the
+        // German set has Ä Ö Ü there), so a name may hold them. A disc from Denmark has lonseddel written l|nseddel.
+        if (strchr("<>,;:=?*", c)) return false;
     }
     return true;
 }
