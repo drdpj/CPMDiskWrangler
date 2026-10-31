@@ -54,7 +54,8 @@ QString extraNameChars(const Set &set);
 // Letters in host file names that plain ASCII cannot hold (ø, å, ü ...), upper-cased, each once; and the national set
 // that has a place for all of them (the first in the list if several do; empty if none does).
 QString foreignLetters(const QStringList &names);
-QString suggestFor(const QStringList &names);
+QStringList candidatesFor(const QStringList &names);     // every set with a place for all of them, in list order
+QString suggestFor(const QStringList &names);            // the first of those, or empty
 
 struct Evidence {
     int nameFiles = 0;           // file names with [ \ ] { | } next to a letter
@@ -73,13 +74,16 @@ QString guessSet(const QString &discText);
 class Dialog : public QDialog {
     Q_OBJECT
 public:
+    // incoming: host file names about to be added; the dialog says which set their letters belong to, preselects it and
+    // previews how each name would be written to the disc in the chosen set.
     Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent = nullptr,
-           const QString &suggest = QString(), const QString &why = QString());
+           const QStringList &incoming = QStringList());
     QString chosen() const;                // the set's id
 private slots:
     void render();
 private:
     Evidence m_ev;
+    QStringList m_incoming;
     QListWidget *m_list;
     QPlainTextEdit *m_preview;
     QLabel *m_note;

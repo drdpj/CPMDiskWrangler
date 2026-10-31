@@ -944,7 +944,6 @@ bool MainWindow::askNatForNames(const QVector<XItem> &items) {
     hostNames(items, &names);
     const QString letters = Nat::foreignLetters(names);
     if (letters.isEmpty()) return true;
-    const QString suggest = Nat::suggestFor(names);
     const QString shown = QStringList(letters.split("", Qt::SkipEmptyParts)).join(" ");
     QMessageBox box(QMessageBox::Question, "Character set",
                     QString("These file names have letters (%1) that a plain ASCII disc cannot hold, so they would be "
@@ -960,7 +959,7 @@ bool MainWindow::askNatForNames(const QVector<XItem> &items) {
     if (box.clickedButton() != choose) return false;
     QVector<const Cpm::Volume *> vols;
     for (int s = 0; s < m_nvols; ++s) vols << &m_vols[s];
-    Nat::Dialog d(vols, m_natId, this, suggest, "Adding files whose names have the letters " + shown + ".");
+    Nat::Dialog d(vols, m_natId, this, names);
     if (d.exec() != QDialog::Accepted) return false;
     setNat(d.chosen(), true);
     return true;

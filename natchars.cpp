@@ -100,17 +100,20 @@ QString foreignLetters(const QStringList &names) {
     return out;
 }
 
-QString suggestFor(const QStringList &names) {
+QStringList candidatesFor(const QStringList &names) {
+    QStringList out;
     const QString letters = foreignLetters(names);
-    if (letters.isEmpty()) return QString();
+    if (letters.isEmpty()) return out;
     for (const Set &s : sets()) {
         if (s.id == "ascii") continue;
         bool all = true;
         for (QChar c : letters) if (!s.shown.contains(c) && !s.shown.contains(c.toLower())) { all = false; break; }
-        if (all) return s.id;
+        if (all) out << s.id;
     }
-    return QString();
+    return out;
 }
+
+QString suggestFor(const QStringList &names) { return candidatesFor(names).value(0); }
 
 // ------------------------------------------------------------------------------------------- evidence
 
@@ -210,8 +213,8 @@ QString guessSet(const QString &discText) {
 
 // ------------------------------------------------------------------------------------------- the dialog
 
-Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent, const QString &suggest,
-               const QString &why) : QDialog(parent) {
+Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent,
+               const QStringList &incoming) : QDialog(parent), m_incoming(incoming) {
     setWindowTitle("Character set for names and text");
     resize(720, 480);
     m_ev = scan(vols);
@@ -239,10 +242,24 @@ Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current,
                     .arg(m_ev.nameFiles).arg(m_ev.nameFiles == 1 ? "" : "s").arg(m_ev.textHits).arg(m_ev.textHits == 1 ? "" : "s");
         if (!m_ev.guess.isEmpty()) note += QString(", and its text reads best as %1.").arg(Nat::find(m_ev.guess).name.section("  (", 0, 0));
         else note += ".";
-    } else {
+    } else if (m_incoming.isEmpty()) {
         note += "\n\nNothing on this disc clearly uses them.";
     }
-    if (!why.isEmpty()) note = why + "\n\n" + note;
+    QString suggest;
+    if (!m_incoming.isEmpty()) {
+        const QString letters = QStringList(foreignLetters(m_incoming).split("", Qt::SkipEmptyParts)).join(" ");
+        const QStringList cands = candidatesFor(m_incoming);
+        QStringList nm;
+        for (const QString &id : cands) nm << Nat::find(id).name.section("  (", 0, 0);
+        QString why = QString("The files being added have the letter%1 %2, which plain ASCII has no place for. ")
+                          .arg(letters.size() > 1 ? "s" : "", letters);
+        if (nm.isEmpty()) why += "None of these sets has all of them, so some would still be replaced with -.";
+        else if (nm.size() == 1) why += QString("That is %1: it is selected below.").arg(nm.first());
+        else why += QString("Those are used by %1 (selected: %2); check the preview and choose the one that matches the disc.")
+                        .arg(nm.join(" and "), nm.first());
+        note = why + "\n\n" + note;
+        suggest = cands.value(0);
+    }
     m_note->setText(note);
     if (m_list->currentItem()->data(Qt::UserRole).toString() == "ascii" && !suggest.isEmpty())
         for (int i = 0; i < m_list->count(); ++i)
@@ -271,7 +288,17 @@ QString Dialog::chosen() const {
 
 void Dialog::render() {
     const Set s = Nat::find(chosen());
-    QString t = "File names:\n";
+    QString t;
+    if (!m_incoming.isEmpty()) {
+        t += "Files being added, as they would be written to the disc:\n";
+        for (int i = 0; i < m_incoming.size() && i < 12; ++i) {
+            const QString disc = Cpm::Volume::toCpmName(fromHost(m_incoming.at(i), s), extraNameChars(s));
+            t += "  " + m_incoming.at(i) + "  ->  " + disc + "  (shown as " + toHost(disc, s) + ")\n";
+        }
+        if (m_incoming.size() > 12) t += QString("  ... and %1 more\n").arg(m_incoming.size() - 12);
+        t += "\n";
+    }
+    t += "File names:\n";
     if (m_ev.names.isEmpty()) t += "  (none use those characters)\n";
     for (const QString &n : m_ev.names) t += "  " + toHost(n, s) + "\n";
     t += "\nText:\n";

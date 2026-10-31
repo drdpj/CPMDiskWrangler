@@ -30,6 +30,7 @@
 #include <QComboBox>
 #include <QDragEnterEvent>
 #include <QFormLayout>
+#include <QPlainTextEdit>
 #include <QListWidget>
 #include <QScrollBar>
 #include <QLabel>
@@ -572,7 +573,14 @@ int main(int argc, char **argv) {
             });
             t.start(50);
             MainWindow::autoAnswer = false;
-            H.importPaths({hp}, -1);
+            {   // as a file manager drags it: a text/uri-list dropped on the tree
+                auto *um = new QMimeData;
+                um->setUrls({QUrl::fromLocalFile(hp)});
+                H.show();
+                dropOn(H.tree(), findRow(H.tree(), RowRoot, -1), um);
+                for (int i = 0; i < 40 && H.volume().files().isEmpty(); ++i) { QTest::qWait(50); pump(); }
+                delete um;
+            }
             MainWindow::autoAnswer = true;
             t.stop();
             CHECK(asked && offered, "it asked, and offered Danish/Norwegian as the likely set");
@@ -588,6 +596,15 @@ int main(int argc, char **argv) {
                 shot(&dlg, wd + "/shots/natdialog.png");
                 QListWidget *lw = dlg.findChild<QListWidget *>();
                 CHECK(lw && lw->width() < 340 && lw->horizontalScrollBar()->maximum() == 0, "character set list fits its entries, no sideways scrolling");
+            }
+            {   // adding lønsedde.l: the dialog names the likely set, selects it, and previews the name on the disc
+                QVector<const Cpm::Volume *> vs{&N.volume()};
+                Nat::Dialog dlg(vs, "ascii", nullptr, {QString::fromUtf8("l\xC3\xB8nsedde.l")});
+                QListWidget *lw = dlg.findChild<QListWidget *>();
+                QPlainTextEdit *pv = dlg.findChild<QPlainTextEdit *>();
+                CHECK(dlg.chosen() == "dk-no" && lw && lw->currentItem()->text().startsWith("Danish"), "the letter ø selects Danish/Norwegian");
+                CHECK(pv && pv->toPlainText().contains("L\\NSEDDE.L") && pv->toPlainText().contains(QString::fromUtf8("L\xC3\x98NSEDDE.L")),
+                      "the preview shows lønsedde.l written as L\\NSEDDE.L and shown as LØNSEDDE.L");
             }
             CHECK(nb && nb->text().contains("Danish"), "the status bar says which character set is in use: " + (nb ? nb->text() : QString("(missing)")));
         }

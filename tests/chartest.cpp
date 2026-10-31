@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
     CHECK(Nat::suggestFor({QString::fromUtf8("\xC3\xA6\xC3\xB8\xC3\xA5")}) == "dk-no", "æøå means Danish/Norwegian");
     CHECK(Nat::suggestFor({QString::fromUtf8("\xC3\xA4\xC3\xB6")}) == "se-fi", "äö: Swedish/Finnish comes first");
     CHECK(Nat::suggestFor({QString::fromUtf8("stra\xC3\x9F" "e")}) == "de", "ß means German");
+    CHECK(Nat::candidatesFor({QString::fromUtf8("\xC3\xA4\xC3\xB6")}) == QStringList({"se-fi", "de"}), "äö: Swedish/Finnish and German both have them");
     CHECK(Nat::suggestFor({"plain.txt"}).isEmpty() && Nat::suggestFor({QString::fromUtf8("\xD0\xB6")}).isEmpty(), "none for plain names or letters no set has");
 
     printf("== names on a disc\n");
