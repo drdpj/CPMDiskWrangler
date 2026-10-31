@@ -15,6 +15,10 @@
 #   licences-bundled.qrc                             the above as resources under :/licences/Bundled/
 # Then re-run qmake (or cmake) and build again: the build files pick up licences-bundled.qrc when it exists.
 #
+# On Linux a package's copyright file often only points to /usr/share/common-licenses/<name> (GPL-2, LGPL-2.1, Apache-2.0 ...)
+# for the licence's full text, so those texts are copied too, once each, as common-licenses/<name>, and the index says
+# which packages refer to which.
+#
 # Qt's official build has no package manager behind it: its frameworks are traced to "qt-<version>", whose
 # licences come from Qt's own source at that version (Qt's LGPL/GPL texts, and every third-party component
 # Qt records in a qt_attribution.json - see ci/qt-attributions.py). That needs git and network access.
@@ -34,6 +38,7 @@ index="$out/INDEX.txt"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 : > "$work/map"        # "<shipped file>\t<package>"
+: > "$work/clrefs"     # Linux: "<common-licenses text>\t<package that refers to it>"
 missing=0
 
 note() { printf '%s\n' "$*" >&2; }
@@ -176,6 +181,17 @@ print(expr(json.load(sys.stdin)["formulae"][0].get("license") or ""))')
     libs=$(awk -F'\t' -v p="$pkg" '$2 == p { printf "%s%s", s, $1; s = ", " }' "$work/map")
     if [ -s "$work/files" ]; then
         while read -r f; do copy_into "$pkg" "$f"; done < "$work/files"
+        if [ "$platform" = linux ]; then       # the standard texts it points to (GPL is a link to the current GPL: use the real name)
+            while read -r f; do
+                { grep -o 'common-licenses/[A-Za-z0-9.+-]*' "$f" || true; } | sed 's|.*/||; s/[.]*$//' | sort -u > "$work/names"
+                while read -r n; do
+                    [ -n "$n" ] || continue
+                    real=$n
+                    [ -e "/usr/share/common-licenses/$n" ] && real=$(basename "$(readlink -f "/usr/share/common-licenses/$n")")
+                    printf '%s\t%s\n' "$real" "$pkg" >> "$work/clrefs"
+                done < "$work/names"
+            done < "$work/files"
+        fi
         printf '%s  [%s]\n    %s\n\n' "$pkg" "${declared:-licence not stated}" "$libs" >> "$index"
     elif [ -n "$declared" ] && [ "$platform" != linux ] && spdx_texts "$pkg" "$declared"; then
         printf '%s  [%s]\n    %s\n    (installs no licence file: standard texts of the licences above, from SPDX)\n\n' \
@@ -186,6 +202,27 @@ print(expr(json.load(sys.stdin)["formulae"][0].get("license") or ""))')
         missing=1
     fi
 done < "$work/pkgs"
+
+if [ -s "$work/clrefs" ]; then
+    sort -u "$work/clrefs" -o "$work/clrefs"
+    cut -f1 "$work/clrefs" | sort -u > "$work/clnames"
+    {
+        echo "Standard licence texts that the copyright files above refer to (Debian's /usr/share/common-licenses),"
+        echo "and the packages that refer to each."
+        echo
+    } >> "$index"
+    while read -r n; do
+        refby=$(awk -F'\t' -v n="$n" '$1 == n { printf "%s%s", s, $2; s = ", " }' "$work/clrefs")
+        if [ -e "/usr/share/common-licenses/$n" ]; then
+            mkdir -p "$out/common-licenses"
+            cp -L "/usr/share/common-licenses/$n" "$out/common-licenses/$n"
+            printf 'common-licenses/%s\n    referred to by: %s\n\n' "$n" "$refby" >> "$index"
+        else
+            note "collect-licences: $refby refer to /usr/share/common-licenses/$n, which this system does not have"
+            missing=1
+        fi
+    done < "$work/clnames"
+fi
 
 untraced=$(awk -F'\t' '$2 == "?" { printf "%s%s", s, $1; s = ", " }' "$work/map")
 if [ -n "$untraced" ]; then
