@@ -73,6 +73,15 @@ bool nameOk(const unsigned char *e) {
     return true;
 }
 
+// A file whose name is eleven spaces: nothing but a program or a protection scheme makes one, and the CCP can never
+// name it, but the BDOS keeps it like any other (the Tatung Einstein Jet Set Willy disc has one). Taken as a file only
+// when it holds blocks, so a run of spaces in text that is not a directory doesn't pass for one.
+bool blankNamedFile(const unsigned char *e) {
+    for (int k = 1; k <= 11; ++k) if ((e[k] & 0x7F) != ' ') return false;
+    for (int k = 16; k < 32; ++k) if (e[k]) return e[15] != 0;
+    return false;
+}
+
 EInfo classify(const unsigned char *e, int index) {
     EInfo x;
     x.raw = e;
@@ -81,7 +90,7 @@ EInfo classify(const unsigned char *e, int index) {
     if (st == 0x21) { x.k = (index & 3) == 3 ? KStamp : KBad; return x; }
     if (st == 0x20) { x.k = nameOk(e) && (e[12] & 0x0E) == 0 ? KLabel : KBad; return x; }
     if (st > 31) { x.k = KBad; return x; }
-    if (!nameOk(e) || e[15] > 0x80 || (e[12] & 0xE0) || (e[14] & 0xC0) || e[13] > 0x80) {
+    if (!(nameOk(e) || blankNamedFile(e)) || e[15] > 0x80 || (e[12] & 0xE0) || (e[14] & 0xC0) || e[13] > 0x80) {
         x.k = KBad;
         if (st <= 15 && e[15] == 0) {
             bool empty = true, control = false, anyName = false;
@@ -902,7 +911,12 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         return res;
     }
     QString bestSig = best.evidence.first();
-    bool clean = best.badEntries == 0 && best.badPointers == 0 && best.crossLinks == 0 && best.textBad * 4 <= best.textGood;
+    // Pointers that don't add up to the records (more than a quarter of the file entries) mean the layout is wrong
+    // - block size, pointer width - even when nothing else is: a two-byte-pointer directory read with one-byte
+    // pointers lists every file at the right size with half its blocks missing. None of the real discs we test on has one.
+    const int unevenEntries = best.fileEntries - best.exactCounts;
+    bool clean = best.badEntries == 0 && best.badPointers == 0 && best.crossLinks == 0 && best.textBad * 4 <= best.textGood &&
+                 unevenEntries * 4 <= best.fileEntries;
     const Candidate *rival = nullptr, *sameReading = nullptr;
     for (int i = 1; i < res.ranked.size(); ++i) {
         const Candidate &o = res.ranked[i];

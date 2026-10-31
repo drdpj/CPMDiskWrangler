@@ -135,6 +135,15 @@ with its terms (and in About if it ships in the program); material only consulte
   diskdef key `datasect 21` (`Format::dataId`, same name as uBee's) makes `makeBlank` do that for new IMD / DSK
   discs (a raw image records no IDs). Reading needs nothing: sectors are addressed by ID order. Checked on
   `games_demo_ds80.dsk` (DS80) and `peter_broughton_v2.2p_2of2_ds84.dsk` (DS84).
+- **Tatung Einstein** (`einstein`): 40 tracks x 10 x 512, one side, sector IDs 0-9, 2 reserved tracks, 2K blocks, 64
+  entries, no skew. Its DPB says DSM 257 although the disc holds about 95 blocks, so the directory has **two-byte block
+  pointers** (8 an entry); the diskdef key `ptr16 yes` (`Format::ptr16Forced`) says so, and only the pointer width
+  changes (the real block count still limits the disc). cpmtools has no such key (Damien Guard's workaround is to fake
+  `tracks 103`), so `fstest` / `verify_independent.sh` leave `einstein` out. Before the definition existed, `amp1`
+  (same geometry, one-byte pointers) matched and read files as blocks 1,0,2,0,... - high confidence, wrong data.
+  Checked on `JSWSHOW_SHOWJUMPER.dsk` and `JSWSHOW_JETSETWILLY.dsk` (the latter has a CRC-error sector on the last
+  track, so it opens read-only, and a file whose name is eleven spaces: `blankNamedFile` in `detect.cpp` accepts one
+  with blocks instead of calling it nonsense).
 - **A separate disc on each side** (`separatesides yes`; `Format::fixedHead` picks the side; cpmtools ignores the
   key): `tracks` etc. describe one side. Detection tries every single-sided library format this way on a
   two-sided disc (scoring side 0, plus side 1 if it reads sensibly, plus each side's track 0 shape); the window
@@ -215,6 +224,11 @@ with its terms (and in About if it ships in the program); material only consulte
    don't, +-1 plausible .COM starts, -4 files starting in E5 space), then are named after an identical library
    format if there is one.
 5. Readings whose "directory" is mostly nonsense, or score below -5, are dropped. One per layout is kept.
+5b. Confidence: a reading is "clean" (and so can be high confidence and writable) only with no nonsense entries, bad or
+   shared pointers, text files that stay text, and no more than a quarter of the file entries whose pointer count
+   disagrees with their record count ("block counts match record counts in N of M"). A wrong pointer width or block
+   size shows up that way first: a two-byte-pointer directory (the Tatung Einstein's) read with one-byte pointers
+   gave 1 of 2, and files with half their blocks missing. All 58 real images we test on have 0 such entries.
 6. Not CP/M at all: an empty directory fits every layout of the right shape, so a disc whose directory area is
    just E5 (an Acorn DFS disc formatted by Acorn's FORM, for one) used to open as an empty CP/M disc. Now (a) an
    empty reading whose directory is one repeated byte is dropped if the rest of the disc (outside that format's

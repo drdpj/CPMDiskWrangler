@@ -73,7 +73,7 @@ bool Format::derive(QString *err) {
     qint64 dataBytes = qint64(tracks * sectrk - reserved) * seclen;
     dsm = int(dataBytes / blocksize) - 1;
     if (dsm < 1 || dsm > 65535) { *err = "block count out of range"; return false; }
-    ptr16 = dsm > 255;
+    ptr16 = dsm > 255 || ptr16Forced;
     ptrsPerEntry = ptr16 ? 8 : 16;
     int ext = logicalExtents > 0 ? logicalExtents : ptrsPerEntry * blocksize / 16384;
     if (ext < 1) { *err = "1K blocks with two-byte block pointers is not a valid CP/M layout"; return false; }
@@ -192,6 +192,7 @@ QString Format::toDiskdef() const {
                  .arg(t0firstId >= 0 ? QString(" %1").arg(t0firstId) : QString());
     if (acornDfs) l << "  acorndfs yes";
     if (torch) l << "  torchcpn yes";
+    if (ptr16Forced) l << "  ptr16 yes";
     if (bootsec >= 0) l << QString("  bootsec %1").arg(bootsec);
     else l << QString("  boottrk %1").arg(boottrk);
     if (offsetSectors > 0) l << QString("  offset %1").arg(qint64(offsetSectors) * seclen);
@@ -305,6 +306,8 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
             f.separateSides = val.toLower().startsWith('y');
         } else if (key == "acorndfs") {
             f.acornDfs = val.toLower().startsWith('y');
+        } else if (key == "ptr16") {
+            f.ptr16Forced = val.toLower().startsWith('y');
         } else if (key == "torchcpn") {
             f.torch = val.toLower().startsWith('y');
         } else if (key == "fm") {

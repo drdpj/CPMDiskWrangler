@@ -60,6 +60,11 @@ struct Format {
     bool fm = false;              // single density (cpmtools "fm yes")
     QString datarate;             // cpmtools "datarate" (SD, DD, HD, ED)
     int logicalExtents = 0;       // cpmtools "logicalextents" (rarely needed)
+    // "ptr16 yes": two-byte block pointers (8 per entry) even though the disc has fewer than 257 blocks. The Tatung
+    // Einstein's DPB claims DSM 257 on a 40-track disc, so its directory is written that way. Only the pointer width
+    // changes: blocks past the real end of the disc still don't exist. cpmtools has no such key (it picks the width
+    // from the block count), so it can't read these discs unless the track count is faked.
+    bool ptr16Forced = false;
     // "track0 SECTRK SECLEN fm|mfm [FIRSTID]": track 0 has its own shape, e.g. a single-density boot track on a
     // double-density disc. It must lie in the boot area (the filesystem never reads it). 0 = like the others.
     int t0sectrk = 0, t0seclen = 0, t0firstId = -1;
