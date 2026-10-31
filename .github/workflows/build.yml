@@ -271,7 +271,13 @@ jobs:
           timeout 8 xvfb-run -a "dist/$APP-$VERSION-linux-x86_64.AppImage"
           [ $? = 124 ] || { echo "::error::$APP exited before the timeout"; exit 1; }
       - name: Package the .deb (the system's Qt)
-        run: bash ci/make-deb.sh build dist
+        run: |
+          # The .deb uses the system's libraries, so it has no bundled ones to list in Help > Licences: build its
+          # program without the AppImage's licences-bundled.qrc (qmake and cmake only pick it up when it exists)
+          mv licences-bundled.qrc "$RUNNER_TEMP/"
+          mkdir build-deb
+          (cd build-deb && "$QMAKE" "../$APP.pro" CONFIG+=release PREFIX=/usr && make -j"$(nproc)")
+          bash ci/make-deb.sh build-deb dist
       - name: Check the .deb installs and starts
         run: |
           sudo apt-get install -y -qq "./dist/$APP-$VERSION-linux-amd64.deb"
