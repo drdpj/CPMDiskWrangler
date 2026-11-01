@@ -640,7 +640,7 @@ void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const Disk::Image &
     }
 }
 
-// Sharp discs hold every byte inverted: where a CP/M disc is filled with E5, theirs is filled with 1A. Lots of 1A and
+// Some Sharp formats (sds400) hold every byte inverted: where a CP/M disc is filled with E5, theirs is filled with 1A. Lots of 1A and
 // hardly any E5 means "try it inverted" (a disc of ^Z-padded text has 1A too, but also E5 somewhere).
 static bool looksInverted(const Disk::Image &img) {
     qint64 n1a = 0, ne5 = 0;

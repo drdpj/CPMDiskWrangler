@@ -184,8 +184,9 @@ diskdef microbee-ss80
   os 2.2
 end
 
-# Sharp. Both of these ways of storing a disc are in no cpmtools diskdef (cpmtools reads such an image raw, with the
-# inversion done by libdsk): the sectors hold every byte inverted ("complement yes": empty space is 1A, not E5), and a
+# Sharp sds400. (Not all Sharp formats are like this: the MZ-800's P-CP/M discs are ordinary.) Both of these ways of storing
+# a disc are in no cpmtools diskdef (cpmtools reads such an image raw, with the inversion done by libdsk): the sectors hold
+# every byte inverted ("complement yes": empty space is 1A, not E5), and a
 # cylinder is read with side 1 before side 0 ("sides altrev"; sector IDs 1-10 on side 1, 11-20 on side 0).
 diskdef sharp-sds400
   desc "Sharp SDS400 (40 cylinders, 2 sides, 10 x 512), data stored inverted, 390K"

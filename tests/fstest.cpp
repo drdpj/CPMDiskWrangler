@@ -386,7 +386,7 @@ int main(int argc, char **argv) {
         return failures ? 1 : 0;
     }
     if (a.size() == 1 && a[0] == "complement") {
-        // Sharp: every byte stored inverted. Take a blank disc, invert it as the machine would have, and use it with
+        // Some Sharp formats (sds400): every byte stored inverted. Take a blank disc, invert it as the machine would have, and use it with
         // "complement yes": the directory reads blank, a file goes in and comes out, and the bytes on the disc are the
         // inverse of what an ordinary disc holds for the same file.
         QString err;

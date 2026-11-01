@@ -80,8 +80,8 @@ static void showScoringHelp(QWidget *parent) {
         "<p>Every known format that fits the disc's shape is tried. The program also searches: reserved tracks (0 to 6), "
         "skew, block size and directory size (always whole blocks), and for two-sided discs the order of the sides - "
         "cylinder by cylinder (alt), side 0 then side 1 outward (outout) or back inward (outback), and cylinder by "
-        "cylinder with side 1 first (Sharp). A disc that is mostly 1A bytes with hardly any E5 (Sharp's discs store every "
-        "byte inverted) is tried inverted as well. Raw files are tried in the common sector layouts, and with a first "
+        "cylinder with side 1 first (Sharp). A disc that is mostly 1A bytes with hardly any E5 (some Sharp "
+        "formats store every byte inverted) is tried inverted as well. Raw files are tried in the common sector layouts, and with a first "
         "track of its own (26 x 128 or 16 x 128 single density) as IBM-style 8-inch, Osborne, Vector Graphic and "
         "Research Machines discs have. A layout found by searching is not a known format, so it only gets the known-format "
         "points if it happens to equal one.</p>"
@@ -161,9 +161,10 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
                         "A sign: read as one-byte numbers, the pointers come out as 1, 0, 2, 0, 3, 0 ... with a zero after "
                         "each block number.\n"
                         "It only changes how the directory is read; the disc's real size still limits the blocks.");
-    m_complement = new QCheckBox("Data stored inverted (Sharp)");
-    m_complement->setToolTip("Every byte on the disc is inverted: empty space reads 1A where a CP/M disc has E5. Sharp's machines write "
-                             "their discs like this (libdsk's \"complement\").\nA sign: a disc that is mostly 1A bytes, with no E5.");
+    m_complement = new QCheckBox("Data stored inverted");
+    m_complement->setToolTip("Every byte on the disc is inverted: empty space reads 1A where a CP/M disc has E5. Some Sharp "
+                             "discs (the sds400 format, for one) are written like this (libdsk's \"complement\"); most CP/M discs, "
+                             "Sharp's others included, are not.\nA sign: a disc that is mostly 1A bytes, with no E5.");
     m_formErr = new QLabel; m_formErr->setWordWrap(true);
     auto *fl = new QFormLayout;
     fl->addRow("Sector size", m_seclen);
