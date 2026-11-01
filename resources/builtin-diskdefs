@@ -166,6 +166,24 @@ diskdef microbee-ds80
   os 2.2
 end
 
+# Microbee SS80: the layout of cpmtools' microbee40 (2K blocks, 128 entries, 2 reserved tracks, the skew table
+# 1,4,7,0,3,6,9,2,5,8, sector IDs 1-10 on every track) on one side of 80 cylinders, so that it can be named and made new.
+# (DS40, 40 cylinders on two sides, is cpmtools' microbee40 itself. A raw file can't tell the two apart: same bytes.)
+diskdef microbee-ss80
+  desc "Microbee 3.5-inch SS80 (80 track, single sided), 390K"
+  source "Microbee SS80 discs: cpmtools' microbee40 layout on one side of 80 cylinders. Checked on one real disc (ftl_modula2_disk1_ss80): 80 cylinders x 1 side, sector IDs 1-10 on every track, 2 reserved tracks, 2K blocks, 128 entries."
+  seclen 512
+  tracks 80
+  heads 1
+  sectrk 10
+  blocksize 2048
+  maxdir 128
+  skewtab 1,4,7,0,3,6,9,2,5,8
+  boottrk 2
+  secbase 1
+  os 2.2
+end
+
 # Tatung Einstein (Xtal DOS, CP/M compatible), 3-inch single-sided 40-track discs. The Einstein's DPB gives DSM 257
 # (258 blocks) although the disc holds only about 95 2K blocks, so the directory uses two-byte block pointers (eight
 # an entry, one logical extent each): "ptr16 yes". The geometry and that quirk are from Damien Guard's notes on

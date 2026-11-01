@@ -710,6 +710,15 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
         for (int h = 0; h < (f.separateSides ? f.physHeads : 1); ++h)
             if (!img->reshapeTrack(0, h, f.t0sectrk, f.t0seclen, first, mode, err)) return false;
     }
+    // Some discs number the sectors of their data tracks differently from the reserved ones (Microbee DS80: 1-10, then 21-30;
+    // "datasect"). The BIOS looks the sectors up by ID, so a disc whose data tracks are numbered from 1 is "Bad Sector".
+    if (f.dataId >= 0 && f.dataId != l.firstId && !f.separateSides && f.sectrk > 0 && kind != Disk::Kind::Raw) {   // (a raw file has no IDs)
+        const int heads = qMax(1, f.physHeads);
+        const int total = f.cylinders * heads;
+        for (int t = f.boottrk; t < total; ++t) {                  // logical tracks after the reserved ones, sides alternating
+            if (!img->reshapeTrack(t / heads, t % heads, f.sectrk, f.seclen, f.dataId, l.mode, err)) return false;
+        }
+    }
     // attach reads an all-E5 directory; then write the empty directory properly (stamps, label), on each side of a
     // disc with a filesystem per side
     for (int side = 0; side < (f.separateSides ? 2 : 1); ++side) {

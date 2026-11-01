@@ -17,7 +17,7 @@ export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)
 step "fstest: every format in every container, then independent checks"
 for k in raw imd edsk; do
-  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd vector-26x256 rm-dd rm-qd torch-cpn; do
+  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd vector-26x256 microbee-ss80 microbee-ds80 microbee-ds84 rm-dd rm-qd torch-cpn; do
     "$b/fstest/fstest" "$W/fs/$k" $f $k > "$W/fs-$k-$f.log" 2>&1 || { echo "FAIL fstest $f $k"; cat "$W/fs-$k-$f.log"; fail=1; }
   done
 done

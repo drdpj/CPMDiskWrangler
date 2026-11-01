@@ -126,6 +126,7 @@ starts on the filter for the kind the image already is, and the kind saved is th
   so the filesystem never reads it. `makeBlank` reshapes cylinder 0 head 0 (FM at the same data rate as the
   other tracks: IMD mode 0/1/2 for 3/4/5) and refuses raw containers. Detection: +3 when the disc's track 0
   matches a format's `track0`, -3 when it doesn't. `sameLayout` ignores it (it doesn't affect the filesystem).
+  - Microbee: `microbee-ds80` data tracks (after the reserved ones) are numbered from 21 (`datasect 21`), the reserved ones from 1. `makeBlank` reshapes the data tracks to `dataId` (DSK/IMD only; a raw file has no IDs) - without it a new DS80 disc was "Bad Sector" in ubee512. `microbee-ss80` is `microbee40`'s layout on 80 cylinders, one side (IDs 1-10 everywhere); DS40 is `microbee40` itself and, as a raw file, the same bytes as SS80.
   - `vector-26x256`: Vector Graphic CP/M 2.2 56K (`CPM22-56K-DSDD.DSK`, 376064 bytes): track 0 FM 26 x 128, then 56 tracks of
     26 x 256, skew 5 (sectors 5 apart: the directory is logical sectors 0-5 of the third track), 4K blocks, 48 directory
     entries (the rest of the first block holds unrelated system data, which is why 128 would read junk), 2 boot tracks.

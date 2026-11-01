@@ -125,6 +125,17 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
             CHECK(t0 && t0->secs.size() == f.t0sectrk && t0->secs[0].size == f.t0seclen, QString("track 0 of side %1 has its own shape").arg(h));
             if (kind == Disk::Kind::Imd) CHECK(t0 && t1 && (t0->mode <= 2) == f.t0fm && t1->mode >= 3, QString("side %1: track 0 mode %2, track 1 mode %3").arg(h).arg(t0 ? t0->mode : -1).arg(t1 ? t1->mode : -1));
         }
+    if (f.dataId >= 0 && kind != Disk::Kind::Raw) {                // reserved tracks numbered from secbase, data tracks from datasect
+        const int heads = qMax(1, f.physHeads);
+        bool okRes = true, okData = true;
+        for (int t = 0; t < f.cylinders * heads; ++t) {
+            const Disk::Track *tr = im2.track(t / heads, t % heads);
+            const int want = t < f.boottrk ? (f.secbase >= 0 ? f.secbase : 1) : f.dataId;
+            if (!tr || tr->secs.isEmpty() || tr->secs.first().r != want) (t < f.boottrk ? okRes : okData) = false;
+        }
+        CHECK(okRes, QString("reserved tracks have sector IDs from %1").arg(f.secbase >= 0 ? f.secbase : 1));
+        CHECK(okData, QString("data tracks have sector IDs from %1 (datasect)").arg(f.dataId));
+    }
     Cpm::Volume v;
     CHECK(v.attach(&im2, f, &err), "attach: " + err);
     CHECK(v.files().isEmpty(), "blank disc has files");
