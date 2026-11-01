@@ -30,6 +30,7 @@
 #include <QComboBox>
 #include <QDragEnterEvent>
 #include <QFormLayout>
+#include <QTextBrowser>
 #include <QMenu>
 #include <QPlainTextEdit>
 #include <QListWidget>
@@ -301,6 +302,30 @@ int main(int argc, char **argv) {
         Z.rescoreReadings();
         CHECK(Z.detection().ranked.first().files == n, QString("scored again it lists the files (%1 of %2)").arg(Z.detection().ranked.first().files).arg(n));
         FormatDialog fd(&Z.image(), Z.detection(), 0, true, &Z);
+        {   // "How scoring works": the help covers the search, the tie-breaks and the Sharp inversion
+            QPushButton *help = nullptr;
+            for (QPushButton *b : fd.findChildren<QPushButton *>()) if (b->text().contains("How scoring works")) help = b;
+            CHECK(help, "the format dialog has a How scoring works button");
+            QString text;
+            QTimer t;
+            QObject::connect(&t, &QTimer::timeout, [&] {
+                QWidget *m = QApplication::activeModalWidget();
+                if (m && m != &fd) {
+                    if (auto *tb = m->findChild<QTextBrowser *>()) {
+                        text = tb->toPlainText();
+                        m->resize(640, 900);
+                        pump();
+                        m->grab().save(wd + "/shots/scoring-help.png");
+                    }
+                    m->close();
+                }
+            });
+            t.start(100);
+            if (help) help->click();
+            t.stop();
+            for (const char *want : {"Where the layouts come from", "Readings that are otherwise equal", "outback", "inverted", "never-written"})
+                CHECK(text.contains(want), QString("the scoring help mentions: %1").arg(want));
+        }
         QSpinBox *heads = nullptr;
         QComboBox *order = nullptr;
         QPushButton *tryBtn = nullptr;
