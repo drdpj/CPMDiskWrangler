@@ -20,7 +20,7 @@ for dir in "$@"; do
     real_sides=$(grep -A30 "^diskdef $name\$" "$defs" | awk '/^ *sides/{print $2; exit}')
     case "$img" in
       *.imd|*.dsk)
-        it=imd; [ "${img##*.}" = dsk ] && it=edsk
+        it=imd; [ "${img##*.}" = dsk ] && { if head -c 8 "$img" | grep -q EXTENDED; then it=edsk; else it=dsk; fi; }
         heads=$(grep -A30 "^diskdef $name\$" "$defs" | awk '/^ *heads/{print $2; exit}')
         [ -z "$heads" ] && { [ "$tracks" -gt 86 ] && heads=2 || heads=1; }
         boot=$(awk '/^ *boottrk/{print $2}' "$dd")
@@ -28,7 +28,7 @@ for dir in "$@"; do
           echo "FAIL $name: the Python decoder could not read the $it file: $(tail -1 $t/err)"; fail=1; rm -rf $t; continue; fi
         want=$(awk '/^ *track0/{print "track0", $2, $3, ($4=="fm" && "'$it'"=="imd") ? "fm" : "-"}' "$dd")
         if [ -n "$want" ]; then
-          got=$(cat $t/t0); [ "$it" = edsk ] && got=$(echo "$got" | awk '{print $1,$2,$3,"-"}')
+          got=$(cat $t/t0); [ "$it" != imd ] && got=$(echo "$got" | awk '{print $1,$2,$3,"-"}')
           [ "$got" = "$want" ] && echo "ok   $name: track 0 is $(cat $t/t0 | cut -d' ' -f2-) in the $it file" || { echo "FAIL $name: track 0 is '$got', expected '$want'"; fail=1; }
         fi
         if cmp -s $t/py.logical "$base".logical; then echo "ok   $name: an independent decoder reads the same sectors from the $it file"; else echo "FAIL $name: the independent decoder's reading of the $it file differs"; fail=1; fi

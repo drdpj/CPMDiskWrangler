@@ -16,16 +16,16 @@ for t in detecttest fstest guitest mkicon settingstest chartest; do build $t "$s
 export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)
 step "fstest: every format in every container, then independent checks"
-for k in raw imd edsk; do
+for k in raw imd edsk dsk; do
   for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd vector-26x256 microbee-ss80 microbee-ds80 microbee-ds84 rm-dd rm-qd torch-cpn; do
     "$b/fstest/fstest" "$W/fs/$k" $f $k > "$W/fs-$k-$f.log" 2>&1 || { echo "FAIL fstest $f $k"; cat "$W/fs-$k-$f.log"; fail=1; }
   done
 done
-"$src/tests/verify_independent.sh" "$W/fs/raw" "$W/fs/imd" "$W/fs/edsk" > "$W/verify.log" 2>&1 || { grep -v "^ok\|^note" "$W/verify.log"; fail=1; }
+"$src/tests/verify_independent.sh" "$W/fs/raw" "$W/fs/imd" "$W/fs/edsk" "$W/fs/dsk" > "$W/verify.log" 2>&1 || { grep -v "^ok\|^note" "$W/verify.log"; fail=1; }
 echo "independent checks: $(grep -c '^ok' "$W/verify.log") passed, $(grep -c '^FAIL' "$W/verify.log") failed"
 "$b/fstest/fstest" atomic "$W/atomic" | tail -1 | grep -q ok || { echo "FAIL atomic"; fail=1; }
 "$b/fstest/fstest" library | tail -1 | grep -q ok || { echo "FAIL library"; fail=1; }
-"$b/fstest/fstest" roundtrip "$W"/fs/imd/*.imd "$W"/fs/edsk/*.dsk | grep -v "^same" && fail=1
+"$b/fstest/fstest" roundtrip "$W"/fs/imd/*.imd "$W"/fs/edsk/*.dsk "$W"/fs/dsk/*.dsk | grep -v "^same" && fail=1
 step "Research Machines double-sided discs: a separate filesystem on each side, made new"
 for k in raw imd edsk; do
   for f in rm-dd+ds rm-qd+ds; do

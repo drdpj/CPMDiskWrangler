@@ -164,6 +164,7 @@ private:
     void applyPending();                                 // after a successful commit
     bool writeImd(QByteArray *out, QString *err) const;
     bool writeDsk(QByteArray *out, bool extended, QString *err) const;
+    bool writeStandardDsk(QByteArray *out, QString *err) const;
     bool writeRaw(QByteArray *out, QString *err) const;
     QByteArray sectorData(int ti, int si) const;         // data with pending writes applied
 

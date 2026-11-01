@@ -681,18 +681,20 @@ void MainWindow::saveAsDialog() {
     // image keeps its own file name, .dsk and all) and the raw filter lists .dsk and the other common raw suffixes.
     const QString imd = "ImageDisk (*.imd)";
     const QString dsk = "Extended DSK image (*.dsk)";
+    const QString sdsk = "Standard DSK image (*.dsk)";
     const QString raw = "Raw sector image (*.img *.raw *.bin *.dsk *.h8d *.ima)";
     QString filter = imd;
     QString name = QFileInfo(m_img.path()).completeBaseName() + ".imd";
     switch (m_img.kind()) {
     case Disk::Kind::Raw: filter = raw; name = QFileInfo(m_img.path()).fileName(); break;
-    case Disk::Kind::Dsk: case Disk::Kind::Edsk: filter = dsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
+    case Disk::Kind::Dsk: filter = sdsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
+    case Disk::Kind::Edsk: filter = dsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
     default: break;
     }
     QString p = QFileDialog::getSaveFileName(this, "Save as", QFileInfo(m_img.path()).absolutePath() + "/" + name,
-                                             imd + ";;" + dsk + ";;" + raw, &filter);
+                                             imd + ";;" + dsk + ";;" + sdsk + ";;" + raw, &filter);
     if (p.isEmpty()) return;
-    Disk::Kind k = filter == imd ? Disk::Kind::Imd : filter == dsk ? Disk::Kind::Edsk : Disk::Kind::Raw;
+    Disk::Kind k = filter == imd ? Disk::Kind::Imd : filter == dsk ? Disk::Kind::Edsk : filter == sdsk ? Disk::Kind::Dsk : Disk::Kind::Raw;
     saveAs(p, k);
 }
 

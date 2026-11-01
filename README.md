@@ -82,7 +82,7 @@ format with no close rival, one you've confirmed, or a disc made by this program
 * **Rename** (F2), **Properties** (Alt+Enter) for attributes (R/O, SYS, ARC, F1'-F4') and user number, for one
   file or many. Edit > Disc label for CP/M 3 discs.
 * **Tools > Check disc** checks the directory; **Disc information** shows the geometry and format.
-* **File > New disc image**: any format in the library, as ImageDisk, extended DSK or raw, optionally with CP/M 3
+* **File > New disc image**: any format in the library, as ImageDisk, extended DSK, standard DSK or raw, optionally with CP/M 3
   time stamps and a label. **File > Save As** converts between image types (e.g. TeleDisk to ImageDisk).
 * **Save** (Ctrl+S). Nothing is written until you save; the directory is checked first, it won't save if the
   file was changed by something else meanwhile, and a `.bak` copy of the previous file is kept (Tools; on unless

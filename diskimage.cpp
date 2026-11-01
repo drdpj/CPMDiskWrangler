@@ -379,6 +379,7 @@ bool Image::writeDsk(QByteArray *out, bool extended, QString *err) const {
         *out = o;
         return true;
     }
+    if (!extended) return writeStandardDsk(out, err);
     // a new extended DSK
     int cyls = m_cyls, heads = qMax(1, m_heads);
     QByteArray o(256, '\0');
@@ -427,6 +428,62 @@ bool Image::writeDsk(QByteArray *out, bool extended, QString *err) const {
             o += tb;
         }
     *out = o;
+    return true;
+}
+
+// The original CPCEMU header ("MV - CPCEMU Disk-File"): one track size for the whole disc, no per-sector lengths, so every
+// track must be the same size. Older emulators (ubee512's own DSK code, for one) read only this form.
+bool Image::writeStandardDsk(QByteArray *out, QString *err) const {
+    const int cyls = m_cyls, heads = qMax(1, m_heads);
+    if (cyls * heads > 204) { *err = "too many tracks for a DSK file"; return false; }
+    int trackSize = -1;
+    QByteArray body;
+    for (int c = 0; c < cyls; ++c)
+        for (int h = 0; h < heads; ++h) {
+            const Track *t = track(c, h);
+            if (!t || t->secs.isEmpty()) { *err = "the disc has an unformatted track, which a standard DSK file can't hold: use an extended DSK"; return false; }
+            const int ti = int(t - m_tracks.constData());
+            const int ns = t->secs.size();
+            const int hdrLen = qMax(0x100, ((0x18 + 8 * ns) + 255) / 256 * 256);
+            QByteArray tb(hdrLen, '\0');
+            const QByteArray sig = "Track-Info\r\n";
+            tb.replace(0, sig.size(), sig);
+            tb[0x10] = char(c);
+            tb[0x11] = char(h);
+            tb[0x14] = char(t->secs[0].n);
+            tb[0x15] = char(ns);
+            tb[0x16] = char(t->dskGap);
+            tb[0x17] = char(t->dskFill);
+            for (int k = 0; k < ns; ++k) {
+                const Sector &s = t->secs[k];
+                if (s.n != t->secs[0].n) { *err = "a track has sectors of different sizes, which a standard DSK file can't hold: use an extended DSK"; return false; }
+                QByteArray d = s.missing ? QByteArray() : sectorData(ti, k);
+                const int nominal = 128 << qMin(int(s.n), 6);
+                if (d.size() != nominal) d = d.left(nominal).leftJustified(nominal, char(t->dskFill));   // a short or missing sector: filled
+                const int si = 0x18 + 8 * k;
+                tb[si] = char(s.c); tb[si + 1] = char(s.h); tb[si + 2] = char(s.r); tb[si + 3] = char(s.n);
+                quint8 st1 = s.st1, st2 = s.st2;
+                if (s.crcError) { st1 |= 0x20; st2 |= 0x20; }
+                if (s.deleted) st2 |= 0x40;
+                tb[si + 4] = char(st1); tb[si + 5] = char(st2);
+                tb += d;
+            }
+            const int padded = (tb.size() + 255) / 256 * 256;
+            tb.append(QByteArray(padded - tb.size(), '\0'));
+            if (trackSize < 0) trackSize = padded;
+            else if (padded != trackSize) { *err = "the tracks are not all the same size, which a standard DSK file needs: use an extended DSK"; return false; }
+            body += tb;
+        }
+    QByteArray o(256, '\0');
+    const QByteArray sig = "MV - CPCEMU Disk-File\r\nDisk-Info\r\n";
+    o.replace(0, sig.size(), sig);
+    const QByteArray creator = "CPMDiskWrangle";
+    o.replace(0x22, creator.size(), creator);
+    o[0x30] = char(cyls);
+    o[0x31] = char(heads);
+    o[0x32] = char(trackSize & 0xFF);
+    o[0x33] = char(trackSize >> 8);
+    *out = o + body;
     return true;
 }
 

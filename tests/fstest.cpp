@@ -80,6 +80,7 @@ static bool verify(Cpm::Volume &v, const QVector<Expect> &ex, const QString &wha
 static Disk::Kind kindOf(const QString &k) {
     if (k == "imd") return Disk::Kind::Imd;
     if (k == "edsk") return Disk::Kind::Edsk;
+    if (k == "dsk") return Disk::Kind::Dsk;                   // the standard CPCEMU header
     return Disk::Kind::Raw;
 }
 
@@ -108,7 +109,11 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         printf("  FAIL makeBlank: %s\n", qPrintable(err));
         return 1;
     }
-    if (!img.saveAs(path, kind, &err)) { printf("  FAIL saveAs: %s\n", qPrintable(err)); return 1; }
+    if (!img.saveAs(path, kind, &err)) {
+        // a standard DSK has one track size: a disc whose track 0 is another shape (or a boot track of its own) can't be one
+        if (kind == Disk::Kind::Dsk && err.contains("standard DSK")) { printf("  refused as a standard DSK, as it should be: %s\nok\n", qPrintable(err)); return 0; }
+        printf("  FAIL saveAs: %s\n", qPrintable(err)); return 1;
+    }
 
     // reopen with the named format
     Disk::Image im2;
