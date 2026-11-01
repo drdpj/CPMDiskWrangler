@@ -121,7 +121,7 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
     m_sectrk = new QSpinBox; m_sectrk->setRange(1, 255);
     m_tracks = new QSpinBox; m_tracks->setRange(1, 4096);
     m_heads = new QSpinBox; m_heads->setRange(1, 2);
-    m_sides = new QComboBox; m_sides->addItems({"alt", "outback", "outout"});
+    m_sides = new QComboBox; m_sides->addItems({"alt", "outback", "outout", "alt, side 1 first"});
     m_boot = new QSpinBox; m_boot->setRange(0, 64);
     m_skew = new QSpinBox; m_skew->setRange(0, 64);
     m_skewtab = new QLineEdit; m_skewtab->setPlaceholderText("or a table: 0,2,4,...");
@@ -136,6 +136,9 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
                         "A sign: read as one-byte numbers, the pointers come out as 1, 0, 2, 0, 3, 0 ... with a zero after "
                         "each block number.\n"
                         "It only changes how the directory is read; the disc's real size still limits the blocks.");
+    m_complement = new QCheckBox("Data stored inverted (Sharp)");
+    m_complement->setToolTip("Every byte on the disc is inverted: empty space reads 1A where a CP/M disc has E5. Sharp's machines write "
+                             "their discs like this (libdsk's \"complement\").\nA sign: a disc that is mostly 1A bytes, with no E5.");
     m_formErr = new QLabel; m_formErr->setWordWrap(true);
     auto *fl = new QFormLayout;
     fl->addRow("Sector size", m_seclen);
@@ -151,6 +154,7 @@ FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int curr
     fl->addRow("Directory blocks", m_dirblks);
     fl->addRow("CP/M version", m_os);
     fl->addRow(QString(), m_ptr16);
+    fl->addRow(QString(), m_complement);
     auto *tryBtn = new QPushButton("Try these settings");
     auto *fv = new QVBoxLayout(form);
     fv->addLayout(fl);
@@ -262,6 +266,7 @@ void FormatDialog::fillForm(const Cpm::Format &f) {
     m_dirblks->setValue(f.dirblks);
     m_os->setCurrentIndex(int(f.os));
     m_ptr16->setChecked(f.ptr16Forced);
+    m_complement->setChecked(f.complement);
     m_formErr->clear();
 }
 
@@ -287,6 +292,7 @@ bool FormatDialog::formFormat(Cpm::Format *f, QString *err) const {
     x.dirblks = m_dirblks->value();
     x.os = Cpm::Os(m_os->currentIndex());
     x.ptr16Forced = m_ptr16->isChecked();
+    x.complement = m_complement->isChecked();
     if (!x.derive(err)) return false;
     *f = x;
     return true;

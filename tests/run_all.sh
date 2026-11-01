@@ -25,6 +25,7 @@ done
 echo "independent checks: $(grep -c '^ok' "$W/verify.log") passed, $(grep -c '^FAIL' "$W/verify.log") failed"
 "$b/fstest/fstest" atomic "$W/atomic" | tail -1 | grep -q ok || { echo "FAIL atomic"; fail=1; }
 "$b/fstest/fstest" library | tail -1 | grep -q ok || { echo "FAIL library"; fail=1; }
+"$b/fstest/fstest" complement | tail -1 | grep -q ok || { echo "FAIL complement (Sharp inverted data)"; fail=1; }
 "$b/fstest/fstest" roundtrip "$W"/fs/imd/*.imd "$W"/fs/edsk/*.dsk "$W"/fs/dsk/*.dsk | grep -v "^same" && fail=1
 step "Research Machines double-sided discs: a separate filesystem on each side, made new"
 for k in raw imd edsk; do
@@ -61,6 +62,14 @@ $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0
   for v in "$real"/vector/*; do        # a Vector Graphic disc: track 0 FM 26 x 128, then 26 x 256, skew 5 (not in the repo)
     [ -f "$v" ] || continue
     "$b/detecttest/detecttest" "$v" 2>&1 | grep -q 'confidence high; writable' && echo "$(basename "$v"): found, writable" || { echo "FAIL: $(basename "$v") not found"; fail=1; }
+  done
+  for v in "$real"/sharp/*; do         # Sharp discs: sds400 (inverted data, side 1 first) and an MZ-800 P-CP/M disc (outback, boot track on side 1)
+    [ -f "$v" ] || continue
+    out=$("$b/detecttest/detecttest" "$v" 2>&1); first=$(echo "$out" | grep -m1 '^ *1\. ')
+    case "$v" in
+      *sds400*) echo "$out" | grep -q 'confidence high; writable' && echo "$first" | grep -q 'sharp-sds400' && echo "$(basename "$v"): sharp-sds400, writable" || { echo "FAIL: $(basename "$v"): $first"; fail=1; } ;;
+      *mz-*) echo "$first" | grep -q outback && echo "$(basename "$v"): outback first" || { echo "FAIL: $(basename "$v") not outback first: $first"; fail=1; } ;;
+    esac
   done
   for v in "$real"/ties/*; do          # a raw image whose layouts all read the same: one row (the 35 x 2 x 16 x 256 reading), not a wall of ties
     [ -f "$v" ] || continue

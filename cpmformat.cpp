@@ -28,6 +28,7 @@ QString sideOrderName(SideOrder s) {
     switch (s) {
     case SideOrder::OutBack: return "outback";
     case SideOrder::OutOut: return "outout";
+    case SideOrder::AltRev: return "altrev";
     default: return "alt";
     }
 }
@@ -121,6 +122,9 @@ bool Format::locate(int lsec, int *cyl, int *head, int *idx) const {
     } else if (offsetSectors > 0 || sides == SideOrder::Alt || physHeads == 1) {
         *cyl = t / physHeads;
         *head = t % physHeads;
+    } else if (sides == SideOrder::AltRev) {
+        *cyl = t / physHeads;
+        *head = physHeads - 1 - t % physHeads;
     } else if (sides == SideOrder::OutBack) {
         if (t < cylinders) { *cyl = t; *head = 0; } else { *cyl = 2 * cylinders - 1 - t; *head = 1; }
     } else {
@@ -138,7 +142,7 @@ qint64 Format::capacityBytes() const {
 bool Format::sameLayout(const Format &o) const {
     return torch == o.torch && seclen == o.seclen && sectrk == o.sectrk && tracks == o.tracks && physHeads == o.physHeads &&
            separateSides == o.separateSides &&
-           (physHeads == 1 || sides == o.sides) && blocksize == o.blocksize && maxdir == o.maxdir &&
+           (physHeads == 1 || sides == o.sides) && complement == o.complement && blocksize == o.blocksize && maxdir == o.maxdir &&
            dirBlocks == o.dirBlocks && dataStart == o.dataStart && xlat == o.xlat && dsm == o.dsm && exm == o.exm &&
            ptr16 == o.ptr16;
 }
@@ -193,6 +197,7 @@ QString Format::toDiskdef() const {
     if (t0sectrk > 0)
         l << QString("  track0 %1 %2 %3%4").arg(t0sectrk).arg(t0seclen).arg(t0fm ? "fm" : "mfm")
                  .arg(t0firstId >= 0 ? QString(" %1").arg(t0firstId) : QString());
+    if (complement) l << "  complement yes";
     if (acornDfs) l << "  acorndfs yes";
     if (torch) l << "  torchcpn yes";
     if (ptr16Forced) l << "  ptr16 yes";
@@ -296,6 +301,7 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
             if (v == "alt") f.sides = SideOrder::Alt;
             else if (v == "outback") f.sides = SideOrder::OutBack;
             else if (v == "outout") f.sides = SideOrder::OutOut;
+            else if (v == "altrev") f.sides = SideOrder::AltRev;
             else ok = false;
             if (ok && f.heads == 0) f.heads = 2;
         } else if (key == "os") {
@@ -311,6 +317,8 @@ QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStrin
             f.acornDfs = val.toLower().startsWith('y');
         } else if (key == "ptr16") {
             f.ptr16Forced = val.toLower().startsWith('y');
+        } else if (key == "complement") {
+            f.complement = val.toLower().startsWith('y');
         } else if (key == "twosided") {
             f.twoSidedOk = val.toLower().startsWith('y');
         } else if (key == "torchcpn") {

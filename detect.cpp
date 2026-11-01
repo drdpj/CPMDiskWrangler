@@ -42,6 +42,7 @@ bool readLogical(const Disk::Image &img, const Cpm::Format &f, qint64 off, int l
         int c, h, i;
         if (!f.locate(lsec, &c, &h, &i) || c >= img.cylinders() || h >= img.heads()) return false;
         if (!img.read(c, h, i, &s) || s.size() != sl) return false;
+        if (f.complement) Cpm::invertBytes(&s);
         int n = qMin(len, sl - within);
         out->append(s.constData() + within, n);
         abs += n;
@@ -101,7 +102,7 @@ EInfo classify(const unsigned char *e, int index) {
     if (st == 0x21) { x.k = (index & 3) == 3 ? KStamp : KBad; return x; }
     if (st == 0x20) { x.k = nameOk(e) && (e[12] & 0x0E) == 0 ? KLabel : KBad; return x; }
     if (st > 31) { x.k = KBad; return x; }
-    if (!(nameOk(e) || blankNamedFile(e)) || e[15] > 0x80 || (e[12] & 0xE0) || (e[14] & 0xC0) || e[13] > 0x80) {
+    if (!(nameOk(e) || blankNamedFile(e)) || e[15] > 0x80 || (e[12] & 0xE0) || (e[14] & 0x40) || e[13] > 0x80) {      // (S2 bit 7: BDOS's "written to" flag, left in some real directories)
         x.k = KBad;
         if (st <= 15 && e[15] == 0) {
             bool empty = true, control = false, anyName = false;
@@ -117,7 +118,7 @@ EInfo classify(const unsigned char *e, int index) {
     x.k = st <= 15 ? KFile : KOther;
     x.user = st;
     x.ex = e[12];
-    x.s2 = e[14];
+    x.s2 = e[14] & 0x3F;
     x.rc = e[15];
     x.name = QByteArray(reinterpret_cast<const char *>(e + 1), 11);
     for (char &c : x.name) c = char(c & 0x7F);
@@ -529,7 +530,7 @@ QString Candidate::key() const {
     const Cpm::Format &f = fmt;
     QString sk;
     for (int v : f.xlat) sk += QString::number(v) + ",";
-    return QString("%1x%2x%3x%4x%5|").arg(raw.seclen).arg(raw.sectrk).arg(raw.heads).arg(raw.t0sectrk).arg(raw.sideBySide) +
+    return QString(f.complement ? "inv|" : "") + QString("%1x%2x%3x%4x%5|").arg(raw.seclen).arg(raw.sectrk).arg(raw.heads).arg(raw.t0sectrk).arg(raw.sideBySide) +
            QString("%1|%2|%3|%4|%5|").arg(f.seclen).arg(f.sectrk).arg(f.tracks).arg(f.separateSides ? 9 : f.physHeads == 1 ? 0 : int(f.sides)).arg(f.dataStart) +
            QString("%1|%2|%3|%4%5").arg(f.blocksize).arg(f.maxdir).arg(f.dirBlocks).arg(sk).arg(f.torch ? "|torch" : "");
 }
@@ -637,6 +638,45 @@ void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const Disk::Image &
         if (lib.secbase == sh.firstId) { c.score += 4; c.evidence << QString("sector IDs start at %1, as this format's do").arg(lib.secbase); }
         else { c.score -= 6; c.evidence << QString("sector IDs start at %1, this format's at %2").arg(sh.firstId).arg(lib.secbase); }
     }
+}
+
+// Sharp discs hold every byte inverted: where a CP/M disc is filled with E5, theirs is filled with 1A. Lots of 1A and
+// hardly any E5 means "try it inverted" (a disc of ^Z-padded text has 1A too, but also E5 somewhere).
+static bool looksInverted(const Disk::Image &img) {
+    qint64 n1a = 0, ne5 = 0;
+    QByteArray s;
+    for (int c = 0; c < img.cylinders(); ++c)
+        for (int h = 0; h < img.heads(); ++h)
+            for (int i = 0; i < img.sectorCount(c, h); ++i) {
+                if (!img.read(c, h, i, &s)) continue;
+                n1a += s.count(char(0x1A));
+                ne5 += s.count(char(0xE5));
+            }
+    return n1a >= 4096 && n1a > 4 * ne5;
+}
+
+// A track of another shape (a boot track on the wrong side, say) that falls inside the data area can't be read as data. At the
+// end of the volume it costs nothing; with data after it, the reading breaks the volume in two. The penalty is the share of
+// the data that comes after such a track (up to 3 points), which is how outback is told from outout when a disc's odd track
+// is cylinder 0, side 1: outback puts it last, outout puts it in the middle.
+static double oddTrackPenalty(const Disk::Image &img, const Cpm::Format &f, QString *note) {
+    if (!f.derived || f.separateSides || f.torch || f.sectrk <= 0) return 0;
+    const int reserved = f.dataStart / f.sectrk;
+    const int dataTracks = f.tracks - reserved;
+    if (dataTracks < 4) return 0;
+    double p = 0;
+    for (int t = reserved; t < f.tracks; ++t) {
+        int c, h, i;
+        if (!f.locate(t * f.sectrk, &c, &h, &i)) continue;
+        const Disk::Track *tr = img.track(c, h);
+        if (tr && int(tr->secs.size()) == f.sectrk && tr->secs[0].size == f.seclen) continue;
+        const double after = double(f.tracks - 1 - t) / dataTracks;
+        if (after > 0) {
+            p += 3.0 * after;
+            if (note && note->isEmpty()) *note = QString("a track of another shape (cylinder %1, side %2) falls in the middle of the data, at logical track %3 of %4").arg(c).arg(h).arg(t).arg(f.tracks);
+        }
+    }
+    return qMin(p, 3.0);
 }
 
 // A raw file says nothing of how the disc was laid out, and the same bytes read the same as 32 x 128 on one side, 16 x 256
@@ -830,15 +870,20 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         int totalTracks = cyls * heads;
         int maxBoot = qMin(6, totalTracks / 4);
         QVector<Cpm::SideOrder> orders = {Cpm::SideOrder::Alt};
-        if (heads == 2) orders << Cpm::SideOrder::OutBack << Cpm::SideOrder::OutOut;
+        if (heads == 2) orders << Cpm::SideOrder::OutBack << Cpm::SideOrder::OutOut << Cpm::SideOrder::AltRev;
+        const bool inverted = looksInverted(img);
+        QVector<bool> complements = {false};
+        if (inverted) complements << true;
         QVector<int> skews = {1};
         if (sectrk <= 32)                         // hard disc tracks (and their images) are never skewed
             for (int s = 2; s < sectrk; ++s) skews << s;
         static const int blss[] = {1024, 2048, 4096, 8192, 16384};
         for (Cpm::SideOrder so : orders)
+          for (bool inv : complements)
             for (int boot = 0; boot <= maxBoot; ++boot)
                 for (int skew : skews) {
                     Cpm::Format base;
+                    base.complement = inv;
                     base.name = "detected";
                     base.origin = "detected";
                     base.seclen = seclen; base.sectrk = sectrk; base.tracks = totalTracks; base.heads = heads;
@@ -927,6 +972,11 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             continue;
         }
         if (raw && !c.fromLibrary) c.score += plausibleGeometry(c.raw);      // only breaks ties between readings that are the same bytes
+        if (!raw) {
+            QString note;
+            const double pen = oddTrackPenalty(img, c.fmt, &note);
+            if (pen > 0) { c.score -= pen; c.evidence << note; }
+        }
         if (raw && c.raw.bytes() > img.rawFileSize()) {
             c.score -= 3;
             c.evidence << QString("needs the image to be %1 bytes; it is %2 (padded)").arg(c.raw.bytes()).arg(img.rawFileSize());

@@ -55,7 +55,7 @@ and handles it like any other, except that it has no labels or time stamps and k
 A CP/M disc doesn't record its own layout, so the program tries the possibilities - block size, directory size,
 reserved tracks, skew, side order - and keeps the reading that makes sense of the directory and the files. Known
 formats count for more: about 140 are built in, including cpmtools' library, the Amstrad CPC, PCW and +3, Kaypro,
-Osborne, Research Machines 480Z, Vector Graphic, Acorn's Z80 second processor and Torch CP/N.
+Osborne, Research Machines 480Z, Vector Graphic, Sharp, Acorn's Z80 second processor and Torch CP/N.
 
 **Tools > Disc format** shows the ranked readings and their evidence, lets you pick one yourself (it's remembered
 for that file), and copies any of them as a cpmtools `diskdef`. Tools > Add a diskdefs file adds your own

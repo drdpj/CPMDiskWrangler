@@ -27,10 +27,12 @@ namespace Disk { class Image; }
 
 namespace Cpm {
 
-enum class SideOrder { Alt, OutBack, OutOut };
+enum class SideOrder { Alt, OutBack, OutOut, AltRev };   // AltRev: cylinder by cylinder, side 1 first (Sharp)
 enum class Os { V22, V3, P2dos, Zsys };
 
-QString sideOrderName(SideOrder s);   // "alt", "outback", "outout"
+QString sideOrderName(SideOrder s);   // "alt", "outback", "outout", "altrev"
+// Sharp discs hold every byte inverted (libdsk "complement"): undo or apply it, in place.
+inline void invertBytes(QByteArray *b) { for (char &c : *b) c = char(~c); }
 QString osName(Os o);                 // "2.2", "3", "p2dos", "zsys"
 
 struct Format {
@@ -56,6 +58,7 @@ struct Format {
     int secbase = -1;             // first sector ID for a new disc (-1: 1, or what the image has)
     int dataId = -1;              // first sector ID on the data tracks (after the reserved ones) of a new disc (-1: secbase);
                                   // "datasect": Microbee DS80 numbers its data tracks from 21, its reserved ones from 1
+    bool complement = false;      // the sectors are stored with every bit inverted (Sharp: libdsk "complement"); empty sectors read 1A, not E5
     int imdMode = -1;             // ImageDisk mode for a new disc (-1: from fm/datarate or the geometry)
     bool fm = false;              // single density (cpmtools "fm yes")
     QString datarate;             // cpmtools "datarate" (SD, DD, HD, ED)

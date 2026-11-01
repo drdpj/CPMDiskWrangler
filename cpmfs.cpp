@@ -129,6 +129,7 @@ bool Volume::readBytes(qint64 off, int len, QByteArray *out, QString *err) const
             *err = QString("cannot read logical sector %1 (cylinder %2 head %3, sector %4 on the track)").arg(lsec).arg(c).arg(h).arg(i + 1);
             return false;
         }
+        if (m_fmt.complement) invertBytes(&s);
         int n = qMin(len, sl - within);
         out->append(s.constData() + within, n);
         abs += n;
@@ -149,10 +150,12 @@ bool Volume::writeBytes(qint64 off, const QByteArray &data, QString *err) {
         int n = qMin(data.size() - pos, sl - within);
         if (n < sl) {
             if (!m_img->read(c, h, i, &s) || s.size() != sl) { *err = QString("cannot read logical sector %1").arg(lsec); return false; }
+            if (m_fmt.complement) invertBytes(&s);
         } else {
             s = QByteArray(sl, '\0');
         }
         s.replace(within, n, data.mid(pos, n));
+        if (m_fmt.complement) invertBytes(&s);                        // stored inverted
         if (!m_img->write(c, h, i, s, err)) return false;
         abs += n;
         pos += n;
@@ -680,6 +683,7 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
     Format f = fIn;
     if (!f.derived && !f.derive(err)) return false;
     if (f.offsetSectors) { *err = "formats with an image offset (hard disc partitions) can't be made as new discs"; return false; }
+    if (f.complement) { *err = QString("%1 stores its data inverted and numbers its sectors differently on each side: new discs of it can't be made here yet").arg(f.name); return false; }
     Disk::RawLayout l;
     l.seclen = f.seclen;
     l.sectrk = f.sectrk;

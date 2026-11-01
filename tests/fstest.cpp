@@ -385,6 +385,51 @@ int main(int argc, char **argv) {
         printf("%s\n", failures ? "FAILURES" : "ok");
         return failures ? 1 : 0;
     }
+    if (a.size() == 1 && a[0] == "complement") {
+        // Sharp: every byte stored inverted. Take a blank disc, invert it as the machine would have, and use it with
+        // "complement yes": the directory reads blank, a file goes in and comes out, and the bytes on the disc are the
+        // inverse of what an ordinary disc holds for the same file.
+        QString err;
+        const Cpm::Format *base = Cpm::findFormat("ibm-3740");
+        Disk::Image plain, inv;
+        CHECK(Cpm::makeBlank(&plain, Disk::Kind::Imd, *base, false, QString(), &err), err);
+        CHECK(Cpm::makeBlank(&inv, Disk::Kind::Imd, *base, false, QString(), &err), err);
+        for (int c = 0; c < inv.cylinders(); ++c)
+            for (int h = 0; h < inv.heads(); ++h)
+                for (int i = 0; i < inv.sectorCount(c, h); ++i) {
+                    QByteArray sec;
+                    CHECK(inv.read(c, h, i, &sec), "read");
+                    Cpm::invertBytes(&sec);
+                    CHECK(inv.write(c, h, i, sec, &err), err);
+                }
+        Cpm::Format cf = *base;
+        cf.complement = true;
+        cf.derived = false;
+        CHECK(cf.derive(&err), err);
+        Cpm::Volume vp, vi;
+        CHECK(vp.attach(&plain, *base, &err), err);
+        CHECK(vi.attach(&inv, cf, &err), err);
+        CHECK(vi.files().isEmpty(), "the inverted blank disc reads as empty");
+        QByteArray data;
+        for (int i = 0; i < 5000; ++i) data.append(char(i * 7 + 3));
+        CHECK(vp.addFile(0, "TEST.BIN", data, 0, QDateTime(), false, &err), err);
+        CHECK(vi.addFile(0, "TEST.BIN", data, 0, QDateTime(), false, &err), err);
+        QByteArray back;
+        const int ix = vi.indexOf(0, "TEST.BIN");
+        CHECK(ix >= 0 && vi.readFile(vi.files()[ix], &back, &err) && back.left(data.size()) == data, "the file reads back from the inverted disc");
+        bool same = true;
+        for (int c = 0; c < plain.cylinders() && same; ++c)
+            for (int h = 0; h < plain.heads() && same; ++h)
+                for (int i = 0; i < plain.sectorCount(c, h) && same; ++i) {
+                    QByteArray a1, b1;
+                    plain.read(c, h, i, &a1); inv.read(c, h, i, &b1);
+                    Cpm::invertBytes(&b1);
+                    same = a1 == b1;
+                }
+        CHECK(same, "every sector of the inverted disc is the inverse of the ordinary disc's");
+        printf("%s\n", failures ? "FAILURES" : "ok");
+        return failures ? 1 : 0;
+    }
     if (a.size() == 2 && a[0] == "atomic") rc = atomic(a[1]);
     else if (a.size() == 3) rc = formatTest(a[0], a[1], a[2]);
     else { printf("usage: fstest <outdir> <format> <raw|imd|edsk> | roundtrip <image>... | atomic <outdir>\n"); return 2; }
