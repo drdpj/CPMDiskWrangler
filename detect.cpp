@@ -639,6 +639,29 @@ void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const Disk::Image &
     }
 }
 
+// A raw file says nothing of how the disc was laid out, and the same bytes read the same as 32 x 128 on one side, 16 x 256
+// on two sides or 8 x 512: each gets the same score. This tells them apart by what real discs are like (a drive has 35, 40,
+// 77 or 80 tracks a side, and a few sector layouts are common) - less than a point, so it never outweighs the directory.
+static double plausibleGeometry(const Disk::RawLayout &l) {
+    if (!l.valid()) return 0;
+    double b = 0;
+    if (l.cyls == 35 || l.cyls == 40 || l.cyls == 77 || l.cyls == 80) b += 0.5;
+    static const int common[][2] = {{128, 26}, {256, 16}, {256, 18}, {256, 10}, {256, 26}, {512, 9}, {512, 10}, {512, 8},
+                                    {512, 15}, {512, 18}, {1024, 8}, {1024, 5}};
+    for (const auto &c : common) if (l.seclen == c[0] && l.sectrk == c[1]) { b += 0.25; break; }
+    return b;
+}
+
+// What a reading of a raw image comes to as bytes: layouts with the same signature reach the same bytes in the same order,
+// so they give the same files whatever the sectors and sides are called. (Skewed readings are not compared.)
+static QString readingSignature(const Candidate &c) {
+    const Cpm::Format &f = c.fmt;
+    for (int i = 0; i < f.xlat.size(); ++i) if (f.xlat[i] != i) return QString();
+    if (c.fromLibrary || c.fmt.torch || c.raw.t0sectrk > 0) return QString();
+    return QString("%1|%2|%3|%4|%5|%6").arg(qint64(f.dataStart) * f.seclen).arg(qint64(f.tracks) * f.sectrk * f.seclen).arg(f.blocksize)
+        .arg(f.maxdir).arg(f.physHeads == 2 ? int(f.sides) : 0).arg(c.evidence.isEmpty() ? QString() : c.evidence.first());
+}
+
 Result detect(Disk::Image &img, const QString &remembered, int keep) {
     Result res;
     QVector<Candidate> all;
@@ -903,6 +926,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             ++emptyButUsedCount;
             continue;
         }
+        if (raw && !c.fromLibrary) c.score += plausibleGeometry(c.raw);      // only breaks ties between readings that are the same bytes
         if (raw && c.raw.bytes() > img.rawFileSize()) {
             c.score -= 3;
             c.evidence << QString("needs the image to be %1 bytes; it is %2 (padded)").arg(c.raw.bytes()).arg(img.rawFileSize());
@@ -925,6 +949,8 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         return a.fmt.maxdir < b.fmt.maxdir;
     });
     QSet<QString> seen;
+    QHash<QString, int> sigRow;
+    QHash<QString, QStringList> alsoReads;
     for (const Candidate &c : all) {
         // a reading whose "directory" is mostly nonsense is no reading at all
         if (c.badEntries > 0 && c.badEntries * 2 >= c.fileEntries) continue;
@@ -932,9 +958,19 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         QString k = c.key();
         if (seen.contains(k)) continue;
         seen.insert(k);
+        // the same bytes described another way (16 x 256 on two sides, 32 x 128 on one ...): one row, the others in its notes
+        const QString sig = raw ? readingSignature(c) : QString();
+        if (!sig.isEmpty() && sigRow.contains(sig)) {
+            alsoReads[sig] << QString("%1 x %2, %3 cylinder%4, %5").arg(c.raw.sectrk).arg(c.raw.seclen).arg(c.raw.cyls)
+                                  .arg(c.raw.cyls == 1 ? "" : "s").arg(c.raw.heads == 2 ? "two sides" : "one side");
+            continue;
+        }
+        if (!sig.isEmpty()) sigRow[sig] = res.ranked.size();
         res.ranked.append(c);
         if (res.ranked.size() >= keep) break;
     }
+    for (auto it = alsoReads.constBegin(); it != alsoReads.constEnd(); ++it)
+        res.ranked[sigRow[it.key()]].evidence << "the same bytes also read as: " + it.value().join("; ") + " - a raw file can't say which";
     // physical description
     if (raw && (!res.ranked.isEmpty() || droppedLayout.valid())) {
         QString e;

@@ -245,6 +245,7 @@ starts on the filter for the kind the image already is, and the kind saved is th
 * National character sets are display/transfer only: the directory always holds the raw 7-bit bytes. Tests: `tests/chartest` (needs COMAL discs in `real/nat` for the guess), and a section in guitest.
 
 ## How detection works (detect.cpp)
+(Raw images: readings that reach the same bytes in the same order - 32 x 128 on one side, 16 x 256 on two, 8 x 512 - score the same, so `detect()` breaks the tie by `plausibleGeometry` (35/40/77/80 cylinders a side, common sector layouts; under a point) and shows one row, listing the others in its evidence (`readingSignature`).)
 1. Physical layouts: the container's own; for raw images every library format whose size fits (exactly, or
    a truncated image at least 60% of it) and every factorisation into 128-1024-byte sectors, common sectors per
    track, 30-86 cylinders, 1-2 heads.

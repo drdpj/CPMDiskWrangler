@@ -62,6 +62,12 @@ $(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0
     [ -f "$v" ] || continue
     "$b/detecttest/detecttest" "$v" 2>&1 | grep -q 'confidence high; writable' && echo "$(basename "$v"): found, writable" || { echo "FAIL: $(basename "$v") not found"; fail=1; }
   done
+  for v in "$real"/ties/*; do          # a raw image whose layouts all read the same: one row (the 35 x 2 x 16 x 256 reading), not a wall of ties
+    [ -f "$v" ] || continue
+    out=$("$b/detecttest/detecttest" "$v" 2>&1)
+    close=$(echo "$out" | grep '^ *[0-9][0-9]*\. ' | awk 'NR==1 {top=$2} NR>1 && $2 >= top-1 {n++} END {print n+0}')
+    if [ "$close" -eq 0 ] && echo "$out" | grep -q '35 cylinders, 2 sides, 16 x 256'; then echo "$(basename "$v"): one reading at the top, 16 x 256 on two sides"; else echo "FAIL: $(basename "$v") has $close other readings within a point of the best"; fail=1; fi
+  done
   (cd "$W" && "$src/tests/cmp_cpmtools.sh" "$b/detecttest/detecttest" ibm-3740 "$Z"/cpm1*.dsk "$Z"/cpm22-2.dsk "$Z"/cpm22-62khd.dsk "$Z"/cpm3-2.dsk "$Z"/mpm*.dsk "$Z"/*tests.dsk) | tee "$W/cmp.log"
   grep -q "[1-9][0-9]* differ" "$W/cmp.log" && fail=1
   for z in $(ls "$real"/rm/*.img 2>/dev/null); do         # the owner's Research Machines discs: cpmtools reads both sides
