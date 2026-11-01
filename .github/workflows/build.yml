@@ -262,6 +262,9 @@ jobs:
           mkdir -p "$doc" dist
           cp -r LICENSE THIRD-PARTY-NOTICES.md licences "$doc/"
           cd build
+          # appimagetool (recent builds) wants a PNG named after the desktop file's Icon= at the top of the AppDir, and
+          # won't make the AppImage's icon from the SVG that linuxdeploy puts there
+          cp "../icons/$APP-256.png" "AppDir/$APP.png"
           # name the file ourselves: linuxdeploy would use the desktop file's Name, and "CP/M" has a slash in it
           OUTPUT="../dist/$APP-$VERSION-linux-x86_64.AppImage" \
               linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
