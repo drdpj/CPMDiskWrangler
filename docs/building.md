@@ -77,12 +77,14 @@ For Qt 5, use Homebrew's `qt@5` (Apple Silicon only, and Homebrew drops it in Ma
 
 * **Every push to `main` and every pull request** builds all three; the packages are kept for 90 days as the
   run's artifacts (at the bottom of the run's summary page).
-* **Pushing a tag starting with `v`** also publishes them as a GitHub release, with notes listing the pull
-  requests merged since the last one. A tag with a suffix (`v1.0.0-beta.1`, `v1.0.0-rc.1`) makes a pre-release.
+* **Pushing a tag starting with `v`** also publishes them as a GitHub release. Its notes are
+  `release-notes/<tag>.md` when the repository has that file (commit it before tagging), otherwise GitHub lists the
+  pull requests merged since the last release. A tag with a suffix (`v1.1.0-beta.1`, `v1.1.0-rc.1`) makes a
+  pre-release.
 
       git checkout main && git pull
-      git tag v1.0.0-beta.2
-      git push origin v1.0.0-beta.2
+      git tag v1.0.0
+      git push origin v1.0.0
 
   To undo a tag before anyone has the release: `git tag -d <tag>`, `git push origin :refs/tags/<tag>`, and delete
   the release on GitHub.

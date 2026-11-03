@@ -6,9 +6,9 @@
 ; tag (and for Run workflow), from the source root:
 ;
 ;   iscc /DProgName=acorndiskwrangler "/DProgTitle=Acorn Disk Wrangler" "/DProgFolder=Acorn Disk Wrangler"
-;        /DProgVersion=0.9.7-beta.2 /DProgNumVersion=0.9.7 "/DProgCopyright=Copyright (C) 2026 Daniel Jameson"
+;        /DProgVersion=1.0.0 /DProgNumVersion=1.0.0 "/DProgCopyright=Copyright (C) 2026 Daniel Jameson"
 ;        /DProgUrl=https://github.com/drdpj/AcornDiskWrangler /DDeployDir=C:\...\deploy /DOutDir=C:\...\dist
-;        /DOutName=acorndiskwrangler-v0.9.7-beta.2-windows-x64-setup ci\installer.iss
+;        /DOutName=acorndiskwrangler-v1.0.0-windows-x64-setup ci\installer.iss
 ;
 ; ProgFolder is ProgTitle made fit for a folder or shortcut name ("CP/M" -> "CPM"). It installs for all users by
 ; default, into Program Files (Windows asks for an administrator), and its first page offers "only for me" instead
