@@ -11,7 +11,7 @@ formats. Files drag between discs, to and from your desktop, and to and from
 
 ## Download
 Get the latest build from the [Releases page](https://github.com/drdpj/CPMDiskWrangler/releases/latest).
-None of the builds is signed, so your system may warn you the first time you run it.
+None of the builds are signed, so your system may warn you the first time you run it.
 
 * **Windows** (10 or later, 64-bit): run the `...-setup.exe` installer (it installs into Program Files; without
   administrator rights, choose to install it just for you), or unzip the `.zip` anywhere and run
