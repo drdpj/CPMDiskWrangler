@@ -10,7 +10,7 @@
 #include <QMenu>
 #include <QTemporaryDir>
 #include <cstdio>
-#include "../appsettings.h"
+#include "../src/appsettings.h"
 
 static int failures = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { printf("  FAIL: %s\n", msg); ++failures; } else printf("  ok: %s\n", msg); } while (0)

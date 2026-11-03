@@ -48,11 +48,11 @@
 #include <QTimer>
 #include <QUrl>
 #include <cstdio>
-#include "../formatdialog.h"
-#include "../newdisc.h"
+#include "../src/formatdialog.h"
+#include "../src/newdisc.h"
 #include <QCheckBox>
-#include "../fileopen.h"
-#include "../mainwindow.h"
+#include "../src/fileopen.h"
+#include "../src/mainwindow.h"
 
 static int failures = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { printf("  FAIL: %s\n", qPrintable(QString(msg))); ++failures; } else printf("  ok: %s\n", qPrintable(QString(msg))); } while (0)

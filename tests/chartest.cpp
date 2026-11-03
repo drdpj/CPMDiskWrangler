@@ -21,11 +21,11 @@
 // e.g.  chartest comal1.imd dk-no  plain.imd none     (an image given with a set must be recognised as using it)
 #include <QApplication>
 #include <cstdio>
-#include "../cpmformat.h"
-#include "../cpmfs.h"
-#include "../detect.h"
-#include "../diskimage.h"
-#include "../natchars.h"
+#include "../src/cpmformat.h"
+#include "../src/cpmfs.h"
+#include "../src/detect.h"
+#include "../src/diskimage.h"
+#include "../src/natchars.h"
 
 static int failures = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { printf("  FAIL: %s\n", qPrintable(QString(msg))); ++failures; } } while (0)

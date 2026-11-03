@@ -17,7 +17,7 @@
  */
 // mkicon <dir>: writes the application icon as cpmdiskwrangler-<size>.png for the usual sizes.
 #include <QGuiApplication>
-#include "../icon.h"
+#include "../src/icon.h"
 int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     QString dir = argc > 1 ? argv[1] : ".";

@@ -33,10 +33,10 @@
 #include <QFileInfo>
 #include <QRandomGenerator>
 #include <cstdio>
-#include "../cpmfs.h"
-#include "../detect.h"
-#include "../diskimage.h"
-#include "../torchfs.h"
+#include "../src/cpmfs.h"
+#include "../src/detect.h"
+#include "../src/diskimage.h"
+#include "../src/torchfs.h"
 
 static int failures = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { printf("  FAIL: %s\n", qPrintable(QString(msg))); ++failures; } } while (0)

@@ -22,9 +22,9 @@
 #include <QElapsedTimer>
 #include <QFileInfo>
 #include <cstdio>
-#include "../cpmfs.h"
-#include "../detect.h"
-#include "../diskimage.h"
+#include "../src/cpmfs.h"
+#include "../src/detect.h"
+#include "../src/diskimage.h"
 
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);

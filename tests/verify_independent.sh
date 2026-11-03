@@ -8,7 +8,7 @@
 #     must match what fstest expected, and fsck.cpm must find nothing wrong.
 # Needs cpmtools and libdsk-utils (Ubuntu: apt install cpmtools libdsk-utils).
 fail=0
-defs="$(cd "$(dirname "$0")/.." && pwd)/resources/builtin-diskdefs"   # this checkout's own definitions
+defs="$(cd "$(dirname "$0")/.." && pwd)/src/resources/builtin-diskdefs"   # this checkout's own definitions
 for dir in "$@"; do
   for dd in "$dir"/*.diskdef; do
     name=$(basename "$dd" .diskdef); base="$dir/$name"

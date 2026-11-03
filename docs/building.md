@@ -112,5 +112,5 @@ every third-party component Qt records in a `qt_attribution.json` (`ci/qt-attrib
 
 ## Shared files
 These are identical in both repositories; change them in both: `ci/`, `.github/workflows/build.yml`,
-`licences.cpp`, `licences.h`, `licences.qrc`, `licences/`, `version.pri`, `version.cmake`,
+`src/licences.cpp`, `src/licences.h`, `src/licences.qrc`, `licences/`, `version.pri`, `version.cmake`,
 `docs/building.md`, `docs/building-windows-32bit.md` and `docs/retro-files-format.md`.

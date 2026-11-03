@@ -6,7 +6,7 @@ or test it, that comes from someone else, and on what terms.
 
 ## Included in the source
 
-### cpmtools disc definitions - `resources/cpmtools-diskdefs`
+### cpmtools disc definitions - `src/resources/cpmtools-diskdefs`
 The `diskdefs` file from **cpmtools 2.23** (Ubuntu package 2.23-5build1), included unchanged and compiled into the
 program as a resource.
 
@@ -14,7 +14,7 @@ program as a resource.
 * Licence: GNU General Public License, version 3 or (at your option) any later version - the same licence as this
   program. Upstream: <http://www.moria.de/~michael/cpmtools/>.
 
-`resources/builtin-diskdefs` is this program's own file. It uses cpmtools' syntax, and several of its definitions
+`src/resources/builtin-diskdefs` is this program's own file. It uses cpmtools' syntax, and several of its definitions
 copy the parameters of cpmtools definitions of the same name (`cpcdata`, `cpcsys`, `pcw`, `kpii`, `kpiv`, `rm-dd`,
 `rm-qd`), as each one's `source` line says.
 
@@ -26,19 +26,19 @@ directory size, reserved tracks, skew, and the data-track sector numbering) from
 (first sector ID on the data tracks) is that patch's key of the same name, implemented here independently in
 `Format::dataId` and `makeBlank`; no code was taken from the patch. Both definitions were checked against real discs.
 
-### LZHUF - `lzhuf.cpp`
+### LZHUF - `src/lzhuf.cpp`
 The TeleDisk "advanced compression" decoder implements the LZHUF algorithm and follows the structure of
 **LZHUF.C**, written by **Haruyasu Yoshizaki** (1988, with English comments by **Haruhiko Okumura**, 1989),
 which builds on Okumura's LZSS. Okumura released his LZSS code into the public domain. LZHUF.C was published
 without any licence statement and has been redistributed and adapted freely for over thirty years (TeleDisk itself,
-LHA, MAME's and libdsk's TeleDisk readers); no terms are known that restrict this use. The code in `lzhuf.cpp`
+LHA, MAME's and libdsk's TeleDisk readers); no terms are known that restrict this use. The code in `src/lzhuf.cpp`
 was written for this program (the position-code tables are generated, not copied) and is distributed under the GPL
 with the rest; the credit above is given because its structure follows LZHUF.C.
 
 ### Acorn Disk Wrangler
 Parts of this program are adapted from **Acorn Disk Wrangler** (<https://github.com/drdpj/AcornDiskWrangler>),
-by the same author and under the same licence: the tree-layout helpers in `mainwindow_p.h`, the drag-out code in
-`dragout.cpp`, the viewer, the build files, and `docs/retro-files-format.md` (the shared interchange
+by the same author and under the same licence: the tree-layout helpers in `src/mainwindow_p.h`, the drag-out code in
+`src/dragout.cpp`, the viewer, the build files, and `docs/retro-files-format.md` (the shared interchange
 specification). `tests/interop_adw` is built from Acorn Disk Wrangler's own `dragout.cpp` at test time; that code
 is not copied into this repository.
 
@@ -52,7 +52,7 @@ These were read for facts about formats. No code or text was copied from them.
 | cpmtools' `cpm(5)` manual page | directory entries, CP/M 3 labels and time stamps, byte counts | GPL v3+ (documentation) |
 | Acorn Application Note 007 (Acorn Computers, via chrisacorns.computinghistory.org.uk) | the Acorn Z80 second processor disc format | facts only |
 | Adam Sampson, "Archiving CP/M floppies" notes (offog.org) | Research Machines 480Z track 0 and side layout | facts only |
-| Notes on the Torch CP/N directory, entries, address word and allocation map (a source comment the owner supplied) | the Torch CP/N filesystem (`torchfs.cpp`, `tests/torch_check.py`) | facts only |
+| Notes on the Torch CP/N directory, entries, address word and allocation map (a source comment the owner supplied) | the Torch CP/N filesystem (`src/torchfs.cpp`, `tests/torch_check.py`) | facts only |
 | Myrcurial/o1next research notes (GitHub) | confirming that IMD tracks must be placed by sector ID | facts only |
 | Damien Guard, "Extracting files from Tatung Einstein disk images" (damieng.com, 2023) | the Einstein disc geometry and its DPB (DSM 257, two-byte block pointers on a 40-track disc); checked against two real discs | facts only |
 | AutoArchaeologist, `autoarchaeologist/os/cpm/fs_auto.py` and `fs_abc.py` (Datamuseum-DK, Copyright (c) 2020-2023, BSD-2-Clause; <https://codeberg.org/Datamuseum-dk/AutoArchaeologist>) | the idea of ranking candidate CP/M readings by what their files contain (never-written sectors inside files, files of only zeros); its pointer-width and fill-order heuristics were read for comparison. Reimplemented here from the idea; no code copied; credited in Help > About | BSD-2-Clause |

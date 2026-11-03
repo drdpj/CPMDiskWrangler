@@ -26,11 +26,11 @@ if(APPLE)
     set(CPMDW_ICNS icons/cpmdiskwrangler.icns)
     set_source_files_properties(${CPMDW_ICNS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 endif()
-add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} resources.qrc licences.qrc licences.cpp licences.h
-    main.cpp mainwindow.cpp formatdialog.cpp newdisc.cpp natchars.cpp viewer.cpp viewtext.cpp icon.cpp dragout.cpp
-    diskimage.cpp lzhuf.cpp cpmformat.cpp cpmfs.cpp torchfs.cpp detect.cpp
-    appsettings.h buttonbar.h fileopen.h mainwindow.h mainwindow_p.h formatdialog.h newdisc.h natchars.h viewer.h viewtext.h icon.h dragout.h
-    diskimage.h cpmformat.h cpmfs.h torchfs.h detect.h)
+add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} src/resources.qrc src/licences.qrc src/licences.cpp src/licences.h
+    src/main.cpp src/mainwindow.cpp src/formatdialog.cpp src/newdisc.cpp src/natchars.cpp src/viewer.cpp src/viewtext.cpp src/icon.cpp src/dragout.cpp
+    src/diskimage.cpp src/lzhuf.cpp src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp
+    src/appsettings.h src/buttonbar.h src/fileopen.h src/mainwindow.h src/mainwindow_p.h src/formatdialog.h src/newdisc.h src/natchars.h src/viewer.h src/viewtext.h src/icon.h src/dragout.h
+    src/diskimage.h src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/licences-bundled.qrc)   # a release build's library licences (ci/)
     target_sources(cpmdiskwrangler PRIVATE licences-bundled.qrc)
 endif()

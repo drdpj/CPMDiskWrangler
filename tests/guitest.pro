@@ -4,8 +4,8 @@ QT += widgets testlib
 CONFIG += c++17 console
 CONFIG -= app_bundle
 TARGET = guitest
-SOURCES += guitest.cpp ../mainwindow.cpp ../licences.cpp ../formatdialog.cpp ../newdisc.cpp ../natchars.cpp ../viewer.cpp ../viewtext.cpp ../icon.cpp \
-           ../dragout.cpp ../diskimage.cpp ../lzhuf.cpp ../cpmformat.cpp ../cpmfs.cpp ../torchfs.cpp ../detect.cpp
-HEADERS += ../fileopen.h ../mainwindow.h ../mainwindow_p.h ../formatdialog.h ../newdisc.h ../natchars.h ../viewer.h ../viewtext.h ../icon.h \
-           ../dragout.h ../diskimage.h ../cpmformat.h ../cpmfs.h ../torchfs.h ../detect.h
-RESOURCES += ../resources.qrc
+SOURCES += guitest.cpp ../src/mainwindow.cpp ../src/licences.cpp ../src/formatdialog.cpp ../src/newdisc.cpp ../src/natchars.cpp ../src/viewer.cpp ../src/viewtext.cpp ../src/icon.cpp \
+           ../src/dragout.cpp ../src/diskimage.cpp ../src/lzhuf.cpp ../src/cpmformat.cpp ../src/cpmfs.cpp ../src/torchfs.cpp ../src/detect.cpp
+HEADERS += ../src/fileopen.h ../src/mainwindow.h ../src/mainwindow_p.h ../src/formatdialog.h ../src/newdisc.h ../src/natchars.h ../src/viewer.h ../src/viewtext.h ../src/icon.h \
+           ../src/dragout.h ../src/diskimage.h ../src/cpmformat.h ../src/cpmfs.h ../src/torchfs.h ../src/detect.h
+RESOURCES += ../src/resources.qrc

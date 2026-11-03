@@ -4,4 +4,4 @@ CONFIG += c++17 console
 CONFIG -= app_bundle
 TARGET = settingstest
 SOURCES += settingstest.cpp
-HEADERS += ../appsettings.h
+HEADERS += ../src/appsettings.h
