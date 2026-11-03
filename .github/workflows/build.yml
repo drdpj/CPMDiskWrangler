@@ -4,7 +4,7 @@
 # AppImage, and a .deb that uses the system's Qt for Ubuntu 22.04+ / Debian 12+), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
 # program (Help > Licences) and copied beside it. Qt 6 by default; "Run workflow" (Actions tab) can build with
 # Qt 5.15 instead, whose packages are named ...-qt5 (on macOS that one is Apple Silicon only, from Homebrew). Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
-# v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks); a tag with a
+# v* also publishes them as a GitHub release (which carries the matching source, as the GPL asks; its notes are release-notes/<tag>.md if the repo has that file, else GitHub generates them); a tag with a
 # suffix, such as v1.0.0-beta.1, makes it a pre-release.
 #
 # The version shown in Help > About is git describe's (version.pri), so a tagged build shows the tag.
@@ -299,6 +299,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5        # for release-notes/<tag>.md
       - uses: actions/download-artifact@v8
         with:
           path: dist
@@ -310,5 +311,8 @@ jobs:
           # a tag with a suffix (v1.0.0-beta.1, v1.0.0-rc.1) is published as a pre-release
           pre=()
           case "$GITHUB_REF_NAME" in *-*) pre=(--prerelease) ;; esac
+          # the notes: release-notes/<tag>.md when the repo has one for this tag, else GitHub's generated ones
+          notes=(--generate-notes)
+          [ -f "release-notes/$GITHUB_REF_NAME.md" ] && notes=(--notes-file "release-notes/$GITHUB_REF_NAME.md")
           gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
-              --generate-notes "${pre[@]}"
+              "${notes[@]}" "${pre[@]}"

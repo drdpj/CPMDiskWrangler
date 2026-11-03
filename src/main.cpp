@@ -29,6 +29,14 @@
 #endif
 
 int main(int argc, char *argv[]) {
+#if defined(Q_OS_LINUX)
+    // On a GNOME Wayland session Qt starts under XWayland (xcb) unless it is told otherwise, and says so on stderr:
+    // "Warning: Ignoring WAYLAND_DISPLAY on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway." Make that choice
+    // ourselves, so there is nothing to warn about. Wayland stays the fallback, and QT_QPA_PLATFORM set by the user wins.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") && qgetenv("XDG_SESSION_TYPE") == "wayland" &&
+        qgetenv("XDG_CURRENT_DESKTOP").toUpper().contains("GNOME"))
+        qputenv("QT_QPA_PLATFORM", "xcb;wayland");
+#endif
     // Qt's Wayland text-input-v3 plugin warns "Try to disable surface ... with focusing surface" whenever focus moves
     // between a window and a dialog. It is a harmless Qt-internal bookkeeping complaint, so hide that one category's
     // warnings.
