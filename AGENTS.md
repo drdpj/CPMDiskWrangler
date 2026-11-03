@@ -1,22 +1,32 @@
 # AGENTS.md - working on CP/M Disk Wrangler
 
-Read this before changing code. It records the design rules, the facts about the formats (and how sure we are of
-each), how detection works and why, how to build and test, and the mistakes already made once. It is the sibling
-of Acorn Disk Wrangler (github.com/drdpj/AcornDiskWrangler) and follows the same rules and style.
+Read this before changing code: what the program is, where things are, the rules that must not be broken, how
+the window works and how to build and test. Three companion documents hold the detail you only need for some work:
+
+* **[docs/disc-formats.md](docs/disc-formats.md)** - the facts about each format and container, how sure we are of
+  each, and the real discs they were checked on. Read it before touching `diskimage`, `cpmformat`, `cpmfs`,
+  `torchfs` or the diskdefs.
+* **[docs/detection.md](docs/detection.md)** - how `detect.cpp` works out a disc's format, and why. Read it before
+  changing a score, a bonus or a tie-break.
+* **[docs/testing.md](docs/testing.md)** - every test, the independent checks and the real images used.
 
 ## What this is
-A Qt 6 / Qt 5.15 (C++17) desktop tool for CP/M disc images: raw, ImageDisk, CPCEMU DSK / extended DSK, TeleDisk (read).
-It also reads and writes Torch CP/N discs, whose files are CP/M files kept in Torch's own filesystem (`torchfs.cpp`).
-It works out each disc's logical format, then lists, adds, extracts, renames and deletes files, sets attributes,
-user numbers and CP/M 3 labels, and makes new discs. One disc per window; drag and drop between windows, the
-desktop and other programs via the `retro-files` format shared with Acorn Disk Wrangler. GPLv3-or-later; the
-copyright line in every header is `Copyright (C) 2026 Daniel Jameson`; put the same header on any new source file
-(`#` comments for scripts and build files). The notice also appears in Help > About, `QMAKE_TARGET_COPYRIGHT` and
-the `.rc`. **Anything taken from or closely modelled on someone else's work goes in `THIRD-PARTY-NOTICES.md`**
-with its terms (and in About if it ships in the program); material only consulted for facts goes in its
-"Consulted" table. Never commit third-party disc images: the tests read them from outside the repo.
+A Qt 6 / Qt 5.15 (C++17) desktop tool for CP/M disc images: raw, ImageDisk, CPCEMU DSK / extended DSK, TeleDisk
+(read). It also reads and writes Torch CP/N discs, whose files are CP/M files kept in Torch's own filesystem
+(`torchfs.cpp`). It works out each disc's logical format, then lists, adds, extracts, renames and deletes files,
+sets attributes, user numbers and CP/M 3 labels, and makes new discs. One disc per window; drag and drop between
+windows, the desktop and other programs via the `retro-files` format shared with Acorn Disk Wrangler
+(github.com/drdpj/AcornDiskWrangler), its sibling, which follows the same rules and style.
 
-## Source map
+* **Licence and headers.** GPLv3-or-later. Every source file starts with the header naming
+  `Copyright (C) 2026 Daniel Jameson` (`#` comments for scripts and build files); put it on any new file. The notice
+  also appears in Help > About, `QMAKE_TARGET_COPYRIGHT` and the `.rc`.
+* **Other people's work.** Anything taken from or closely modelled on someone else's work goes in
+  `THIRD-PARTY-NOTICES.md` with its terms (and in About if it ships in the program); material only consulted for facts
+  goes in its "Consulted" table.
+* **Never commit third-party disc images**: the tests read them from outside the repo.
+
+## Source map (program in `src/`, tests in `tests/`)
 | File | Role |
 |---|---|
 | `diskimage.h/.cpp` | `Disk::Image`: the physical disc (tracks of sectors keyed by sector ID), the containers (raw, IMD, DSK, EDSK, TD0), staged writes, serialising, atomic commit |
@@ -25,18 +35,19 @@ with its terms (and in About if it ships in the program); material only consulte
 | `cpmformat.h/.cpp` | `Cpm::Format`: a diskdef plus the derived DPB (DSM, EXM, pointer width, skew table, `locate()`); the diskdefs parser; the library |
 | `cpmfs.h/.cpp` | `Cpm::Volume`: directory, files, extents, CP/M 3 / P2DOS stamps and labels, add/delete/rename/attrs, `check()`, `makeBlank()` |
 | `detect.h/.cpp` | working out the format: candidates, scoring, ranking, confidence, `safeToWrite` |
-| `resources/builtin-diskdefs` | this program's definitions (Acorn Z80, Amstrad, Kaypro) and descriptions for cpmtools' ones |
-| `resources/cpmtools-diskdefs` | cpmtools 2.23's diskdefs file, unchanged (Michael Haardt and contributors, GPL v3+; see THIRD-PARTY-NOTICES.md) |
+| `resources/builtin-diskdefs` (in `src/`) | this program's definitions (Acorn Z80, Amstrad, Kaypro) and descriptions for cpmtools' ones |
+| `resources/cpmtools-diskdefs` (in `src/`) | cpmtools 2.23's diskdefs file, unchanged (Michael Haardt and contributors, GPL v3+; see THIRD-PARTY-NOTICES.md) |
 | `mainwindow.*`, `mainwindow_p.h` | window, `DropTree`, importing/exporting, Copy / Paste, menus; `mainwindow_p.h` has the shared tree helpers (same as Acorn Disk Wrangler's) and `XItem` |
 | `formatdialog.*` | Tools > Disc format (ranked readings, evidence, preview, try a format by hand) |
 | `newdisc.*` | File > New disc image |
 | `dragout.*` | `retro-files` JSON writer/reader, drag-out data, temporary drag folders |
 | `viewer.*`, `viewtext.*` | the text/hex viewer (CP/M `^Z`, WordStar bit 7) |
+| `licences.*` | Help > Licences: the texts compiled in from `src/licences.qrc` (and `licences-bundled.qrc` in a release build). Shared with Acorn Disk Wrangler, keep identical |
 | `appsettings.h` | where settings live: the system's place, or `<program>.ini` beside the program (portable; for an AppImage, beside the `.AppImage` file - `$APPIMAGE` - not in its temporary mount; a program installed on Linux, or by the Windows installer - `installedHere()`: Inno Setup's `unins000.dat` beside it -, has no portable mode, so File > Create local config file isn't shown). Use `AppSettings` instead of `QSettings` in program code (tests may use `QSettings` to clear the system store). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `buttonbar.h` | the main window's button bar: real QPushButtons kept in step with their QActions (a QToolBar's own buttons draw as flat text on macOS). Header only; shared with Acorn Disk Wrangler, keep identical |
 | `fileopen.h` | macOS opens files from the Finder (double-click, Open With, the Dock icon) by sending the running program a `QFileOpenEvent`, never a command-line argument: `FileOpen::FileOpenFilter` (installed on the application in `main.cpp`) opens the image like File > Open - in an empty window, the active one first, else a new window; one already open just comes forward. Windows and Linux never send it. `guitest2` / CP/M Disk Wrangler's `guitest` send it. Header only; shared with Acorn Disk Wrangler, keep identical |
 | `torchfs.h/.cpp` | Torch CP/N's filesystem (format key `torchcpn`): `Torch::walk`/`scan` (shared with detection) and the `Cpm::Volume` methods `torch...` that every public `Volume` method hands over to when `Format::torch` is set, so the window, drags, Copy/Paste and the tests see one `Volume` |
-| `icon.*`, `icons/` | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
+| `icon.*`, `icons/` (top level) | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
 **Container by content, not by name.** `Image::open` recognises ImageDisk, DSK / extended DSK and TeleDisk by their
 headers and treats anything else as raw, whatever the suffix (`.dsk` is used for raw dumps by many emulators). Save As
@@ -65,291 +76,6 @@ starts on the filter for the kind the image already is, and the kind saved is th
 7. **The physical shape of a new disc must match the real thing.** A built-in definition that replaces a
    cpmtools one must describe exactly the same layout, including `dirblks` (`fstest library` checks this).
 
-## Format facts (confidence noted)
-- **Directory entries** (cpm(5), verified with cpmtools on generated and real discs): status 0-15 user (16-31:
-  P2DOS users, or CP/M 3 password entries), 0x20 label, 0x21 time stamps (every fourth entry), 0xE5 free.
-  Name bytes 1-11 with attributes in bit 7 (F1'-F4' on name bytes 1-4, T1' R/O, T2' SYS, T3' ARC). EX (byte 12,
-  low 5 bits) and S2 (byte 14, 6 bits) make the logical extent; RC (byte 15) <= 128; 16 one-byte or 8 two-byte
-  block pointers (two-byte when DSM > 255). An entry holds EXM+1 logical extents of 16K.
-- **Byte 13 (S1/Bc)**: the bytes used in the last record (1-127; 0 = 128). CP/M 3 and **cpmtools on every
-  format** write it; CP/M 2.2 leaves it 0. We honour it whenever it is 1-127 and always write it (this is what
-  made our sizes match cpmtools on the z80pack discs). ISX's "unused bytes" meaning is not supported.
-- **CP/M 3 stamps**: SFCB in every fourth entry: 3 x (4-byte create/access stamp, 4-byte update stamp, password
-  mode, reserved) for the 3 entries before it; date = days since 31 Dec 1977 (LE16), hour and minute BCD. Stamps
-  are written only when the label's mode byte enables them (P2DOS/ZSDOS: always). Checked with `cpmls -F`.
-- **Skew** (cpmtools' algorithm, `Format::derive`): logical sector i -> physical index `xlat[i]` within the track;
-  applied to every track. IBM 3740 skew 6, Osborne single density skew 2, Osborne 8" double density skew 3,
-  Heathkit H8D skew 4 (found by detection on two real images; not in cpmtools).
-- **Side order**: `alt` (cylinder by cylinder), `outback` (side 1 runs back from the last cylinder: Acorn Z80),
-  `outout`. Raw images are cut into tracks cylinder by cylinder; a raw image in cpmtools' logical order is read
-  with `alt`.
-- **cpmtools definitions don't state the number of sides.** We infer 2 when tracks > 86, and detection tries a
-  definition both ways when the inferred count doesn't fit the image (that is how a 40-cylinder double-sided
-  Kaypro 4 disc is matched to `kpiv`, "tracks 80"). For new discs the built-in definitions say it explicitly.
-- **Editing a real mixed-density IMD** (`fstest addto --force` on an Osborne 8" disc): track 0 stays
-  byte-identical, every track keeps its mode, only the directory and data tracks change.
-- **Kaypro** (`kpii`, `kpiv`): sector IDs from 0; `dirblks 4` / `dirblks 2` (the Kaypro reserves 4K for a 2K
-  directory). Real Kaypro 4 discs number side 1's sectors 10-19; a new disc made here uses 0-9 on both sides
-  (**unverified on a real Kaypro**; per-head sector bases are not modelled).
-- **Amstrad**: CPC data IDs C1-C9 (no boot tracks), system 41-49 (2), IBM 01-08 (1); PCW 180K IDs 1-9. The PCW/+3
-  boot sector spec (byte 0 = 0 or 3) describes the disc; libdsk writes it for pcw720 (decoded to 2K blocks, 256
-  entries, 1 reserved track - matching cpmtools' `cf2dd`).
-- **Acorn Z80 second processor**: from Acorn Application Note 007: 80 track double-sided, 10 x 256-byte sectors
-  (FM), side 1 runs back from track 79, 3 reserved tracks, 128 entries, logical 512-byte sectors from physical
-  pairs 0/1 4/5 8/9 2/3 6/7 (skew table `0,1,4,5,8,9,2,3,6,7`), sector IDs 0-9. The 2K block size is inferred from
-  the 388K the note states. **Checked on three real discs** (the owner's, raw, interleaved, 409,600 bytes, not in
-  the repo: Colossal Cave `cave.dsd`, CP/M installation discs 1 and 2 `cpm1.dsd`, `cpm2.dsd`): each detected as
-  acorn-z80 with no rival and a clean Check, every file (12, 48, 47) identical to `tests/acornz80_check.py`'s (an
-  independent reader written from the note alone); an added file reads back with it, and tracks 0-2 of side 0
-  and the odd entry below are left untouched. Disc 1 holds the CP/M system in tracks 0-2 and is full (0 blocks
-  free). The real discs also have:
-  - **an Acorn DFS catalogue on track 0** (sectors 0-1, in the boot area): title "Acorn CP/M", one locked file
-    `$.CPMDISC` from sector 2 to 800, so the BBC's DFS sees a full disc; byte-identical on all three. On `cpm2.dsd`
-    the same catalogue is also on side 1's cylinder 0 (DFS drive 2) - but that is CP/M's last data track, which a
-    full disc overwrites (`cpm1.dsd`) and `cave.dsd` has blank, so it is formatter leftover, not reserved, and new
-    discs don't get it. Tracks 0-2 are otherwise E5 unless the CP/M system is on them. Format key
-    `acorndfs yes`: new discs get it (track 0 byte-identical to the real one), detection gives +6 for it and does
-    not take it as a foreign filesystem.
-  - **directory entry 0 that is not a file**: user 0, name bytes `fe bd ee 29 00 30 db 29 3f 1f 1d`, S2 0x39, RC 0,
-    no blocks - only on `cave.dsd` (entry 0 is an ordinary file on the installation discs), so it is not part of
-    the format: probably leftover junk. Handled generally as an *inert* entry
-    (`Volume::inertEntry`: a user entry with control characters in its name, no records, no blocks): not listed,
-    its slot never reused, a warning (not an error) in Check; detection tolerates one (`KInert`), and an all-zero
-    entry is never inert. More real discs would show whether every Acorn disc has it and what it holds.
-- **ImageDisk**: header line + comment up to 0x1A; per track mode, cylinder, head (bit 7 cylinder map, bit 6 head
-  map), count, size code (0xFF: a table of sizes), sector numbering map, records 0-8 (0 missing, even =
-  compressed, 3/4 deleted, 5-8 with data error). Checked against an independent Python parser
-  (`tests/decode_container.py`) and libdsk.
-- **Mixed density / track 0 of its own shape**: each `Track` keeps its sectors and IMD mode; `Image::shape()` takes
-  the most common shape **by bytes** (not by track count) and counts heads only where that shape occurs. A format
-  may declare `track0 SECTRK SECLEN fm|mfm [FIRSTID]` (cpmtools ignores the key); it must be inside the boot area,
-  so the filesystem never reads it. `makeBlank` reshapes cylinder 0 head 0 (FM at the same data rate as the
-  other tracks: IMD mode 0/1/2 for 3/4/5) and refuses raw containers. Detection: +3 when the disc's track 0
-  matches a format's `track0`, -3 when it doesn't. `sameLayout` ignores it (it doesn't affect the filesystem).
-  - Microbee: `microbee-ds80` data tracks (after the reserved ones) are numbered from 21 (`datasect 21`), the reserved ones from 1. `makeBlank` reshapes the data tracks to `dataId` (DSK/IMD only; a raw file has no IDs) - without it a new DS80 disc was "Bad Sector" in ubee512. `microbee-ss80` is `microbee40`'s layout on 80 cylinders, one side (IDs 1-10 everywhere); DS40 is `microbee40` itself and, as a raw file, the same bytes as SS80.
-  - DSK containers: `Kind::Edsk` ("EXTENDED CPC DSK File", per-track size table) and `Kind::Dsk` (the original "MV - CPCEMU Disk-File", one track size, which the Microbee repository's discs use and some older emulators read (ubee512's own DSK code doesn't check the header at all: it reads both the same, as long as every track is the same size)). New discs and Save As offer both; `writeStandardDsk` refuses a disc whose tracks differ in size (a boot track of its own shape, mixed sector sizes) and says to use an extended DSK. Opening and saving a file keeps its kind (the data is patched in place).
-  - Sharp (only *some* Sharp formats are inverted; the MZ-800 P-CP/M disc below is ordinary): `sharp-sds400` (40 cylinders x 2 x 10 x 512, 2K blocks, 128 entries): the sectors are stored inverted (`complement yes`, libdsk's "complement"; empty space reads 1A, not E5) and a cylinder is read side 1 first (`sides altrev`; IDs 1-10 on side 1, 11-20 on side 0), cylinder 0 (both sides, one track 16 x 256) reserved. The inversion is applied in `readLogical` (detect.cpp) and `Volume::readBytes/writeBytes`; detection tries inverted readings when the image is mostly 1A with hardly any E5 (`looksInverted`). New discs of it can't be made yet (per-side sector IDs). A raw file of one (408576 bytes: the odd 16 x 256 track makes it not a uniform layout) isn't read. The MZ-800 P-CP/M disc (`PCPM.SYS`, 40 cylinders x 2 x 8 x 512, boot track 16 x 256 on cylinder 0 side 1) is outback: `oddTrackPenalty` marks down readings that put a track of another shape in the middle of the data (outout), so outback ranks first. S2 bit 7 (BDOS's "written to" flag) is tolerated in directory entries.
-  - `vector-26x256`: Vector Graphic CP/M 2.2 56K (`CPM22-56K-DSDD.DSK`, 376064 bytes): track 0 FM 26 x 128, then 56 tracks of
-    26 x 256, skew 5 (sectors 5 apart: the directory is logical sectors 0-5 of the third track), 4K blocks, 48 directory
-    entries (the rest of the first block holds unrelated system data, which is why 128 would read junk), 2 boot tracks.
-    cpmtools reads it as `seclen 256 tracks 56 sectrk 26 blocksize 4096 maxdir 48 skew 5 boottrk 1 offset 3328` (fsck clean).
-    The generic search finds it too, read-only, with 128 entries: `detect()` also tries raw layouts of one track 0 of
-    26 x 128 or 16 x 128 FM and the rest in 256/512/1024-byte sectors (one side).
-  - `osborne-8dd`: worked out by detection from 7 real Osborne 8-inch discs (track 0 FM 26 x 128, then MFM
-    8 x 1024, skew 3, 2 boot tracks, 2K blocks); directory size 128 is the whole-block reading (96 would read
-    the same discs). New discs made here have the same track structure as the real ones (checked with
-    `tests/decode_container.py` and the IMD dumper).
-  - `rm-dd`, `rm-qd`: cpmtools' layouts plus track 0 FM 16 x 128 from Adam Sampson's RM archiving notes
-    (offog.org); **not checked against a real RM disc**.
-  - On double-sided discs `makeBlank` gives only cylinder 0 head 0 the track 0 shape. Raw layouts
-    (`RawLayout::t0sectrk/t0seclen`) give cylinder 0 of **each** side the track 0 shape, as on the RM discs.
-- **Microbee DS80** (`microbee-ds80`, `microbee-ds84`; parameters from uBee's patched cpmtools, credited in
-  `THIRD-PARTY-NOTICES.md` and the diskdefs comments): 80 cylinders x 2 sides, 10 x 512, skew table `1,4,7,0,3,6,9,2,5,8`.
-  DS80 numbers the sectors of its reserved tracks (cylinders 0-1) 1-10 and those of every data track 21-30; the
-  diskdef key `datasect 21` (`Format::dataId`, same name as uBee's) makes `makeBlank` do that for new IMD / DSK
-  discs (a raw image records no IDs). Reading needs nothing: sectors are addressed by ID order. Checked on
-  `games_demo_ds80.dsk` (DS80) and `peter_broughton_v2.2p_2of2_ds84.dsk` (DS84).
-- **Tatung Einstein** (`einstein`): 40 tracks x 10 x 512, one side, sector IDs 0-9, 2 reserved tracks, 2K blocks, 64
-  entries, no skew. Its DPB says DSM 257 although the disc holds about 95 blocks, so the directory has **two-byte block
-  pointers** (8 an entry); the diskdef key `ptr16 yes` (`Format::ptr16Forced`) says so, and only the pointer width
-  changes (the real block count still limits the disc). cpmtools has no such key (Damien Guard's workaround is to fake
-  `tracks 103`), so `fstest` / `verify_independent.sh` leave `einstein` out. Before the definition existed, `amp1`
-  (same geometry, one-byte pointers) matched and read files as blocks 1,0,2,0,... - high confidence, wrong data.
-  Now such a reading is flagged (`DirScore::widePtr`: two or more small block numbers in a row then zeros, as many
-  as the records need; a real one-byte directory has a nonzero byte beside each pointer), is never "clean", and says
-  so in its explanation. Tools > Disc format has a "Two-byte block pointers" box for trying it by hand (`ptr16`);
-  the summary line says "two-byte block pointers" for a forced reading. No real image trips the signal.
-  Checked on `JSWSHOW_SHOWJUMPER.dsk` and `JSWSHOW_JETSETWILLY.dsk` (the latter has a CRC-error sector on the last
-  track, so it opens read-only, and a file whose name is eleven spaces: `blankNamedFile` in `detect.cpp` accepts one
-  with blocks instead of calling it nonsense).
-- **National character sets**: names on Danish / Norwegian / Swedish discs use `[ \ ] { | }` for ÆØÅ æøå (German: ÄÖÜ äöü),
-  so detection's name check allows `[`, `]` and `|` (`<>,;:=?*` are still refused). The RC Piccolo COMAL discs have
-  nine such names (`brøkregning`, `årsløn_1`, ...) that used to count as nonsense entries. Names are shown and
-  extracted as they are on the disc (`br|kregning`); `|` is not a legal Windows file name, so extracting to Windows has
-  not been checked.
-- **Names with no base name**: `.HEX` / `.PRN` (the assembler leaves them, empty, when run without a file name) are
-  files, not nonsense: `blankNamedFile` in `detect.cpp` accepts a blank base name with a valid extension, with or
-  without blocks, and a name of eleven spaces only when it holds blocks (the Einstein Jet Set Willy disc).
-- **A separate disc on each side** (`separatesides yes`; `Format::fixedHead` picks the side; cpmtools ignores the
-  key): `tracks` etc. describe one side. Detection tries every single-sided library format this way on a
-  two-sided disc (scoring side 0, plus side 1 if it reads sensibly, plus each side's track 0 shape); the window
-  then attaches one `Cpm::Volume` per side (`m_vols[2]`), and every row, `FileRef`, drag payload and import
-  carries the side. Drags between the two sides of one window are allowed; drags back onto the same side are not.
-  Not yet: generic search for separate sides (only library formats).
-  **New discs of this kind**: a single-sided definition with `twosided yes` (`rm-dd`, `rm-qd`) gets a "Double-sided: a
-  separate disc on each side" box in File > New disc image; ticking it gives `separateSides` + 2 heads, and `makeBlank`
-  formats both sides (each side its own directory, stamps and label if asked) and, as IMD/DSK, gives cylinder 0 of
-  **each** side the track 0 shape (FM 16 x 128). As a raw image the file is side 0 then side 1 (`RawLayout::sideBySide`)
-  with a track 0 on each, 732,160 bytes for `rm-qd` - the size of the real discs (`BASIC-disk1.img`, `basiczasm.img`),
-  detected back as `rm-qd`, a separate disc on each side. A single-sided format with its own track 0 is still refused as
-  raw. The boot track is made blank (E5), not with RM's boot code. Tests: `fstest rm-qd+ds raw|imd|edsk` (both sides
-  written, committed, reopened, detected), `tests/verify_rm_sides.py` (cpmtools reads each side of the raw file: first
-  track padded to 9 x 512, `fsck.cpm` clean, every file exact; also run on the real images), and guitest.
-- **Research Machines 480Z** (checked on three of the owner's real discs: `BASIC-disk1.img`, `BASIC-disk2.img`,
-  `basiczasm.img`, raw, 732,160 bytes): side 0 then side 1 in the file; each side = FM track 0 of 16 x 128 (RM
-  boot code, "Quad density disc"), then 79 tracks of 9 x 512; each side is an `rm-qd` disc (skew 5, 3 boot
-  tracks, 2K blocks, 128 entries). All 20 files match cpmtools (run on each side cut out of the file); an edit of
-  side 1 left side 0 and both track 0s byte-identical and passes `fsck.cpm`. The images are the owner's, not in
-  the repo: `guitest --rm <image>` and `run_all.sh` (from `<real>/rm/*.img`) use them when given.
-- **Torch CP/N** (`torch-cpn`, key `torchcpn yes`; Torch Z80 second processor; checked on five of the owner's real
-  discs, `SIG0.dsd`, `AdventureB01.dsd`, `TurboPascal30A.dsd`, `WordStar.dsd`, `StandardUtilities2.dsd`: raw, interleaved, 409,600 bytes, not in the repo).
-  **Not a CP/M directory**, so no CP/M reading or block size can describe it: the program's CP/M search finds
-  nothing and rightly called these discs "not CP/M" before. 80 cylinders x 2 sides x 10 x 256 (FM), file cylinder
-  by cylinder. A sector address word is cylinder << 5 | side << 4 | sector, so logical sector = (word >> 4) * 10 +
-  (word & 15), which is exactly the `alt` order the format uses. From the notes the owner supplied (a source comment
-  on the directory and the address word) plus what the discs showed (each fact held on all five unless noted):
-  - directory: track 0 and track 1 sectors 0-5, 256 entries of 16 bytes; **never-used entries are all zero** (not E5); deleted ones are below.
-    Entry: word 0 = the first index sector (bit 15 = L2, else L3), word 1 = highest record number, byte 4 user,
-    bytes 5-12 name, 13-15 extension, bit 7: 5-8 F1'-F4', 13 R/O, 14 SYS, 15 archived (the same positions as CP/M's
-    attribute bits in the 8.3 name). Entries with index address **FFFF** are **deleted files**: CP/N keeps the name, user and record
-    count and frees the sectors in the map. Evidence: `WordStar.dsd`'s six (`CREF80.COM`, `L80.COM`, `LIB.COM`,
-    `LIB80.COM`, `M80.COM`, `TEN.MAC`, user 20, the last six slots) each have their old L3 index sector intact in
-    free space, in the same order, with exactly the entry's record count, and the data still reads as those
-    programs; the map marks none of it. `SHOW.C` on `SIG0.dsd` is another. Torch MCP 1.22 writes FFFF into a word
-    in its map-handling code (around $9649), not traced further. So, as with CP/M's E5: deleted entries are not
-    listed, a new file takes the first all-zero or deleted slot, and Delete here writes FFFF over word 0 and keeps
-    the rest, as CP/N does (`fstest` checks both; `run_all.sh` checks the slot on the real discs). An undelete
-    would be possible (find a free L3 whose sectors are free and match the record count) but isn't written. An
-    empty file gets one record of ^Z, since an entry can't be without data.
-  - **index**: an L3 sector lists up to 128 data sectors; files of up to 128 sectors use one L3 (TURBO.COM, 121),
-    larger ones an L2 listing L3s (ADV.COM, 141). Lists end at the first zero word. Data pointers carry **4000**
-    (first record in use) and **8000** (second): every sector C000 except the last of a file with an odd number of
-    records (4000); L2 pointers have no flags.
-  - **allocation map** (track 1 sectors 6-7): word t = cylinder * 2 + side, bit s = sector s in use; bits 10-15 always
-    set; words 160-255 FC00 (three discs) or FFFF (two; new discs get FC00); tracks 0 and 1 all marked. On every disc it marks exactly the sectors the files
-    reach. Track 1 sectors 8-9 are the same bytes on every disc (a D6 D7 ... ramp, then zeros) but sector 9's byte 254
-    (85 on three discs, 80 and 47 on the others; detection ignores it, new discs get 85):
-    written by the formatter, so new discs get them and detection takes them as evidence (+6; the map's fixed bits
-    are required at all, +10). Free sectors are E5.
-  - sizes are whole records (no byte count): a file added comes back padded with ^Z to its last record, as on CP/M
-    2.2 (`fstest` expects that for Torch). User numbers 0-31 (`WordStar.dsd` uses 0, 10 and 20). No labels, no time stamps.
-  - writing: index sectors first, then data, lowest free sector first (a sector is free when no file reaches it and
-    the map doesn't mark it). Real CP/N's own order is not known and doesn't matter to a reader. Adding a 70,000-byte
-    file to a copy of each real disc writes only sectors that were free, the directory and the map, and
-    `tests/torch_check.py` (an independent reader from the notes alone) reads every file, old and new, and finds
-    the map exact. **Not yet checked by Torch's own CP/N** reading a disc this program wrote.
-- **TeleDisk**: 12-byte header (`TD` normal, `td` advanced), optional comment block, tracks (count, cylinder,
-  head, crc), sectors (C H R N flags crc; data block with length and encoding 0 raw / 1 repeated pair /
-  2 RLE). Checked against MAME's reader and on real Kaypro and Zorba images. 1.x advanced compression (LZW) is
-  refused.
-- **DSK / EDSK**: standard (fixed track size) and extended (track size table); sector data in recorded order;
-  weak or short sectors (stored length != nominal) are read but never written.
-
-## Behaviour details (moved from the README)
-* Exact file sizes are kept where the disc can record them: the last-record byte count used by CP/M 3 and
-  cpmtools.
-* A short raw image is padded in memory and saved full size.
-
-* National character sets and retro-files: `XItem::name` is always the raw disc name (the spec says bytes unchanged); `XItem::hostName` is the national-set name used only for the file written to the host. `importOne` keeps a `cpm` source name exactly (allowing `[ \ ] |` for it), converts only host file names (`srcFs` empty) through the disc's set, and treats other filesystems' names as bytes.
-* The status bar (right of the line): one button, `Names: <character set>, upper case|any case` (+ "(national letters?)" when `Nat::scan` suspects one), whose menu holds the lower-case option and the Character set dialog (the same QActions as in Tools; `showLower` / `refreshNamesButton` keep it current). The status line itself is a `StatusLabel` (mainwindow_p.h) given several versions of its text, longest first (`setVariants`): it shows the longest that fits, ends the last with "...", and keeps the longest in its tooltip - never put a long message in a plain QLabel there. Settings keys per disc: `charset/<sha1>`, `lowercase/<sha1>`.
-* Adding host files with letters ASCII can't hold (`askNatForNames`, once per drop via `ImportCtx::natAsked`): a question, then the Character set dialog constructed with the incoming names - it says which letters, which sets have a place for them (`Nat::candidatesFor`, in list order; ä ö are both se-fi and de), preselects the first and previews each name as it would be written. `autoAnswer` skips the question (tests).
-* Lower-case names: `Volume` upper-cases names unless its extra name characters include `a`-`z` (`Nat::lowerLetters()`); MainWindow sets that from `m_lowerOk` (Tools > Allow lower-case file names + status bar tick box; auto from `Nat::usesLowerCase` = any lower-case name; a new disc starts off, else the per-disc `lowercase/<sha1>` setting). Drag-out keeps a name with lower-case letters as is, else lower-cases it. A name from a `cpm` source is never case-changed.
-* Host names on extraction (`writeHost`): names with lower-case letters keep them; upper-case names are lower-cased unless that clashes, then they keep their case; only a case-insensitive host (found by probing the folder) adds `_2`. `importItems` strips such a `_N` again when what is left matches another dropped name (case-insensitively), so a real `foo_1.txt` stays.
-* National character sets are display/transfer only: the directory always holds the raw 7-bit bytes. Tests: `tests/chartest` (needs COMAL discs in `real/nat` for the guess), and a section in guitest.
-
-## How detection works (detect.cpp)
-(The "How scoring works" help in formatdialog.cpp must match these rules: when a score, bonus or tie-break changes here, change the help too; guitest checks it mentions the main sections.)
-(Raw images: readings that reach the same bytes in the same order - 32 x 128 on one side, 16 x 256 on two, 8 x 512 - score the same, so `detect()` breaks the tie by `plausibleGeometry` (35/40/77/80 cylinders a side, common sector layouts; under a point) and shows one row, listing the others in its evidence (`readingSignature`).)
-1. Physical layouts: the container's own; for raw images every library format whose size fits (exactly, or
-   a truncated image at least 60% of it) and every factorisation into 128-1024-byte sectors, common sectors per
-   track, 30-86 cylinders, 1-2 heads.
-2. Library candidates that fit physically are evaluated directly (+3 for being known; +4 / -6 if the format
-   has a sector-ID base and the disc's IDs match / don't). The PCW spec (+15) and a remembered format (+20) too.
-   A Torch CP/N format (`torchcpn`) is scored by `evaluateTorch` instead: its map's fixed bits are required (else
-   no reading), then +10 for the map, +6 for the formatter's sectors, +4 a file, +2 a sound index chain, -15 an
-   entry that isn't a file, -8 a broken chain or a sector used twice. It is never "empty but used", and another
-   filesystem's look-alike structures don't veto it (its own are stronger evidence).
-3. The search: for each side order x boot tracks (0-6) x skew (1..sectrk-1; none beyond 32 sectors/track),
-   read a window where the directory would be and classify the entries once; then for each block size and
-   directory size (whole blocks only) score: +4 per file entry, +2 per entry whose block count matches its
-   records, -3 mismatches, -15 nonsense entries, -8 bad/shared pointers or duplicate extents, +6 when the
-   lowest file block is the first after the directory.
-4. The best 16 search results get the content checks (+3 text files that stay text to their ^Z, -8 that
-   don't, +-1 plausible .COM starts, -4 files starting in E5 space), then are named after an identical library
-   format if there is one.
-5. Readings whose "directory" is mostly nonsense, or score below -5, are dropped. One per layout is kept.
-5a. Content checks also rank rivals by blocks landing on nothing: -1 per never-written (all E5) sector inside the first
-   8K of a file, -4 per file of only zeros. Not a verdict: real files have a few (Osborne DIAG/OS1 discs), so it only
-   separates readings of the same disc. It put the RC Piccolo COMAL discs on side order `alt`, 6 reserved tracks (0
-   never-written sectors; out-back and out-out gave 3-12) and moved nothing among the 58 real images. The idea is from
-   AutoArchaeologist's `fs_abc.py` (see `THIRD-PARTY-NOTICES.md`).
-5b. Confidence: a reading is "clean" (and so can be high confidence and writable) only with no nonsense entries, bad or
-   shared pointers, text files that stay text, and no more than a quarter of the file entries whose pointer count
-   disagrees with their record count ("block counts match record counts in N of M"). A wrong pointer width or block
-   size shows up that way first: a two-byte-pointer directory (the Tatung Einstein's) read with one-byte pointers
-   gave 1 of 2, and files with half their blocks missing. All 58 real images we test on have 0 such entries.
-5c. The known-format points (+3 known, track 0 shape, DFS catalogue, sector-ID base) are one function,
-   `Detect::scoreKnownFormat`: detection uses it for library formats and the format dialog for a format typed by hand
-   that equals one (`Format::sameLayout`), so a score means the same whichever way the reading was made. The dialog's
-   "How scoring works" button (`showScoringHelp` in `formatdialog.cpp`) lists every weight; change the numbers in
-   `detect.cpp` and that text together.
-6. Not CP/M at all: an empty directory fits every layout of the right shape, so a disc whose directory area is
-   just E5 (an Acorn DFS disc formatted by Acorn's FORM, for one) used to open as an empty CP/M disc. Now (a) an
-   empty reading whose directory is one repeated byte is dropped if the rest of the disc (outside that format's
-   boot tracks; data before an `offset` counts) has 4 or more non-blank 128-byte records - formatting writes every
-   track, so a fresh disc has none; and (b) `foreignFilesystem()` recognises Acorn DFS catalogues, ADFS old map
-   (Hugo/Nick at 0x201 and 0x6FB) and D/E, and FAT (BPB, or a media byte + FF FF at 0 or 512, as on DOS 1.x and
-   Acorn DOS Plus 800K): with no CP/M files that means "not CP/M" (pointing at Acorn Disk Wrangler); with files,
-   the reading is shown but read-only until confirmed. A remembered (confirmed) format is exempt from both.
-7. Confidence: `high` if nothing with a different file listing comes within 6 points; `medium` if a known
-   format with a different layout lists the same files; `low` for empty directories. `safeToWrite` per rule 6.
-
-Real-disc results (tests below): Osborne SD (osb1sssd, skew 2, including rotated tracks) and DD, Osborne 8"
-mixed-density (FM boot track + 8x1024 MFM, skew 3, found by search), Kaypro 4 TeleDisk (kpiv), Zorba CP/M-86
-TeleDisk (search), Heathkit H8D (search), z80pack 8" and 4MB hard discs; MS-DOS and UCSD p-System discs are
-correctly not read as CP/M (an MS-DOS boot sector gets a hint pointing at Acorn Disk Wrangler).
-
-## Build and test
-
-**Version.** `version.pri` (qmake) and `version.cmake` (CMake) compile in `git describe --tags --always --dirty`
-as APP_VERSION, shown in Help > About; "unknown" without git, or set it with `qmake APP_VERSION=...` /
-`-DAPP_VERSION=...`. It is read when qmake/CMake runs, so re-run them after a new commit or tag. Both files are
-shared with the other wrangler.
-
-How to build on each platform and how releases work, for people: `docs/building.md` (shared); a 32-bit Windows 7
-build (Qt 5.15, MinGW 8.1 32-bit; not tried yet): `docs/building-windows-32bit.md` (shared).
-
-**Release builds and licences.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages, linked to
-Qt's shared libraries (keep it that way: the LGPL lets users replace them). Each is built twice: `ci/build.sh`
-builds and deploys, `ci/collect-licences.sh` gathers the licences of every shipped library into
-`licences-bundled.qrc`, and `ci/build.sh` again compiles them in (Help > Licences, `licences.cpp`). On Linux, `ci/make-deb.sh` then packages the same build as a `.deb` that depends on the system's Qt
-(dpkg-shlibdeps; built on 22.04 against Qt 6.2, it installs on Ubuntu 22.04+ and Debian 12+ - the t64-renamed
-libraries of 24.04 provide the old names; checked in clean 22.04-built / 24.04-installed chroots, Qt 6 and Qt 5),
-and the workflow installs it and starts it. On Windows, for a tag or Run workflow only, `ci/installer.iss` (Inno
-Setup) packages `deploy/` as `...-setup.exe` and the workflow installs, starts and uninstalls it; each program's
-AppId in it is fixed for good. A new source
-file in the .pro also goes in CMakeLists.txt and any `tests/*.pro` that build `mainwindow.cpp` (they need
-`../licences.cpp`). `ci/`, `licences.*`, `licences/`, `buttonbar.h`, `appsettings.h`, `fileopen.h` and the workflow are shared with Acorn Disk Wrangler: keep them
-identical.
-```
-qmake cpmdiskwrangler.pro && make          # or CMake
-tests/run_all.sh <build dir> [<real image dir from tests/fetch_real_images.sh>] [<Acorn Disk Wrangler source>]
-```
-Needs Qt 6 or Qt 5.15 widgets, and both must keep building (see Acorn Disk Wrangler's AGENTS.md for the
-`#if QT_VERSION` places, the same here); the independent checks need **cpmtools** and **libdsk-utils** (Ubuntu packages) and Python 3.
-Each test is its own `.pro` in `tests/`:
-
-| Test | What |
-|---|---|
-| `detecttest [-v] [-x dir] images...` | prints the ranked readings and listing; `-x` extracts every file (compare with cpmtools: `tests/cmp_cpmtools.sh`) |
-| `fstest <out> <format> raw\|imd\|edsk` | new disc, awkward file sizes, replace/delete/rename/attrs, commit, reopen **by detection**, verify; leaves material for `verify_independent.sh` |
-| `fstest roundtrip images...` | unchanged images serialise byte-identically |
-| `fstest atomic <out>` | failed adds leave nothing behind |
-| `fstest library` | built-in definitions that replace cpmtools ones have the same layout and `dirblks` |
-| `fstest addto <image> NAME size` | detect, add a file, save (for checking edits of real images with cpmtools) |
-| `tests/verify_independent.sh <fstest outdirs>` | **independent**: Python IMD/DSK decoder + libdsk (where its geometry probe is right) must see the same sectors; cpmtools must read every file exactly and `fsck.cpm` must be clean |
-| `guitest <dir> [osborne.imd [teledisk.td0]] [--adw dir]` | offscreen GUI: host drops (userN folders, flattening, .inf skipped), real drag events between windows, drag-out JSON, drops made by Acorn Disk Wrangler's code, read-only rules, format dialog, TeleDisk Save As, the menu and button order, Copy / Paste with the real keys (`QTest`: the `.pro` has `QT += testlib`); screenshots in `<dir>/shots`. `run_all.sh` fails unless it ends "all ok" |
-| `tests/interop_adw` (qmake `ADW=<Acorn Disk Wrangler source>`) | built from **Acorn Disk Wrangler's own dragout.cpp**: `make <dir>` writes its drags (ADFS, DFS, FAT) for guitest; `read <json>` reads ours |
-| `tests/torch_check.py <image> <outdir>` | **independent** Torch CP/N reader and checker (from the format notes only): extracts every file, checks every chain, the record flags and that the map marks exactly the sectors in use. `verify_independent.sh` uses it for `fstest`'s Torch discs (cpmtools can't read them); `run_all.sh` compares its files with ours for every `<real>/torch/*.dsd` (the owner's discs, not in the repo) and adds a file to a copy of each |
-| `tests/acornz80_check.py <dsd> <outdir>` | **independent** Acorn Z80 reader (from Application Note 007 only); `run_all.sh` compares its files with ours for every `<real>/acorn/*.dsd` (the owner's discs, not in the repo) |
-| `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
-| `settingstest` | where settings live on Linux: an installed program has no portable mode; an AppImage keeps `<program>.ini` beside the `.AppImage` file (shared with Acorn Disk Wrangler) |
-| `mkicon <dir>` | the PNG icons |
-
-**Verify independently, not with our own code.** Our reader agreeing with our writer proves little. This
-caught a real bug (a built-in `kpiv` without `dirblks 2`, so new files were put in a block the Kaypro reserves
-for the directory) that every self-test had passed.
-
 ## The window (kept in step with Acorn Disk Wrangler)
 - **Menus, button bar and context menu have the same order in both programs** (owner's rule; one program's extra
   items may sit in between). File: New window (Ctrl+Shift+N), New disc image (Ctrl+N), Open | Save, Save as,
@@ -372,14 +98,49 @@ for the directory) that every self-test had passed.
   user). A clipboard we still own is cleared at exit (its files go with the drag folders). Checked across real
   processes on X11 (Xvfb + xclip); not tested with Windows Explorer or macOS Finder.
 
-## Testing pitfalls (things that bit us)
-- **libdsk's geometry probe is unreliable** for many layouts (it guessed a Kaypro disc as 9 sectors from 1); its
-  `dsktrans` output is only trusted when `dskid`'s geometry matches. It also fails ("Missing address mark") on
-  some discs whose geometry it does get right. Hence the Python decoder.
-- **cpmtools can't read the last blocks of some z80pack images** ("Bad parameter"): the files we read there were
-  checked by eye (PROFILE.SUB is a SUBMIT script; WM.COM continues as Z80 code with its own messages).
-- cpmtools reads `./diskdefs` before `/etc/cpmtools/diskdefs`: the scripts write one into a temporary folder.
-- The cpmtools 4MB `z80pack-hd` listing crashes cpmtools on hd-tools.dsk (malloc error); our reading checks clean.
+## Names and character sets
+* National character sets and retro-files: `XItem::name` is always the raw disc name (the spec says bytes unchanged); `XItem::hostName` is the national-set name used only for the file written to the host. `importOne` keeps a `cpm` source name exactly (allowing `[ \ ] |` for it), converts only host file names (`srcFs` empty) through the disc's set, and treats other filesystems' names as bytes.
+* The status bar (right of the line): one button, `Names: <character set>, upper case|any case` (+ "(national letters?)" when `Nat::scan` suspects one), whose menu holds the lower-case option and the Character set dialog (the same QActions as in Tools; `showLower` / `refreshNamesButton` keep it current). The status line itself is a `StatusLabel` (mainwindow_p.h) given several versions of its text, longest first (`setVariants`): it shows the longest that fits, ends the last with "...", and keeps the longest in its tooltip - never put a long message in a plain QLabel there. Settings keys per disc: `charset/<sha1>`, `lowercase/<sha1>`.
+* Adding host files with letters ASCII can't hold (`askNatForNames`, once per drop via `ImportCtx::natAsked`): a question, then the Character set dialog constructed with the incoming names - it says which letters, which sets have a place for them (`Nat::candidatesFor`, in list order; ä ö are both se-fi and de), preselects the first and previews each name as it would be written. `autoAnswer` skips the question (tests).
+* Lower-case names: `Volume` upper-cases names unless its extra name characters include `a`-`z` (`Nat::lowerLetters()`); MainWindow sets that from `m_lowerOk` (Tools > Allow lower-case file names + status bar tick box; auto from `Nat::usesLowerCase` = any lower-case name; a new disc starts off, else the per-disc `lowercase/<sha1>` setting). Drag-out keeps a name with lower-case letters as is, else lower-cases it. A name from a `cpm` source is never case-changed.
+* Host names on extraction (`writeHost`): names with lower-case letters keep them; upper-case names are lower-cased unless that clashes, then they keep their case; only a case-insensitive host (found by probing the folder) adds `_2`. `importItems` strips such a `_N` again when what is left matches another dropped name (case-insensitively), so a real `foo_1.txt` stays.
+* National character sets are display/transfer only: the directory always holds the raw 7-bit bytes. Tests: `tests/chartest` (needs COMAL discs in `real/nat` for the guess), and a section in guitest.
+
+## Build
+```
+qmake cpmdiskwrangler.pro && make          # or: cmake -S . -B build && cmake --build build
+```
+The `.pro`, `CMakeLists.txt`, `.rc`, `.desktop` and `icons/` stay at the top level (the CI scripts look for `./*.pro`);
+the program's sources and its compiled-in diskdefs are in `src/`. A new source file goes in the `.pro`, in
+`CMakeLists.txt`, and in any `tests/*.pro` that builds `mainwindow.cpp` (they need `../src/licences.cpp` too).
+
+* **Qt 6 and Qt 5.15 must both keep building** (see Acorn Disk Wrangler's AGENTS.md for the `#if QT_VERSION`
+  places; the same here). qmake uses whichever `qmake` you run; CMake prefers Qt 6 and `-DUSE_QT5=ON` forces 5.
+* **Version.** `version.pri` (qmake) and `version.cmake` (CMake) compile in `git describe --tags --always --dirty` as
+  APP_VERSION, shown in Help > About; "unknown" without git, or set it with `qmake APP_VERSION=...` /
+  `-DAPP_VERSION=...`. It is read when qmake/CMake runs, so re-run them after a new commit or tag.
+* **Releases.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages linked to Qt's *shared*
+  libraries (keep it that way: the LGPL lets users replace them). Each is built twice so that the licences of every
+  shipped library (`ci/collect-licences.sh` -> `licences-bundled.qrc`) are compiled in (Help > Licences,
+  `src/licences.cpp`). Linux also gets a `.deb` against the system's Qt (`ci/make-deb.sh`; built on Ubuntu 22.04, it
+  installs on 22.04+ and Debian 12+); Windows, for a tag or Run workflow only, an Inno Setup installer
+  (`ci/installer.iss`; each program's AppId in it is fixed for good). A tag `vX.Y.Z` publishes a GitHub release
+  whose notes are `release-notes/<tag>.md` when that file exists. The details for people are in `docs/building.md`;
+  a 32-bit Windows 7 build (not tried yet) in `docs/building-windows-32bit.md`.
+* **Shared with Acorn Disk Wrangler - keep identical:** `ci/`, the workflow, `src/licences.*`, `licences/`,
+  `src/buttonbar.h`, `src/appsettings.h`, `src/fileopen.h`, `version.pri`, `version.cmake`, `docs/building.md`,
+  `docs/building-windows-32bit.md` and `docs/retro-files-format.md`.
+
+## Test
+```
+tests/run_all.sh <build dir> [<real image dir from tests/fetch_real_images.sh>] [<Acorn Disk Wrangler source>]
+```
+builds every test and runs them all, with the independent checks; it needs **cpmtools**, **libdsk-utils** (Ubuntu
+packages) and Python 3, and ends "ALL PASSED". [docs/testing.md](docs/testing.md) lists each test. For a UI change,
+`guitest` is the one that matters (menus, buttons, drops, drags, the format dialog, Copy / Paste; screenshots in
+`<dir>/shots`).
+
+## Pitfalls (things that bit us)
 - **The format dialog's form must keep what was typed.** Deriving a format normalises it (one side forces side
   order `alt`), so refilling the form from a tried reading changed the next try: 1 side then 2 sides read nothing
   on an `outback` disc. A reading tried by hand is selected without refilling the form (`m_keepForm`), and one-sided
@@ -391,11 +152,6 @@ for the directory) that every self-test had passed.
   drop handler are deferred with `QTimer::singleShot`; `MainWindow::autoAnswer` answers the questions in tests.
 - A drag's temporary folder is deleted when the program exits (as the retro-files spec says): copy it if a test
   needs it afterwards.
-
-## Real images used for testing (not in the repo)
-`tests/fetch_real_images.sh <dir>` clones them: Myrcurial/o1next (about 40 real Osborne IMD/TD0 discs including
-8-inch source discs whose files that project extracted independently - ours match byte for byte), udo-munk/z80pack
-(8" CP/M 1.3-3, MP/M, 4MB hard discs, UCSD and FLP-80DOS negatives), lesbird/H89 and FujiNetWIFI (Heathkit H8D).
 
 ## Known gaps / ideas
 Other BBC Micro CP/M systems; undeleting Torch CP/N files (FFFF entries); a check of Torch CP/N discs written here on a real Torch (or an emulator running CP/N);
