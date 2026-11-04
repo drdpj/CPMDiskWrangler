@@ -168,13 +168,33 @@ end
 
 # Microbee SS80: the layout of cpmtools' microbee40 (2K blocks, 128 entries, 2 reserved tracks, the skew table
 # 1,4,7,0,3,6,9,2,5,8, sector IDs 1-10 on every track) on one side of 80 cylinders, so that it can be named and made new.
-# (DS40, 40 cylinders on two sides, is cpmtools' microbee40 itself. A raw file can't tell the two apart: same bytes.)
+# (DS40, 40 cylinders on two sides, has the same layout and the same bytes as a raw file: microbee-ds40 below.)
 diskdef microbee-ss80
   desc "Microbee 3.5-inch SS80 (80 track, single sided), 390K"
   source "Microbee SS80 discs: cpmtools' microbee40 layout on one side of 80 cylinders. Checked on one real disc (ftl_modula2_disk1_ss80): 80 cylinders x 1 side, sector IDs 1-10 on every track, 2 reserved tracks, 2K blocks, 128 entries."
   seclen 512
   tracks 80
   heads 1
+  sectrk 10
+  blocksize 2048
+  maxdir 128
+  skewtab 1,4,7,0,3,6,9,2,5,8
+  boottrk 2
+  secbase 1
+  os 2.2
+end
+
+# Microbee DS40: the standard 5.25-inch Microbee disc, 40 cylinders on two sides, as cpmtools' microbee40 describes it (80
+# logical tracks, 2K blocks, 128 entries, 2 reserved tracks, the same skew table, sector IDs 1-10). microbee40 itself doesn't
+# say how many sides there are, and 80 tracks with no "heads" is read as one side of 80 cylinders (SS80), so a new disc made from
+# microbee40 was a single-sided 80-cylinder disc that a DS40 drive can't use. The two sides alternate, as on every Microbee disc.
+diskdef microbee-ds40
+  desc "Microbee 5.25-inch DS40 (40 track, double sided), 390K"
+  source "Microbee DS40 discs: cpmtools' microbee40 layout on 40 cylinders x 2 sides (80 logical tracks, sides alternating), 2K blocks, 128 entries, 2 reserved tracks (cylinder 0, both sides), sector IDs 1-10 on every track. Checked on one real disc (dtoolkit_disk_3_ds40): 40 cylinders x 2 sides, IDs 1-10, side 0/1 in the ID fields, 35 files read; detection ranks this format first, well ahead of any found by searching."
+  seclen 512
+  tracks 80
+  heads 2
+  sides alt
   sectrk 10
   blocksize 2048
   maxdir 128
@@ -247,7 +267,7 @@ describe mdsad350 "North Star MDS-A-D 350K"
 describe bw12 "Bondwell 12"
 describe bw14 "Bondwell 14"
 describe v1050 "Visual 1050"
-describe microbee40 "Microbee 40 track"
+describe microbee40 "Microbee 40 track (cpmtools: 80 tracks on one side; use microbee-ds40 for a double-sided disc)"
 describe rm-sd "Research Machines single density"
 describe myz80 "MYZ80 hard disc"
 describe mds-dd "Intel MDS double density"

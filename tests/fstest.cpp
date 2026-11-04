@@ -204,7 +204,9 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     CHECK(!r.ranked.isEmpty(), "detection found nothing: " + r.why);
     if (!r.ranked.isEmpty()) {
         const Cpm::Format &got = r.ranked.first().fmt;
-        CHECK(got.sameLayout(f), QString("detection chose %1 (%2), not %3").arg(got.name, got.summary(), fname));
+        // A raw file can't tell Microbee DS40 (40 cylinders x 2) from SS80 (80 x 1): the same bytes, so either is right.
+        const bool rawDs40AsSs80 = fname == "microbee-ds40" && got.name == "microbee-ss80" && im3.kind() == Disk::Kind::Raw;
+        CHECK(got.sameLayout(f) || rawDs40AsSs80, QString("detection chose %1 (%2), not %3").arg(got.name, got.summary(), fname));
         printf("  detected: %s, confidence %s, %s\n", qPrintable(got.name), qPrintable(r.confidence), r.safeToWrite ? "writable" : "read-only");
         Cpm::Volume v3;
         if (v3.attach(&im3, r.ranked.first().fmt, &err)) verify(v3, ex, "after reopening by detection");
