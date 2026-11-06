@@ -43,23 +43,6 @@
 enum Roles { RoleKind = Qt::UserRole, RoleUser, RoleName, RoleSide };
 enum RowKind { RowRoot = 0, RowUser = 1, RowFile = 2 };
 
-// The private drag types are the family's (core/diskwrangler/xfer/mime.h); the old names stay until a later step.
-#define CPMDW_MIME_ITEMS  DW_MIME_ITEMS
-#define CPMDW_MIME_SOURCE DW_MIME_SOURCE
-#define CPMDW_MIME_CLIP   DW_MIME_CLIP
-
-// The helpers below moved to DiskWranglerCore (namespace dw). The call sites still use the old names; these
-// forwarding declarations keep them building until a later step writes dw:: at each and deletes this block.
-using dw::anyCase;
-using dw::ColSpec;
-using dw::deleteKeys;
-using dw::hostSafeName;
-using dw::NumPad;
-using dw::rootLabel;
-using dw::setNumCell;
-using dw::setupTreeColumns;
-inline QString fmtBytes(qint64 b) { return dw::fmtBytes(b, dw::SmallSizes::AsBytes); }     // CP/M shows a size under 1 KB in bytes
-
 // A file (or a host folder) read out of a disc or the host, ready to be written to a CP/M disc - or a CP/M file
 // ready to be written to the host. The attribute fields are filled from whatever the source knows.
 struct XItem {

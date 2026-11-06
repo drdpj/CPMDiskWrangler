@@ -25,8 +25,6 @@
 
 namespace ViewText {
 
-using dw::text::hexDump;
-
 // CR / LF / CRLF become newlines, tabs are kept, other control characters are shown as '.'. With stopAtEof the
 // text ends at the first ^Z (*eofAt is set to its offset, or -1). With stripBit7, bit 7 is ignored (WordStar).
 QString cpmText(const QByteArray &d, bool stopAtEof, bool stripBit7, int *eofAt = nullptr);

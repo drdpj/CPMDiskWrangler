@@ -52,6 +52,7 @@
 #include "../src/newdisc.h"
 #include <QCheckBox>
 #include <diskwrangler/app/fileopen.h>
+#include <diskwrangler/xfer/mime.h>
 #include "../src/mainwindow.h"
 
 static int failures = 0;
@@ -496,7 +497,7 @@ int main(int argc, char **argv) {
         findRow(A.tree(), RowFile, 0, "AVERYLON.DOC")->setSelected(true);
         key(&A, QKeySequence::Copy);       // the tree's own Ctrl+C (a row's text) must not get it
         const QMimeData *cm = cb->mimeData();
-        CHECK(cm && cm->hasFormat(CPMDW_MIME_CLIP) && cm->hasFormat(RetroFiles::MimeType) && cm->hasUrls() &&
+        CHECK(cm && cm->hasFormat(DW_MIME_CLIP) && cm->hasFormat(RetroFiles::MimeType) && cm->hasUrls() &&
               cm->hasFormat("x-special/gnome-copied-files"), "Ctrl+C puts the files on the clipboard");
         // what was copied is kept: delete it from A, then paste into B
         QString e;
@@ -725,8 +726,8 @@ int main(int argc, char **argv) {
     }
 
     printf("== file dialog filters match upper-case names too\n");
-    CHECK(anyCase("*.imd *.dsk") == "*.imd *.IMD *.dsk *.DSK", "*.dsk also lists DISK.DSK: " + anyCase("*.imd *.dsk"));
-    CHECK(anyCase("*") == "*", "a bare * is left alone");
+    CHECK(dw::anyCase("*.imd *.dsk") == "*.imd *.IMD *.dsk *.DSK", "*.dsk also lists DISK.DSK: " + dw::anyCase("*.imd *.dsk"));
+    CHECK(dw::anyCase("*") == "*", "a bare * is left alone");
 
     printf("== the status line fits its text to the width\n");
     {

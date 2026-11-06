@@ -71,7 +71,7 @@ DropTree::DropTree(QWidget *parent) : QTreeWidget(parent) {
     setDropIndicatorShown(true);
 }
 
-QStringList DropTree::mimeTypes() const { return {CPMDW_MIME_ITEMS, RetroFiles::MimeType, "text/uri-list"}; }
+QStringList DropTree::mimeTypes() const { return {DW_MIME_ITEMS, RetroFiles::MimeType, "text/uri-list"}; }
 Qt::DropActions DropTree::supportedDropActions() const { return Qt::CopyAction; }
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 QMimeData *DropTree::mimeData(const QList<QTreeWidgetItem *> &items) const { return makeMime(items); }
@@ -89,8 +89,8 @@ static QPoint dropPos(const QDropEvent *e) {
 }
 
 bool DropTree::fromThisProcess(const QMimeData *m) {
-    if (!m->hasFormat(CPMDW_MIME_SOURCE) || !m->hasFormat(CPMDW_MIME_ITEMS)) return false;
-    QList<QByteArray> f = m->data(CPMDW_MIME_SOURCE).split(':');
+    if (!m->hasFormat(DW_MIME_SOURCE) || !m->hasFormat(DW_MIME_ITEMS)) return false;
+    QList<QByteArray> f = m->data(DW_MIME_SOURCE).split(':');
     return f.size() == 2 && f[0].toLongLong() == qint64(QCoreApplication::applicationPid()) &&
            MainWindow::byId(f[1].toULongLong()) != nullptr;
 }
@@ -120,8 +120,8 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
         return pw->exportFiles(unique, out, err);
     };
     auto *m = new RetroFiles::DragOutMime(exporter, win->trimTextOnExtract(), QFileInfo(win->image().path()).fileName());
-    m->setData(CPMDW_MIME_ITEMS, payload);
-    m->setData(CPMDW_MIME_SOURCE, sourceTag(m_owner));
+    m->setData(DW_MIME_ITEMS, payload);
+    m->setData(DW_MIME_SOURCE, sourceTag(m_owner));
     m_lastDrag = m->state();
     return m;
 }
@@ -150,7 +150,7 @@ bool DropTree::acceptable(const QMimeData *m) const {
     if (win && win->dropOpensImage()) return m->hasUrls();     // an empty window: a dropped file is opened
     if (!win || !win->writable()) return false;
     if (fromThisProcess(m)) {
-        if (m->data(CPMDW_MIME_SOURCE) != sourceTag(m_owner)) return true;
+        if (m->data(DW_MIME_SOURCE) != sourceTag(m_owner)) return true;
         MainWindow *w = MainWindow::byId(m_owner);       // within one window: only between its two sides
         return w && w->sides() > 1;
     }
@@ -172,7 +172,7 @@ void DropTree::dropEvent(QDropEvent *e) {
     if (fromThisProcess(e->mimeData())) {
         e->setDropAction(Qt::CopyAction);
         e->accept();
-        emit internalDrop(e->mimeData()->data(CPMDW_MIME_ITEMS), itemAt(dropPos(e)));
+        emit internalDrop(e->mimeData()->data(DW_MIME_ITEMS), itemAt(dropPos(e)));
         return;
     }
     if (e->mimeData()->hasFormat(RetroFiles::MimeType)) {
@@ -205,7 +205,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     windows().append(this);
     m_tree = new DropTree;
     m_tree->setOwner(id());
-    setupTreeColumns(m_tree, {{"Name", "", false}, {"Attr", "R/O SYS ARC", false}, {"Size", "1048576", true},
+    dw::setupTreeColumns(m_tree, {{"Name", "", false}, {"Attr", "R/O SYS ARC", false}, {"Size", "1048576", true},
                               {"Blocks", "00000", true}, {"Date", "2026-12-31 23:59", false}});
     setCentralWidget(m_tree);
     m_status = new StatusLabel;
@@ -268,7 +268,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_actProps->setShortcut(QKeySequence("Alt+Return"));
     m_actProps->setIconText("Properties");
     m_actDelete = edit->addAction("&Delete", this, &MainWindow::deleteSelected);
-    m_actDelete->setShortcuts(deleteKeys());
+    m_actDelete->setShortcuts(dw::deleteKeys());
     m_actDelete->setIconText("Delete");
     edit->addSeparator();
     m_actLabel = edit->addAction("Disc &label...", this, &MainWindow::setLabelDialog);
@@ -588,7 +588,7 @@ void MainWindow::closeEvent(QCloseEvent *e) {
 
 void MainWindow::openDialog() {
     QString p = QFileDialog::getOpenFileName(this, "Open CP/M disc image", AppSettings().value("lastDir").toString(),
-                                             "Disc images (" + anyCase("*.imd *.dsk *.td0 *.img *.ima *.raw *.h8d *.ssd *.dsd *.bin") + ");;All files (*)");
+                                             "Disc images (" + dw::anyCase("*.imd *.dsk *.td0 *.img *.ima *.raw *.h8d *.ssd *.dsd *.bin") + ");;All files (*)");
     if (p.isEmpty()) return;
     AppSettings().setValue("lastDir", QFileInfo(p).absolutePath());
     if (m_img.isOpen()) {
@@ -716,7 +716,7 @@ void MainWindow::refresh() {
         const Cpm::Volume &v = m_vols[side];
         auto *root = new QTreeWidgetItem(m_tree);
         QString title = v.label().present ? toHostName(v.label().name) : (m_nvols == 1 ? QFileInfo(m_img.path()).fileName() : QString());
-        root->setText(0, rootLabel(m_nvols == 1 ? QString("A:") : QString("Side %1").arg(side), title));
+        root->setText(0, dw::rootLabel(m_nvols == 1 ? QString("A:") : QString("Side %1").arg(side), title));
         root->setData(0, RoleKind, RowRoot);
         root->setData(0, RoleUser, -1);
         root->setData(0, RoleSide, side);
@@ -729,7 +729,7 @@ void MainWindow::refresh() {
             g->setData(0, RoleKind, RowUser);
             g->setData(0, RoleUser, u);
             g->setData(0, RoleSide, side);
-            setNumCell(g, 2, QString::number(total));
+            dw::setNumCell(g, 2, QString::number(total));
             for (const Cpm::File &f : v.files()) {
                 if (f.user != u) continue;
                 auto *it = new QTreeWidgetItem(g);
@@ -739,8 +739,8 @@ void MainWindow::refresh() {
                 it->setData(0, RoleName, f.name);
                 it->setData(0, RoleSide, side);
                 it->setText(1, Cpm::attrString(f.attrs));
-                setNumCell(it, 2, QString::number(f.size));
-                setNumCell(it, 3, QString::number(f.blocks));
+                dw::setNumCell(it, 2, QString::number(f.size));
+                dw::setNumCell(it, 3, QString::number(f.blocks));
                 QDateTime d = f.updated.isValid() ? f.updated : f.created;
                 if (d.isValid()) it->setText(4, d.toString("yyyy-MM-dd HH:mm"));
                 if (!f.problem.isEmpty()) { it->setToolTip(0, f.problem); it->setForeground(0, QColor("#b00000")); }
@@ -792,8 +792,8 @@ void MainWindow::updateUi() {
     if (m_img.needsPadding()) { longTail += "  -  the image file is short; it will be padded to full size when saved"; shortTail += "  -  short image"; }
     QStringList v;                                                     // longest first; the widest that fits is shown
     if (m_nvols == 1) {
-        const QString n = files(m_vols[0].files().size()), fr = fmtBytes(m_vols[0].freeBytes());
-        v << QString("%1 - %2, %3 free of %4").arg(name, n, fr, fmtBytes(f.capacityBytes())) + longTail
+        const QString n = files(m_vols[0].files().size()), fr = dw::fmtBytes(m_vols[0].freeBytes(), dw::SmallSizes::AsBytes);
+        v << QString("%1 - %2, %3 free of %4").arg(name, n, fr, dw::fmtBytes(f.capacityBytes(), dw::SmallSizes::AsBytes)) + longTail
           << QString("%1 - %2, %3 free").arg(name, n, fr) + shortTail
           << QString("%1, %2 free").arg(n, fr) + shortTail
           << QString("%1 free").arg(fr) + shortTail;
@@ -802,12 +802,12 @@ void MainWindow::updateUi() {
         int nf = 0;
         qint64 fb = 0;
         for (int side = 0; side < m_nvols; ++side) {
-            full += QString(" - side %1: %2, %3 free").arg(side).arg(files(m_vols[side].files().size()), fmtBytes(m_vols[side].freeBytes()));
-            mid += QString("%1side %2: %3, %4 free").arg(side ? " - " : "").arg(side).arg(files(m_vols[side].files().size()), fmtBytes(m_vols[side].freeBytes()));
+            full += QString(" - side %1: %2, %3 free").arg(side).arg(files(m_vols[side].files().size()), dw::fmtBytes(m_vols[side].freeBytes(), dw::SmallSizes::AsBytes));
+            mid += QString("%1side %2: %3, %4 free").arg(side ? " - " : "").arg(side).arg(files(m_vols[side].files().size()), dw::fmtBytes(m_vols[side].freeBytes(), dw::SmallSizes::AsBytes));
             nf += m_vols[side].files().size();
             fb += m_vols[side].freeBytes();
         }
-        v << full + longTail << mid + shortTail << QString("%1, %2 free").arg(files(nf), fmtBytes(fb)) + shortTail << QString("%1 free").arg(fmtBytes(fb)) + shortTail;
+        v << full + longTail << mid + shortTail << QString("%1, %2 free").arg(files(nf), dw::fmtBytes(fb, dw::SmallSizes::AsBytes)) + shortTail << QString("%1 free").arg(dw::fmtBytes(fb, dw::SmallSizes::AsBytes)) + shortTail;
     }
     m_status->setVariants(v);
 }
@@ -1168,14 +1168,14 @@ void MainWindow::copySelected() {
     auto *m = new RetroFiles::DragOutMime([items](QVector<XItem> *out, QString *) { *out = items; return true; },
                                           trimTextOnExtract(), QFileInfo(m_img.path()).fileName());
     m->setForClipboard(true);
-    m->setData(CPMDW_MIME_CLIP, clipToken());
+    m->setData(DW_MIME_CLIP, clipToken());
     QApplication::clipboard()->setMimeData(m);
     static bool once = false;                  // the copied files live in a folder removed at exit: don't leave
     if (!once) {                               // a clipboard behind that names them
         once = true;
         connect(qApp, &QCoreApplication::aboutToQuit, [] {
             const QMimeData *c = QApplication::clipboard()->mimeData();
-            if (c && c->hasFormat(CPMDW_MIME_CLIP) && QApplication::clipboard()->ownsClipboard()) QApplication::clipboard()->clear();
+            if (c && c->hasFormat(DW_MIME_CLIP) && QApplication::clipboard()->ownsClipboard()) QApplication::clipboard()->clear();
         });
     }
     m_status->setText(QString("Copied %1 file%2 - Edit > Paste puts %3 into another disc, a folder on the desktop or "
@@ -1199,7 +1199,7 @@ static QStringList clipboardPaths(const QMimeData *m) {
 
 bool MainWindow::clipboardUsable() const {
     const QMimeData *m = QApplication::clipboard()->mimeData();
-    return m && (m->hasFormat(CPMDW_MIME_CLIP) || m->hasFormat(RetroFiles::MimeType) || m->hasUrls() ||
+    return m && (m->hasFormat(DW_MIME_CLIP) || m->hasFormat(RetroFiles::MimeType) || m->hasUrls() ||
                  m->hasFormat("x-special/gnome-copied-files"));
 }
 
@@ -1216,7 +1216,7 @@ void MainWindow::paste() {
 }
 
 bool MainWindow::pasteItems(const QMimeData *m, int user, int side) {
-    if (m->hasFormat(CPMDW_MIME_CLIP) && !clipToken().isEmpty() && m->data(CPMDW_MIME_CLIP) == clipToken()) {
+    if (m->hasFormat(DW_MIME_CLIP) && !clipToken().isEmpty() && m->data(DW_MIME_CLIP) == clipToken()) {
         const QVector<XItem> items = clipItems();          // copied in this program: nothing written to the host
         ImportCtx c;
         importItems(items, user, side, c);
