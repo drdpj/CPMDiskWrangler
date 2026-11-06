@@ -13,6 +13,8 @@ step build
 build app "$src/cpmdiskwrangler.pro"
 for t in detecttest fstest guitest mkicon chartest; do build $t "$src/tests/$t.pro"; done
 build settingstest "$src/core/tests/settingstest.pro"      # in DiskWranglerCore
+build xfertest "$src/core/tests/xfertest.pro"
+build uitest "$src/core/tests/uitest.pro"
 [ -n "$adw" ] && build interop "$src/tests/interop_adw/interop_adw.pro" "ADW=$adw"
 export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)
@@ -45,6 +47,8 @@ else args=(); fi
 "$b/chartest/chartest" "${args[@]}" 2>&1 | grep -E "FAIL|all ok|FAILED" ; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "settings: installed vs AppImage (portable mode)"
 "$b/settingstest/settingstest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "settings: ok" || { "$b/settingstest/settingstest"; fail=1; }
+step "core: transfer layer (xfertest), UI helpers and viewers (uitest)"
+for t in xfertest uitest; do "$b/$t/$t" 2>/dev/null | tail -1 | grep -q "all ok" && echo "$t: ok" || { "$b/$t/$t"; fail=1; }; done
 step "not CP/M: Acorn DFS discs, and DFS discs with the catalogue wiped"
 mkdir -p "$W/foreign" && python3 "$src/tests/make_foreign.py" "$W/foreign"
 "$b/detecttest/detecttest" "$W"/foreign/* > "$W/foreign.log" 2>&1
