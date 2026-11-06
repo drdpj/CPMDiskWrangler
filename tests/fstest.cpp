@@ -267,6 +267,17 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         plain.sides = Cpm::SideOrder::Alt;     // the .logical image is already in logical track order
         dd.write((plain.toDiskdef() + "\n").toLatin1());
     }
+    // Read the disc with the layout it was made with, not im3's: im3 was opened by detection, which may have chosen another
+    // layout with the same bytes (a raw Microbee DS40 file reads as SS80, 80 cylinders x 1 head, so half the tracks
+    // were missing and the rest at the wrong cylinders).
+    Disk::Image imL;
+    CHECK(imL.open(path, &err), "open for the .logical image: " + err);
+    if (kind == Disk::Kind::Raw) {
+        Disk::RawLayout l;                     // as makeBlank lays out a raw file
+        l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
+        if (f.separateSides) { l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }
+        CHECK(imL.setRawLayout(l, &err), "raw layout for the .logical image: " + err);
+    }
     QFile lg(outdir + "/" + fname + ".logical");
     if (lg.open(QIODevice::WriteOnly)) {
         for (int t = 0; t < f.tracks; ++t)
@@ -277,7 +288,7 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
                 noSkew.derive(&err);
                 noSkew.locate(t * f.sectrk + s, &c, &h, &i);
                 QByteArray b;
-                if (im3.sectorCount(c, h) != f.sectrk || !im3.read(c, h, i, &b) || b.size() != f.seclen)
+                if (imL.sectorCount(c, h) != f.sectrk || !imL.read(c, h, i, &b) || b.size() != f.seclen)
                     b = QByteArray(f.seclen, char(0xE5));      // a track of another shape (boot area): filler
                 lg.write(b);
             }
