@@ -16,10 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "mainwindow.h"
-#include "appsettings.h"
+#include <diskwrangler/app/appsettings.h>
 
-#include "buttonbar.h"
-#include "licences.h"
+#include <diskwrangler/ui/buttonbar.h>
+#include <diskwrangler/ui/licences.h>
 #include "formatdialog.h"
 #include "newdisc.h"
 #include "viewer.h"

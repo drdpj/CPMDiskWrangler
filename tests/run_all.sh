@@ -11,7 +11,8 @@ step() { echo; echo "######## $*"; }
 build() { mkdir -p "$b/$1" && (cd "$b/$1" && qmake "$2" ${3:+"$3"} >/dev/null && make -j8 >/dev/null 2>"$b/$1.log") || { echo "BUILD FAILED: $1 (see $b/$1.log)"; fail=1; }; }
 step build
 build app "$src/cpmdiskwrangler.pro"
-for t in detecttest fstest guitest mkicon settingstest chartest; do build $t "$src/tests/$t.pro"; done
+for t in detecttest fstest guitest mkicon chartest; do build $t "$src/tests/$t.pro"; done
+build settingstest "$src/core/tests/settingstest.pro"      # in DiskWranglerCore
 [ -n "$adw" ] && build interop "$src/tests/interop_adw/interop_adw.pro" "ADW=$adw"
 export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d)

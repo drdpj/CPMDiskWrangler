@@ -1,5 +1,5 @@
 <!-- Licence texts compiled into the program (Help > Licences). The number in each alias sets the order shown.
-     A release build adds licences-bundled.qrc (made by ci/collect-licences.sh) for the libraries shipped with it. -->
+     A release build adds licences-bundled.qrc (made by core/ci/collect-licences.sh) for the libraries shipped with it. -->
 <RCC>
     <qresource prefix="/licences">
         <file alias="1 This program - GNU GPL v3">../LICENSE</file>

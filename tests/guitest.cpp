@@ -51,7 +51,7 @@
 #include "../src/formatdialog.h"
 #include "../src/newdisc.h"
 #include <QCheckBox>
-#include "../src/fileopen.h"
+#include <diskwrangler/app/fileopen.h>
 #include "../src/mainwindow.h"
 
 static int failures = 0;
@@ -747,7 +747,7 @@ int main(int argc, char **argv) {
 
     printf("== files opened from the Finder (fileopen.h)\n");
     {
-        FileOpen::FileOpenFilter filter;
+        FileOpen::FileOpenFilter<MainWindow> filter;
         qApp->installEventFilter(&filter);
         auto holding = [](const QString &p) {
             QList<MainWindow *> r;

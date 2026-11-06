@@ -18,9 +18,9 @@
 #include <QApplication>
 #include <QLoggingCategory>
 #include "cpmformat.h"
-#include "appsettings.h"
+#include <diskwrangler/app/appsettings.h>
 #include "dragout.h"
-#include "fileopen.h"
+#include <diskwrangler/app/fileopen.h>
 #include "icon.h"
 #include "mainwindow.h"
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication::setDesktopFileName("cpmdiskwrangler");
     QApplication::setWindowIcon(appIcon());
     RetroFiles::cleanStale();
-    FileOpen::FileOpenFilter fileOpen;               // macOS: files opened from the Finder (fileopen.h)
+    FileOpen::FileOpenFilter<MainWindow> fileOpen;    // macOS: files opened from the Finder (fileopen.h)
     app.installEventFilter(&fileOpen);
     QStringList warnings;
     Cpm::setExtraDiskdefFiles(AppSettings().value("diskdefFiles").toStringList(), &warnings);
