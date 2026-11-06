@@ -16,18 +16,20 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 // viewtext.h - turn file bytes into readable text: CP/M text (up to the ^Z end-of-file mark, WordStar's high bits
-// optionally stripped) and a hex dump.
+// optionally stripped) and a hex dump (DiskWranglerCore's, kept here under its old name until a later step writes
+// dw::text::hexDump at each use).
 #pragma once
 #include <QByteArray>
 #include <QString>
+#include <diskwrangler/text/textviews.h>
 
 namespace ViewText {
+
+using dw::text::hexDump;
 
 // CR / LF / CRLF become newlines, tabs are kept, other control characters are shown as '.'. With stopAtEof the
 // text ends at the first ^Z (*eofAt is set to its offset, or -1). With stripBit7, bit 7 is ignored (WordStar).
 QString cpmText(const QByteArray &d, bool stopAtEof, bool stripBit7, int *eofAt = nullptr);
-// "00000000  41 42 ...  |AB..|" 16 bytes per line.
-QString hexDump(const QByteArray &d);
 // Mostly printable up to the first ^Z, no NULs.
 bool looksLikeText(const QByteArray &d);
 // Many characters with bit 7 set among otherwise printable text: probably a WordStar document.

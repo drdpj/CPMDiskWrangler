@@ -15,8 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-// mainwindow_p.h - helpers shared by the window, the drag code and the dialogs. The tree layout helpers are the
-// same as Acorn Disk Wrangler's, so the two programs look alike side by side.
+// mainwindow_p.h - helpers shared by the window, the drag code and the dialogs. The tree layout helpers are
+// DiskWranglerCore's, the same as Acorn Disk Wrangler's, so the two programs look alike side by side.
 #pragma once
 
 #include <QByteArray>
@@ -34,24 +34,31 @@
 #include <QTreeWidget>
 #include <QVector>
 #include <initializer_list>
+#include <diskwrangler/ui/treecolumns.h>
+#include <diskwrangler/ui/uihelpers.h>
+#include <diskwrangler/xfer/hostname.h>
+#include <diskwrangler/xfer/mime.h>
 
 // Tree item roles. Every row carries what it is; nothing is ever parsed back from the cell text.
 enum Roles { RoleKind = Qt::UserRole, RoleUser, RoleName, RoleSide };
 enum RowKind { RowRoot = 0, RowUser = 1, RowFile = 2 };
 
-#define CPMDW_MIME_ITEMS  "application/x-cpmdiskwrangler-items"
-#define CPMDW_MIME_SOURCE "application/x-cpmdiskwrangler-source"
-#define CPMDW_MIME_CLIP   "application/x-cpmdiskwrangler-clip"     // "pid:n": what Edit > Copy put there
+// The private drag types are the family's (core/diskwrangler/xfer/mime.h); the old names stay until a later step.
+#define CPMDW_MIME_ITEMS  DW_MIME_ITEMS
+#define CPMDW_MIME_SOURCE DW_MIME_SOURCE
+#define CPMDW_MIME_CLIP   DW_MIME_CLIP
 
-// Delete: the platform's Delete key(s), and on macOS Finder's Cmd+Backspace too (most Mac keyboards have no
-// forward-delete key). Same in Acorn Disk Wrangler.
-inline QList<QKeySequence> deleteKeys() {
-    QList<QKeySequence> k = QKeySequence::keyBindings(QKeySequence::Delete);
-#ifdef Q_OS_MACOS
-    k << QKeySequence("Ctrl+Backspace");               // Ctrl is the Command key on macOS
-#endif
-    return k;
-}
+// The helpers below moved to DiskWranglerCore (namespace dw). The call sites still use the old names; these
+// forwarding declarations keep them building until a later step writes dw:: at each and deletes this block.
+using dw::anyCase;
+using dw::ColSpec;
+using dw::deleteKeys;
+using dw::hostSafeName;
+using dw::NumPad;
+using dw::rootLabel;
+using dw::setNumCell;
+using dw::setupTreeColumns;
+inline QString fmtBytes(qint64 b) { return dw::fmtBytes(b, dw::SmallSizes::AsBytes); }     // CP/M shows a size under 1 KB in bytes
 
 // A file (or a host folder) read out of a disc or the host, ready to be written to a CP/M disc - or a CP/M file
 // ready to be written to the host. The attribute fields are filled from whatever the source knows.
@@ -75,48 +82,6 @@ struct ImportCtx {
     QStringList errors, renamed;
 };
 
-struct ColSpec {
-    const char *label;
-    const char *sample;         // widest text the column normally shows (ignored for the Name column)
-    bool numeric;
-};
-
-static const char *const NumPad = "  ";
-
-inline void setupTreeColumns(QTreeWidget *t, std::initializer_list<ColSpec> cols) {
-    const QFontMetrics fm(t->font());
-    const int margin = 2 * t->style()->pixelMetric(QStyle::PM_HeaderMargin, nullptr, t) + fm.averageCharWidth();
-    QStringList labels;
-    for (const ColSpec &c : cols) labels << (c.numeric ? QString(c.label) + NumPad : QString(c.label));
-    t->setColumnCount(labels.size());
-    t->setHeaderLabels(labels);
-    QHeaderView *h = t->header();
-    h->setStretchLastSection(false);
-    h->setSectionResizeMode(QHeaderView::Interactive);
-    h->setSectionResizeMode(0, QHeaderView::Stretch);
-    int fixed = 0, i = 0;
-    for (const ColSpec &c : cols) {
-        if (i > 0) {
-            QString pad = c.numeric ? NumPad : "";
-            int w = qMax(fm.horizontalAdvance(c.sample + pad), fm.horizontalAdvance(labels[i])) + margin;
-            t->setColumnWidth(i, w);
-            fixed += w;
-            if (c.numeric) t->headerItem()->setTextAlignment(i, Qt::AlignRight | Qt::AlignVCenter);
-        }
-        ++i;
-    }
-    int sb = t->style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, t);
-    t->setMinimumWidth(fixed + fm.averageCharWidth() * 22 + sb + 2 * t->frameWidth());
-    t->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    t->setUniformRowHeights(true);
-    t->setContextMenuPolicy(Qt::CustomContextMenu);
-}
-
-inline void setNumCell(QTreeWidgetItem *it, int col, const QString &text) {
-    it->setText(col, text + NumPad);
-    it->setTextAlignment(col, Qt::AlignRight | Qt::AlignVCenter);
-}
-
 // The status line: one line that never makes the window wider. It is given several versions of the text, longest first,
 // shows the longest that fits, and cuts the last with "..." if even that doesn't; the longest is always in the tooltip.
 class StatusLabel : public QLabel {
@@ -138,38 +103,6 @@ protected:
 private:
     QStringList m_v;
 };
-
-// "*.dsk *.img" -> "*.dsk *.DSK *.img *.IMG": file dialogs match case-sensitively on Linux, and discs come as DISK.DSK too.
-inline QString anyCase(const QString &patterns) {
-    QStringList out;
-    for (const QString &p : patterns.split(' ', Qt::SkipEmptyParts)) {
-        out << p;
-        if (p.toUpper() != p && p.startsWith("*.")) out << "*." + p.mid(2).toUpper();
-    }
-    return out.join(' ');
-}
-
-inline QString rootLabel(const QString &base, const QString &title) {
-    return title.isEmpty() ? base : base + "   [" + title + "]";
-}
-
-inline QString hostSafeName(const QString &n) {
-    QString s = n;
-    for (QChar &c : s)
-        if (QString("/\\:*?\"<>|").contains(c) || c.unicode() < 0x20) c = '_';
-    static const QStringList dev = {"CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-                                    "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
-    if (dev.contains(s.section('.', 0, 0), Qt::CaseInsensitive)) s.insert(s.indexOf('.') < 0 ? s.size() : s.indexOf('.'), '_');
-    if (s.isEmpty() || s == "." || s == "..") s = "_" + s;
-    while (s.endsWith('.') || s.endsWith(' ')) s[s.size() - 1] = '_';
-    return s;
-}
-
-inline QString fmtBytes(qint64 b) {
-    if (b >= 1024LL * 1024) return QString("%1 MB").arg(double(b) / (1024.0 * 1024.0), 0, 'f', 1);
-    if (b >= 1024) return QString("%1 KB").arg(double(b) / 1024.0, 0, 'f', 1);
-    return QString("%1 bytes").arg(b);
-}
 
 // "user3", "User 3", "u3" or "3": a host folder that stands for a CP/M user number (as extraction writes them).
 inline int userFromFolderName(const QString &n) {

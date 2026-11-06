@@ -19,93 +19,39 @@
 #include "natchars.h"
 #include "viewtext.h"
 
-#include <QApplication>
-#include <QCheckBox>
-#include <QClipboard>
-#include <QComboBox>
-#include <QFile>
-#include <QFileDialog>
-#include <QFontDatabase>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QMessageBox>
-#include <QPlainTextEdit>
-#include <QPushButton>
-#include <QVBoxLayout>
+#include <diskwrangler/text/viewers.h>
 
-static const int kMaxShown = 1024 * 1024;
+// CP/M text: up to the first ^Z (the rest of the last record is padding), optionally with bit 7 ignored (WordStar), shown
+// in the national character set the dialog was given (the "nat" entry of the context).
+class CpmTextViewer : public dw::FileViewer {
+public:
+    QString id() const override { return "cpmtext"; }
+    QString name() const override { return "Text"; }
+    int order() const override { return 0; }
+    int accepts(const QByteArray &d, const QVariantMap &) const override { return ViewText::looksLikeText(d) ? 2 : 0; }
+    QVector<dw::ViewOption> options(const QByteArray &d) const override {
+        return {{"eof", "Stop at ^Z", "CP/M text files end at the first ^Z (1A hex); the rest of the last record is padding", true},
+                {"strip", "Ignore bit 7 (WordStar)", QString(), ViewText::looksLikeWordStar(d)}};
+    }
+    dw::ViewResult render(const QByteArray &d, const QVariantMap &o) const override {
+        dw::ViewResult r;
+        int eof = -1;
+        r.text = Nat::toHost(ViewText::cpmText(d, o["eof"].toBool(), o["strip"].toBool(), &eof), Nat::find(o["nat"].toString()));
+        if (eof >= 0) r.note = QString("^Z (end of text) at byte %1").arg(eof);
+        return r;
+    }
+};
+
+static const dw::ViewerRegistry &cpmViewers() {
+    static dw::ViewerRegistry reg = [] {
+        dw::ViewerRegistry r;
+        dw::addDefaultViewers(r);
+        r.remove("plain");                      // CP/M's own Text replaces the core's
+        r.add(std::make_shared<CpmTextViewer>());
+        return r;
+    }();
+    return reg;
+}
 
 ViewerDialog::ViewerDialog(const QString &title, const QByteArray &data, QWidget *parent, const QString &natId)
-    : QDialog(parent), m_title(title), m_data(data), m_nat(natId) {
-    setAttribute(Qt::WA_DeleteOnClose);
-    setWindowTitle("View - " + title);
-    resize(860, 620);
-    m_mode = new QComboBox;
-    m_mode->addItems({"Text", "Hex dump"});
-    m_wrap = new QCheckBox("Wrap lines");
-    m_eof = new QCheckBox("Stop at ^Z");
-    m_eof->setToolTip("CP/M text files end at the first ^Z (1A hex); the rest of the last record is padding");
-    m_eof->setChecked(true);
-    m_strip = new QCheckBox("Ignore bit 7 (WordStar)");
-    m_strip->setChecked(ViewText::looksLikeWordStar(data));
-    auto *copy = new QPushButton("Copy all");
-    auto *save = new QPushButton("Save as text...");
-    m_info = new QLabel;
-    m_edit = new QPlainTextEdit;
-    m_edit->setReadOnly(true);
-    m_edit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    m_edit->setLineWrapMode(QPlainTextEdit::NoWrap);
-    auto *top = new QHBoxLayout;
-    top->addWidget(new QLabel("View as:"));
-    top->addWidget(m_mode);
-    top->addWidget(m_eof);
-    top->addWidget(m_strip);
-    top->addWidget(m_wrap);
-    top->addStretch();
-    top->addWidget(copy);
-    top->addWidget(save);
-    auto *lay = new QVBoxLayout(this);
-    lay->addLayout(top);
-    lay->addWidget(m_edit, 1);
-    lay->addWidget(m_info);
-    m_mode->setCurrentIndex(ViewText::looksLikeText(data) ? Text : Hex);
-    connect(m_mode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ViewerDialog::render);
-    connect(m_eof, &QCheckBox::toggled, this, &ViewerDialog::render);
-    connect(m_strip, &QCheckBox::toggled, this, &ViewerDialog::render);
-    connect(m_wrap, &QCheckBox::toggled, this, [this](bool on) {
-        m_edit->setLineWrapMode(on ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
-    });
-    connect(copy, &QPushButton::clicked, this, &ViewerDialog::copyAll);
-    connect(save, &QPushButton::clicked, this, &ViewerDialog::saveText);
-    render();
-}
-
-ViewerDialog::Mode ViewerDialog::mode() const { return Mode(m_mode->currentIndex()); }
-QString ViewerDialog::shownText() const { return m_edit->toPlainText(); }
-
-void ViewerDialog::render() {
-    QString note;
-    bool truncated = m_data.size() > kMaxShown;
-    QByteArray d = truncated ? m_data.left(kMaxShown) : m_data;
-    m_eof->setEnabled(mode() == Text);
-    m_strip->setEnabled(mode() == Text);
-    if (mode() == Text) {
-        int eof = -1;
-        m_edit->setPlainText(Nat::toHost(ViewText::cpmText(d, m_eof->isChecked(), m_strip->isChecked(), &eof), Nat::find(m_nat)));
-        if (eof >= 0) note = QString("^Z (end of text) at byte %1").arg(eof);
-    } else {
-        m_edit->setPlainText(ViewText::hexDump(d));
-    }
-    if (truncated) note += (note.isEmpty() ? "" : " - ") + QString("showing the first 1 MiB only");
-    m_info->setText(QString("%1 bytes%2").arg(m_data.size()).arg(note.isEmpty() ? QString() : "  -  " + note));
-}
-
-void ViewerDialog::copyAll() { QApplication::clipboard()->setText(m_edit->toPlainText()); }
-
-void ViewerDialog::saveText() {
-    QString p = QFileDialog::getSaveFileName(this, "Save as text", m_title + (mode() == Hex ? ".hex.txt" : ".txt"));
-    if (p.isEmpty()) return;
-    QFile f(p);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate) || f.write(m_edit->toPlainText().toUtf8()) < 0)
-        QMessageBox::warning(this, "Save", f.errorString());
-}
+    : dw::ViewerDialog(cpmViewers(), title, data, parent, QVariantMap{{"nat", natId}}) {}

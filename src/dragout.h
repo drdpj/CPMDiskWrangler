@@ -16,7 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 // dragout.h - dragging files out of a disc to the host or to another program, and the "retro-files" drag format
-// (docs/retro-files-format.md, shared with Acorn Disk Wrangler) in both directions.
+// (docs/retro-files-format.md, shared with Acorn Disk Wrangler) in both directions. The format itself - the document,
+// the path checks, the drag data - is DiskWranglerCore's (diskwrangler/xfer, diskwrangler/ui/dragoutmime.h); this
+// file turns this program's XItem into the core's dw::TransferItem and back, and holds what is CP/M's: the "cpm"
+// attributes, a folder per user, the ^Z padding trim and the host names of CP/M files.
 #pragma once
 
 #include <QByteArray>
@@ -26,6 +29,8 @@
 #include <QVector>
 #include <functional>
 #include <memory>
+#include <diskwrangler/ui/dragoutmime.h>
+#include <diskwrangler/xfer/transferitem.h>
 
 #include "mainwindow_p.h"
 
@@ -33,6 +38,11 @@ namespace RetroFiles {
 
 extern const char *const MimeType;          // "application/x-retro-files+json"
 extern const char *const Generator;         // "CP/M Disk Wrangler"
+
+// XItem <-> the core's item. toTransfer lists the attributes in the "cpm" family (whatever the source was); fromTransfer
+// reads them from the "cpm", "fat" or "acorn" family, whichever the item has.
+dw::TransferItem toTransfer(const XItem &x);
+XItem fromTransfer(const dw::TransferItem &t);
 
 // Writes CP/M files into hostDir: host-safe names, made unique (ignoring case) when two users hold the same name,
 // optionally a "userN" folder per user number, optionally with the CP/M ^Z padding trimmed from text files. The
@@ -56,40 +66,15 @@ QString newDragDir(QString *err);
 QString dragDirPrefix();
 int cleanStale(qint64 maxAgeSecs = 24 * 3600);
 
-struct DragState {
-    bool extracted = false;
-    int files = 0;
-    QString dir;
-    QStringList errors;
-};
+typedef dw::DragState DragState;
 
 // Drag data: this program's private formats (set with setData) plus the files as text/uri-list and retro-files
 // JSON, written only when a drop target first asks for either.
-class DragOutMime : public QMimeData {
+class DragOutMime : public dw::DragOutMime {
     Q_OBJECT
 public:
     typedef std::function<bool(QVector<XItem> *, QString *)> Exporter;
     DragOutMime(Exporter exporter, bool trimText, const QString &imageName);
-    QStringList formats() const override;
-    bool hasFormat(const QString &mimeType) const override;
-    std::shared_ptr<DragState> state() const { return m_state; }
-    // For Edit > Copy: also offer GNOME's file list (x-special/gnome-copied-files), which its file manager pastes.
-    void setForClipboard(bool on) { m_clipboard = on; }
-protected:
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)               // Qt 6 passes a QMetaType, Qt 5 a QVariant::Type
-    QVariant retrieveData(const QString &mimeType, QMetaType type) const override;
-#else
-    QVariant retrieveData(const QString &mimeType, QVariant::Type type) const override;
-#endif
-private:
-    void extract() const;
-    Exporter m_exporter;
-    bool m_trim;
-    QString m_image;
-    mutable QList<QUrl> m_urls;
-    mutable QByteArray m_json;
-    std::shared_ptr<DragState> m_state;
-    bool m_clipboard = false;
 };
 
 } // namespace RetroFiles

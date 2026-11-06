@@ -36,24 +36,6 @@ QString cpmText(const QByteArray &d, bool stopAtEof, bool stripBit7, int *eofAt)
     return s;
 }
 
-QString hexDump(const QByteArray &d) {
-    QString out;
-    out.reserve(d.size() * 4 + 64);
-    for (int o = 0; o < d.size(); o += 16) {
-        QString hex, asc;
-        for (int i = 0; i < 16; ++i) {
-            if (o + i < d.size()) {
-                quint8 c = quint8(d[o + i]);
-                hex += QString("%1 ").arg(c, 2, 16, QChar('0')).toUpper();
-                asc += (c >= 0x20 && c < 0x7F) ? QChar(c) : QChar('.');
-            } else hex += "   ";
-            if (i == 7) hex += ' ';
-        }
-        out += QString("%1  %2 |%3|\n").arg(o, 8, 16, QChar('0')).toUpper().arg(hex, asc);
-    }
-    return out;
-}
-
 static double printableShare(const QByteArray &d, bool strip) {
     int end = d.indexOf(char(0x1A));
     if (end < 0) end = d.size();
