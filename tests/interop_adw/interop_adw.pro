@@ -8,6 +8,8 @@ CONFIG -= app_bundle
 TARGET = interop_adw
 ADW_SRC = $$ADW/src                    # its sources (in the folder itself before 1.0.0)
 !exists($$ADW_SRC/dragout.cpp): ADW_SRC = $$ADW
-INCLUDEPATH += $$ADW_SRC
-SOURCES += interop_adw.cpp $$ADW_SRC/dragout.cpp $$ADW_SRC/adfs.cpp $$ADW_SRC/dfs.cpp $$ADW_SRC/dosfs.cpp
-HEADERS += $$ADW_SRC/dragout.h
+CORE = $$PWD/../../core                # DiskWranglerCore, this program's copy: Acorn's dragout.cpp is built on it
+INCLUDEPATH += $$ADW_SRC $$CORE
+SOURCES += interop_adw.cpp $$ADW_SRC/dragout.cpp $$ADW_SRC/adfs.cpp $$ADW_SRC/dfs.cpp $$ADW_SRC/dosfs.cpp \
+           $$CORE/diskwrangler/xfer/retrofiles.cpp $$CORE/diskwrangler/ui/dragoutmime.cpp
+HEADERS += $$ADW_SRC/dragout.h $$CORE/diskwrangler/ui/dragoutmime.h
