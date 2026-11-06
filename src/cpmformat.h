@@ -118,6 +118,7 @@ struct Format {
 // Parses diskdefs text (cpmtools syntax, case-insensitive keys, '#' comments, plus this program's extras:
 // heads, secbase, desc, source, imdmode). Bad definitions are skipped with a message in *warnings.
 QVector<Format> parseDiskdefs(const QString &text, const QString &origin, QStringList *warnings);
+QStringList withdrawnFormats();   // cpmtools definitions the built-in file withdraws (lower case)
 
 // The library: built-in definitions first, then cpmtools' diskdefs (bundled), then any files the user added.
 // A name defined earlier wins.

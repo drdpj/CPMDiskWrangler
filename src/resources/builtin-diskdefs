@@ -17,6 +17,7 @@
 #   torchcpn yes   the disc holds Torch CP/N's own filesystem, not a CP/M directory (see torch-cpn below)
 # and a top-level line
 #   describe NAME "text"   gives a description to a definition loaded later (e.g. from cpmtools' file).
+#   withdraw NAME "why"    leaves cpmtools' definition NAME out of the library (a diskdefs file of the user's own may still have it).
 # A definition here replaces a cpmtools definition of the same name.
 
 diskdef torch-cpn
@@ -188,6 +189,9 @@ end
 # logical tracks, 2K blocks, 128 entries, 2 reserved tracks, the same skew table, sector IDs 1-10). microbee40 itself doesn't
 # say how many sides there are, and 80 tracks with no "heads" is read as one side of 80 cylinders (SS80), so a new disc made from
 # microbee40 was a single-sided 80-cylinder disc that a DS40 drive can't use. The two sides alternate, as on every Microbee disc.
+# microbee40 itself is withdrawn (below): as cpmtools gives it, it is a "40 track" disc of 80 cylinders on one side, which no
+# Microbee ever had (that layout is SS80, microbee-ss80), and it was offered in File > New disc image, the format dialog and
+# detection beside the real DS40.
 diskdef microbee-ds40
   desc "Microbee 5.25-inch DS40 (40 track, double sided), 390K"
   source "Microbee DS40 discs: cpmtools' microbee40 layout on 40 cylinders x 2 sides (80 logical tracks, sides alternating), 2K blocks, 128 entries, 2 reserved tracks (cylinder 0, both sides), sector IDs 1-10 on every track. Checked on one real disc (dtoolkit_disk_3_ds40): 40 cylinders x 2 sides, IDs 1-10, side 0/1 in the ID fields, 35 files read; detection ranks this format first, well ahead of any found by searching."
@@ -267,7 +271,7 @@ describe mdsad350 "North Star MDS-A-D 350K"
 describe bw12 "Bondwell 12"
 describe bw14 "Bondwell 14"
 describe v1050 "Visual 1050"
-describe microbee40 "Microbee 40 track (cpmtools: 80 tracks on one side; use microbee-ds40 for a double-sided disc)"
+withdraw microbee40 "a 40-track Microbee disc is double-sided (microbee-ds40); read as cpmtools gives it, it is 80 cylinders on one side, which is microbee-ss80"
 describe rm-sd "Research Machines single density"
 describe myz80 "MYZ80 hard disc"
 describe mds-dd "Intel MDS double density"

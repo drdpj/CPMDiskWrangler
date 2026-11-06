@@ -363,10 +363,23 @@ static QMap<QString, QString> describes(const QString &text) {
     return m;
 }
 
+// "withdraw NAME "why"" lines: cpmtools definitions left out of the library (a layout no real disc has).
+QStringList withdrawnFormats() {
+    QStringList w;
+    QRegularExpression re("^\\s*withdraw\\s+(\\S+)", QRegularExpression::CaseInsensitiveOption);
+    for (const QString &line : readResource(":/diskdefs/builtin").split('\n')) {
+        auto mt = re.match(line);
+        if (mt.hasMatch()) w << mt.captured(1).toLower();
+    }
+    return w;
+}
+
 static void build(QStringList *warnings) {
     QVector<Format> all;
     all += parseDiskdefs(readResource(":/diskdefs/builtin"), "built-in", warnings);
-    all += parseDiskdefs(readResource(":/diskdefs/cpmtools"), "cpmtools", warnings);
+    const QStringList withdrawn = withdrawnFormats();
+    for (const Format &f : parseDiskdefs(readResource(":/diskdefs/cpmtools"), "cpmtools", warnings))
+        if (!withdrawn.contains(f.name.toLower())) all += f;
     for (const QString &p : extraFiles()) {
         QFile f(p);
         if (!f.open(QIODevice::ReadOnly)) { if (warnings) *warnings << p + ": " + f.errorString(); continue; }

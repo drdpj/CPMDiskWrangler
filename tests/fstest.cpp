@@ -395,6 +395,15 @@ int main(int argc, char **argv) {
             }
         }
         printf("%d built-in definitions replace cpmtools ones\n", n);
+        // a withdrawn cpmtools definition (microbee40: a "40 track" disc on one side) is in cpmtools' file but not the library
+        for (const QString &w : Cpm::withdrawnFormats()) {
+            bool inCpmtools = false;
+            for (const Cpm::Format &c : ct) inCpmtools |= c.name.toLower() == w;
+            CHECK(inCpmtools, "withdrawn " + w + " isn't in cpmtools' file (stale withdraw line?)");
+            CHECK(!Cpm::findFormat(w), "withdrawn " + w + " is still in the library");
+        }
+        CHECK(Cpm::withdrawnFormats().contains("microbee40"), "microbee40 isn't withdrawn");
+        printf("%d cpmtools definitions withdrawn\n", int(Cpm::withdrawnFormats().size()));
         printf("%s\n", failures ? "FAILURES" : "ok");
         return failures ? 1 : 0;
     }

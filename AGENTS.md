@@ -77,7 +77,9 @@ starts on the filter for the kind the image already is, and the kind saved is th
    files are read-only (Save As). Don't weaken this: a wrong directory size or block size means new files are
    written over data, or written where the real machine won't see them.
 7. **The physical shape of a new disc must match the real thing.** A built-in definition that replaces a
-   cpmtools one must describe exactly the same layout, including `dirblks` (`fstest library` checks this).
+   cpmtools one must describe exactly the same layout, including `dirblks` (`fstest library` checks this). A cpmtools
+   definition whose layout no real disc has is left out with a `withdraw NAME "why"` line in the built-in file (e.g.
+   `microbee40`, a "40 track" disc of 80 cylinders on one side); `fstest library` checks it is gone.
 
 ## The window (kept in step with Acorn Disk Wrangler)
 - **Menus, button bar and context menu have the same order in both programs** (owner's rule; one program's extra
