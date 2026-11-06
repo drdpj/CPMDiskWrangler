@@ -20,6 +20,7 @@
 //   chartest [<image> <set id | none>]...
 // e.g.  chartest comal1.imd dk-no  plain.imd none     (an image given with a set must be recognised as using it)
 #include <QApplication>
+#include <QSet>
 #include <cstdio>
 #include "../src/cpmformat.h"
 #include "../src/cpmfs.h"
