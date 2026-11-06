@@ -39,7 +39,8 @@ with the rest; the credit above is given because its structure follows LZHUF.C.
 Parts of this program are adapted from **Acorn Disk Wrangler** (<https://github.com/drdpj/AcornDiskWrangler>),
 by the same author and under the same licence: the tree-layout helpers in `src/mainwindow_p.h`, the drag-out code in
 `src/dragout.cpp`, the viewer, the build files, and `docs/retro-files-format.md` (the shared interchange
-specification). `tests/interop_adw` is built from Acorn Disk Wrangler's own `dragout.cpp` at test time; that code
+specification, now in **DiskWranglerCore**, <https://github.com/drdpj/DiskWranglerCore>, which is `core/` here and is shared with
+Acorn Disk Wrangler; it is by the same author and under the same licence). `tests/interop_adw` is built from Acorn Disk Wrangler's own `dragout.cpp` at test time; that code
 is not copied into this repository.
 
 ## Consulted, not copied
@@ -70,7 +71,7 @@ These were read for facts about formats. No code or text was copied from them.
   available under GPL v2/v3).
   The program links to Qt's shared libraries; it does not modify Qt.
 * A binary release also ships the libraries Qt needs on that platform. Which ones depends on the platform and
-  the packages it was built from, so they are not listed here: `ci/collect-licences.sh` traces each one to its
+  the packages it was built from, so they are not listed here: `core/ci/collect-licences.sh` traces each one to its
   package (MSYS2 on Windows, Ubuntu for the Linux AppImage, Homebrew for a Qt 5 Mac build) and gathers that
   package's licence
   texts. A release build compiles them into the program - **Help > Licences**, with an index of which library
@@ -79,7 +80,7 @@ These were read for facts about formats. No code or text was copied from them.
   Library Exception) and `libwinpthread-1.dll` (MIT and BSD-style); on every platform, things like ICU (Unicode
   licence), HarfBuzz (MIT), FreeType (FreeType Licence), zlib, libpng, PCRE2 and zstd (BSD-style).
   The Mac build uses Qt's official binaries, which contain their own copies of such libraries; their licences
-  come from Qt's source at the same version, where Qt records each one (`ci/qt-attributions.py`).
+  come from Qt's source at the same version, where Qt records each one (`core/ci/qt-attributions.py`).
   Under the LGPL, Qt's own licence text accompanies it (compiled in, and as `licences/LGPL-3.0.txt`), and
   recipients must be able to replace the Qt libraries with their own builds (they can: every build links to
   Qt's ordinary shared libraries) and to obtain this program's source (each GitHub release carries it).

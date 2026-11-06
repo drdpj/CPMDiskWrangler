@@ -1,6 +1,6 @@
 # Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root.
 #
-# Builds Windows (x64 zip; for a release tag or Run workflow also an installer, ci/installer.iss), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
+# Builds Windows (x64 zip; for a release tag or Run workflow also an installer, core/ci/installer.iss), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
 # AppImage, and a .deb that uses the system's Qt for Ubuntu 22.04+ / Debian 12+), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
 # program (Help > Licences) and copied beside it. Qt 6 by default; "Run workflow" (Actions tab) can build with
 # Qt 5.15 instead, whose packages are named ...-qt5 (on macOS that one is Apple Silicon only, from Homebrew). Every push and pull request builds and keeps the packages as workflow artifacts; pushing a tag
@@ -9,8 +9,8 @@
 #
 # The version shown in Help > About is git describe's (version.pri), so a tagged build shows the tag.
 #
-# Each platform builds twice (ci/build.sh): the first build is deployed to find out which libraries ship, then
-# ci/collect-licences.sh gathers their licences into licences-bundled.qrc and the second build compiles them in.
+# Each platform builds twice (core/ci/build.sh): the first build is deployed to find out which libraries ship, then
+# core/ci/collect-licences.sh gathers their licences into licences-bundled.qrc and the second build compiles them in.
 
 name: Build
 
@@ -44,6 +44,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          submodules: recursive      # core/ is DiskWranglerCore
       - uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
@@ -65,11 +66,11 @@ jobs:
             echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
-        run: bash ci/build.sh windows
+        run: bash core/ci/build.sh windows
       - name: Collect licences
-        run: bash ci/collect-licences.sh windows deploy
+        run: bash core/ci/collect-licences.sh windows deploy
       - name: Rebuild with the licences compiled in
-        run: bash ci/build.sh windows
+        run: bash core/ci/build.sh windows
       - name: Package
         run: |
           cp -r LICENSE THIRD-PARTY-NOTICES.md licences deploy/
@@ -87,7 +88,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
-          # Inno Setup 6.3 or later (ci/installer.iss uses x64compatible). choco upgrade installs Chocolatey's
+          # Inno Setup 6.3 or later (core/ci/installer.iss uses x64compatible). choco upgrade installs Chocolatey's
           # current one, or leaves the runner image's alone when that is already current (6.7.1 in October 2026).
           choco upgrade innosetup -y --no-progress
           if ($LASTEXITCODE) { throw "could not install Inno Setup" }
@@ -114,14 +115,14 @@ jobs:
           $folder = $title -replace '[\\/:*?"<>|]', ''
           $version = $env:VERSION -replace '^v', ''
           $num = if ($version -match '^(\d+)\.(\d+)\.(\d+)') { "$($Matches[1]).$($Matches[2]).$($Matches[3])" } else { '0.0.0' }
-          # an update first deletes the DLLs and the folders this version ships (see ci/installer.iss)
+          # an update first deletes the DLLs and the folders this version ships (see core/ci/installer.iss)
           $del = @('[InstallDelete]', 'Type: files; Name: "{app}\*.dll"')
           $del += Get-ChildItem deploy -Directory | ForEach-Object { "Type: filesandordirs; Name: ""{app}\$($_.Name)""" }
           Set-Content -Path build\installer-delete.iss -Value $del -Encoding utf8
           & $iscc /Qp "/DProgName=$env:APP" "/DProgTitle=$title" "/DProgFolder=$folder" `
               "/DProgVersion=$version" "/DProgNumVersion=$num" "/DProgCopyright=$copyright" `
-              "/DProgUrl=$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" "/DDeployDir=$PWD\deploy" `
-              "/DOutDir=$PWD\dist" "/DOutName=$env:APP-$env:VERSION-windows-x64-setup" ci\installer.iss
+              "/DProgUrl=$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" "/DDeployDir=$PWD\deploy" "/DSourceRoot=$PWD" `
+              "/DOutDir=$PWD\dist" "/DOutName=$env:APP-$env:VERSION-windows-x64-setup" core\ci\installer.iss
           if ($LASTEXITCODE) { throw "the installer didn't build (ISCC exit code $LASTEXITCODE)" }
       - name: Check the installer installs, starts and uninstalls
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -156,6 +157,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          submodules: recursive      # core/ is DiskWranglerCore
       - name: Install Qt 6 (Qt's official universal build)
         if: env.QT == '6'
         uses: jurplel/install-qt-action@v4
@@ -184,11 +186,11 @@ jobs:
             echo "MACARCH=$([ "$QT" = 5 ] && echo arm64 || echo universal)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
-        run: bash ci/build.sh macos
+        run: bash core/ci/build.sh macos
       - name: Collect licences
-        run: bash ci/collect-licences.sh macos "build/$APP.app"
+        run: bash core/ci/collect-licences.sh macos "build/$APP.app"
       - name: Rebuild with the licences compiled in
-        run: bash ci/build.sh macos
+        run: bash core/ci/build.sh macos
       - name: Package
         run: |
           app="build/$APP.app"
@@ -229,6 +231,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          submodules: recursive      # core/ is DiskWranglerCore
       - name: Install Qt ${{ env.QT }} and linuxdeploy
         run: |
           if [ "$QT" = 6 ]; then pkgs=(qt6-base-dev qt6-base-dev-tools qmake6 qt6-qpa-plugins libgl-dev)
@@ -251,11 +254,11 @@ jobs:
             echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
-        run: bash ci/build.sh linux
+        run: bash core/ci/build.sh linux
       - name: Collect licences
-        run: bash ci/collect-licences.sh linux build/AppDir
+        run: bash core/ci/collect-licences.sh linux build/AppDir
       - name: Rebuild with the licences compiled in
-        run: bash ci/build.sh linux
+        run: bash core/ci/build.sh linux
       - name: Package
         run: |
           doc="build/AppDir/usr/share/doc/$APP"
@@ -280,7 +283,7 @@ jobs:
           mv licences-bundled.qrc "$RUNNER_TEMP/"
           mkdir build-deb
           (cd build-deb && "$QMAKE" "../$APP.pro" CONFIG+=release PREFIX=/usr && make -j"$(nproc)")
-          bash ci/make-deb.sh build-deb dist
+          bash core/ci/make-deb.sh build-deb dist
       - name: Check the .deb installs and starts
         run: |
           sudo apt-get install -y -qq "./dist/$APP-$VERSION-linux-amd64.deb"
@@ -299,11 +302,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5        # for release-notes/<tag>.md
+      - uses: actions/checkout@v5        # for release-notes/<tag>.md, and the source
+        with:
+          submodules: recursive          # core/ is DiskWranglerCore
       - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
+      - name: Make the complete source archive
+        # GitHub's own "Source code" archives of a release leave out the core/ submodule
+        run: bash core/ci/source-archive.sh dist "${GITHUB_REPOSITORY##*/}-$GITHUB_REF_NAME-source"
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
