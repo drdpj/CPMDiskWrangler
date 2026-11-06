@@ -25,6 +25,9 @@ windows, the desktop and other programs via the `retro-files` format shared with
   `THIRD-PARTY-NOTICES.md` with its terms (and in About if it ships in the program); material only consulted for facts
   goes in its "Consulted" table.
 * **Never commit third-party disc images**: the tests read them from outside the repo.
+* **`core/` is the git submodule DiskWranglerCore**, shared with Acorn Disk Wrangler (clone with `--recurse-submodules`, or
+  `git submodule update --init`). Never edit files under `core/` from here: change DiskWranglerCore, tag it, and move the
+  submodule to the tag. The retro-files specification is `core/docs/retro-files-format.md`.
 
 ## Source map (program in `src/`, tests in `tests/`)
 | File | Role |
@@ -42,10 +45,10 @@ windows, the desktop and other programs via the `retro-files` format shared with
 | `newdisc.*` | File > New disc image |
 | `dragout.*` | `retro-files` JSON writer/reader, drag-out data, temporary drag folders |
 | `viewer.*`, `viewtext.*` | the text/hex viewer (CP/M `^Z`, WordStar bit 7) |
-| `licences.*` | Help > Licences: the texts compiled in from `src/licences.qrc` (and `licences-bundled.qrc` in a release build). Shared with Acorn Disk Wrangler, keep identical |
-| `appsettings.h` | where settings live: the system's place, or `<program>.ini` beside the program (portable; for an AppImage, beside the `.AppImage` file - `$APPIMAGE` - not in its temporary mount; a program installed on Linux, or by the Windows installer - `installedHere()`: Inno Setup's `unins000.dat` beside it -, has no portable mode, so File > Create local config file isn't shown). Use `AppSettings` instead of `QSettings` in program code (tests may use `QSettings` to clear the system store). Header only; shared with Acorn Disk Wrangler, keep identical |
-| `buttonbar.h` | the main window's button bar: real QPushButtons kept in step with their QActions (a QToolBar's own buttons draw as flat text on macOS). Header only; shared with Acorn Disk Wrangler, keep identical |
-| `fileopen.h` | macOS opens files from the Finder (double-click, Open With, the Dock icon) by sending the running program a `QFileOpenEvent`, never a command-line argument: `FileOpen::FileOpenFilter` (installed on the application in `main.cpp`) opens the image like File > Open - in an empty window, the active one first, else a new window; one already open just comes forward. Windows and Linux never send it. `guitest2` / CP/M Disk Wrangler's `guitest` send it. Header only; shared with Acorn Disk Wrangler, keep identical |
+| `core/diskwrangler/ui/licences.*` | Help > Licences: the texts compiled in from `src/licences.qrc` (this program's own, kept here) and `licences-bundled.qrc` in a release build. In DiskWranglerCore |
+| `core/diskwrangler/app/appsettings.h` | where settings live: the system's place, or `<program>.ini` beside the program (portable; for an AppImage, beside the `.AppImage` file - `$APPIMAGE` - not in its temporary mount; a program installed on Linux, or by the Windows installer - `installedHere()`: Inno Setup's `unins000.dat` beside it -, has no portable mode, so File > Create local config file isn't shown). Use `AppSettings` instead of `QSettings` in program code (tests may use `QSettings` to clear the system store). Header only; in DiskWranglerCore |
+| `core/diskwrangler/ui/buttonbar.h` | the main window's button bar: real QPushButtons kept in step with their QActions (a QToolBar's own buttons draw as flat text on macOS). Header only; in DiskWranglerCore |
+| `core/diskwrangler/app/fileopen.h` | macOS opens files from the Finder (double-click, Open With, the Dock icon) by sending the running program a `QFileOpenEvent`, never a command-line argument: `FileOpen::FileOpenFilter<MainWindow>` (installed on the application in `main.cpp`) opens the image like File > Open - in an empty window, the active one first, else a new window; one already open just comes forward. Windows and Linux never send it. `guitest2` / CP/M Disk Wrangler's `guitest` send it. Header only; in DiskWranglerCore |
 | `torchfs.h/.cpp` | Torch CP/N's filesystem (format key `torchcpn`): `Torch::walk`/`scan` (shared with detection) and the `Cpm::Volume` methods `torch...` that every public `Volume` method hands over to when `Format::torch` is set, so the window, drags, Copy/Paste and the tests see one `Volume` |
 | `icon.*`, `icons/` (top level) | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
@@ -112,7 +115,7 @@ qmake cpmdiskwrangler.pro && make          # or: cmake -S . -B build && cmake --
 ```
 The `.pro`, `CMakeLists.txt`, `.rc`, `.desktop` and `icons/` stay at the top level (the CI scripts look for `./*.pro`);
 the program's sources and its compiled-in diskdefs are in `src/`. A new source file goes in the `.pro`, in
-`CMakeLists.txt`, and in any `tests/*.pro` that builds `mainwindow.cpp` (they need `../src/licences.cpp` too).
+`CMakeLists.txt`, and in any `tests/*.pro` that builds `mainwindow.cpp` (they also `include(../core/diskwranglercore.pri)`).
 
 * **Qt 6 and Qt 5.15 must both keep building** (see Acorn Disk Wrangler's AGENTS.md for the `#if QT_VERSION`
   places; the same here). qmake uses whichever `qmake` you run; CMake prefers Qt 6 and `-DUSE_QT5=ON` forces 5.
@@ -121,15 +124,15 @@ the program's sources and its compiled-in diskdefs are in `src/`. A new source f
   `-DAPP_VERSION=...`. It is read when qmake/CMake runs, so re-run them after a new commit or tag.
 * **Releases.** `.github/workflows/build.yml` builds Windows, macOS and Linux packages linked to Qt's *shared*
   libraries (keep it that way: the LGPL lets users replace them). Each is built twice so that the licences of every
-  shipped library (`ci/collect-licences.sh` -> `licences-bundled.qrc`) are compiled in (Help > Licences,
-  `src/licences.cpp`). Linux also gets a `.deb` against the system's Qt (`ci/make-deb.sh`; built on Ubuntu 22.04, it
+  shipped library (`core/ci/collect-licences.sh` -> `licences-bundled.qrc`) are compiled in (Help > Licences,
+  `core/diskwrangler/ui/licences.cpp`). Linux also gets a `.deb` against the system's Qt (`core/ci/make-deb.sh`; built on Ubuntu 22.04, it
   installs on 22.04+ and Debian 12+); Windows, for a tag or Run workflow only, an Inno Setup installer
-  (`ci/installer.iss`; each program's AppId in it is fixed for good). A tag `vX.Y.Z` publishes a GitHub release
-  whose notes are `release-notes/<tag>.md` when that file exists. The details for people are in `docs/building.md`;
-  a 32-bit Windows 7 build (not tried yet) in `docs/building-windows-32bit.md`.
-* **Shared with Acorn Disk Wrangler - keep identical:** `ci/`, the workflow, `src/licences.*`, `licences/`,
-  `src/buttonbar.h`, `src/appsettings.h`, `src/fileopen.h`, `version.pri`, `version.cmake`, `docs/building.md`,
-  `docs/building-windows-32bit.md` and `docs/retro-files-format.md`.
+  (`core/ci/installer.iss`; each program's AppId in it is fixed for good). A tag `vX.Y.Z` publishes a GitHub release
+  whose notes are `release-notes/<tag>.md` when that file exists. The details for people are in `core/docs/building.md`;
+  a 32-bit Windows 7 build (not tried yet) in `core/docs/building-windows-32bit.md`.
+* **Still identical copies in both programs - change both:** `.github/workflows/build.yml`, `src/licences.qrc`,
+  `licences/`, `version.pri` and `version.cmake`. (The CI scripts, the building and retro-files documents, the settings
+  helper, the button bar, the Finder-open filter, the licences viewer and `settingstest` are in the core.)
 
 ## Test
 ```

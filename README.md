@@ -7,7 +7,7 @@ images, **works out each disc's format from its contents**, and lets you add, ex
 change user numbers and attributes, set CP/M 3 labels, convert between image types, and make new discs in about 140
 formats. Files drag between discs, to and from your desktop, and to and from
 [Acorn Disk Wrangler](https://github.com/drdpj/AcornDiskWrangler) and other tools that speak
-[retro-files](docs/retro-files-format.md).
+[retro-files](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/retro-files-format.md).
 
 ## Download
 Get the latest build from the [Releases page](https://github.com/drdpj/CPMDiskWrangler/releases/latest).
@@ -116,7 +116,7 @@ use the system's settings, so they don't offer this.
 An ordinary drag between programs carries only a file's name and contents, but a file on a retro disc has more that
 matters: an Acorn file's load and execution addresses (without them a program may not run), its access bits and DFS
 directory letter, DOS attributes, a CP/M user number. Both Wranglers implement
-**[retro-files](docs/retro-files-format.md)** (`application/x-retro-files+json`), an open format that carries these
+**[retro-files](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/retro-files-format.md)** (`application/x-retro-files+json`), an open format that carries these
 too:
 
 * **Nothing is lost between disc tools.** Drag a file between Acorn Disk Wrangler and CP/M Disk Wrangler, between two
@@ -127,7 +127,7 @@ too:
   other program works as usual.
 * **Any tool can join in.** It is a small, versioned JSON document with attributes grouped by filesystem (`acorn`,
   `fat`, `cpm`): a tool for another kind of disc adds its own group and reads the ones it understands. The
-  [specification](docs/retro-files-format.md) explains the format and why it exists.
+  [specification](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/retro-files-format.md) explains the format and why it exists.
 
 ## Limitations
 * TeleDisk images can't be saved as TeleDisk, and TeleDisk 1.x "advanced compression" isn't supported.
@@ -142,7 +142,7 @@ You need Qt 6 (or Qt 5.15) with its widgets module, and a C++17 compiler.
     qmake cpmdiskwrangler.pro && make              # or: cmake -S . -B build && cmake --build build
     ./cpmdiskwrangler [image ...]                  # each image opens in its own window
 
-[docs/building.md](docs/building.md) covers Linux installs, Windows (MSYS2), macOS, Qt 5, and how the release
+[building.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/building.md) (in DiskWranglerCore, which is the `core/` submodule: clone with `--recurse-submodules`) covers Linux installs, Windows (MSYS2), macOS, Qt 5, and how the release
 builds are made and carry their licences.
 
 Working on the code? Start with [AGENTS.md](AGENTS.md): the design rules, the source map, the window and the tests.
