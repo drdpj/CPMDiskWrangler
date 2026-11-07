@@ -4,7 +4,7 @@ Read this before changing code: what the program is, where things are, the rules
 the window works and how to build and test. Three companion documents hold the detail you only need for some work:
 
 * **[docs/disc-formats.md](docs/disc-formats.md)** - the facts about each format and container, how sure we are of
-  each, and the real discs they were checked on. Read it before touching `diskimage`, `cpmformat`, `cpmfs`,
+  each, and the real discs they were checked on. Read it before touching the containers (`core/diskwrangler/device/`), `cpmformat`, `cpmfs`,
   `torchfs` or the diskdefs.
 * **[docs/detection.md](docs/detection.md)** - how `detect.cpp` works out a disc's format, and why. Read it before
   changing a score, a bonus or a tie-break.
@@ -32,9 +32,10 @@ windows, the desktop and other programs via the `retro-files` format shared with
 ## Source map (program in `src/`, tests in `tests/`)
 | File | Role |
 |---|---|
-| `diskimage.h/.cpp` | `Disk::Image`: the physical disc (tracks of sectors keyed by sector ID), the containers (raw, IMD, DSK, EDSK, TD0), staged writes, serialising, atomic commit |
+| `core/diskwrangler/device/container.*` | `dw::device::Container`: the physical disc (tracks of sectors keyed by sector ID), the containers (raw, IMD, DSK, EDSK, TD0; `container_formats.cpp`), staged writes, serialising, the checked save (`commit`, `saveAs`, with `safesave.*`). A raw file is read from the file as needed. In DiskWranglerCore (this was `src/diskimage.*`) |
+| `diskimage.h` | forwarding names (`Disk::Image` = `dw::device::Container`, `Disk::Kind`, ...) for the tests only; program code uses the core's names |
 | `natchars.h/.cpp` | `Nat`: ISO 646 national character sets (map `@ [ \ ] ^ ` { | } ~`, never `#` `$`), host<->disc name/text conversion, evidence scan and language guess, the chooser dialog. Per disc, remembered in settings (`charset/<sha1 of path>`); Volume accepts `[ \ ] |` in names only while a national set is chosen (`setExtraNameChars`). Not done: SE-C/DEC variants, UK (`#`->£) |
-| `lzhuf.cpp` | TeleDisk 2.x "advanced compression" decoder (Okumura's LZHUF; tables generated, not copied) |
+| `core/diskwrangler/device/lzhuf.cpp` | TeleDisk 2.x "advanced compression" decoder (Okumura's LZHUF; tables generated, not copied). In DiskWranglerCore |
 | `cpmformat.h/.cpp` | `Cpm::Format`: a diskdef plus the derived DPB (DSM, EXM, pointer width, skew table, `locate()`); the diskdefs parser; the library |
 | `cpmfs.h/.cpp` | `Cpm::Volume`: directory, files, extents, CP/M 3 / P2DOS stamps and labels, add/delete/rename/attrs, `check()`, `makeBlank()` |
 | `detect.h/.cpp` | working out the format: candidates, scoring, ranking, confidence, `safeToWrite` |
@@ -52,20 +53,22 @@ windows, the desktop and other programs via the `retro-files` format shared with
 | `torchfs.h/.cpp` | Torch CP/N's filesystem (format key `torchcpn`): `Torch::walk`/`scan` (shared with detection) and the `Cpm::Volume` methods `torch...` that every public `Volume` method hands over to when `Format::torch` is set, so the window, drags, Copy/Paste and the tests see one `Volume` |
 | `icon.*`, `icons/` (top level) | the 8-inch floppy icon (QPainter); PNGs from `tests/mkicon`, the `.ico` made from them with Pillow, and a hand-written SVG that renders pixel-identical (check with cairosvg if you change either) |
 
-**Container by content, not by name.** `Image::open` recognises ImageDisk, DSK / extended DSK and TeleDisk by their
+**Container by content, not by name.** `Container::open` recognises ImageDisk, DSK / extended DSK and TeleDisk by their
 headers and treats anything else as raw, whatever the suffix (`.dsk` is used for raw dumps by many emulators). Save As
 starts on the filter for the kind the image already is, and the kind saved is the filter chosen, never the typed name.
 
 ## The rules that must not be broken
-1. **Nothing is written to the file except by `Image::commit()` / `saveAs()`.** Filesystem code writes through
-   `Image::write`, which stages; every read overlays the staging.
+1. **Nothing is written to the file except by `Container::commit()` / `saveAs()`.** Filesystem code writes through
+   `Container::write`, which stages; every read overlays the staging.
 2. **Sectors are addressed by sector ID order, never file order.** `Track::byId` maps a logical index to the
    recorded order. ImageDisk/TeleDisk tracks are often rotated (Osborne single density: IDs 2,3,...,10,1);
    reading in file order gives a plausible but wrong directory. (Others have made this mistake: see the
    o1next repository's notes.)
 3. **Validate before writing.** `MainWindow::save()` runs `Volume::check()` and refuses on any error, and refuses
-   if the file changed on disk since it was opened. Commit writes a complete new file atomically (QSaveFile),
-   with an optional `.bak`, then reloads it.
+   if the file changed on disk since it was opened. Commit writes a complete new file beside the original, reads it
+   back (every staged sector, then `MainWindow::checkWritten`: each side's directory attached again and checked),
+   then makes the optional `.bak` (a hard link where possible) and atomically replaces the original, then reloads
+   it (DiskWranglerCore's `Container::SaveOptions`). Any failure before the replace leaves the original untouched.
 4. **A save with nothing changed changes nothing**, and unchanged parts stay byte-identical: IMD tracks without
    staged sectors are re-emitted from their original bytes (header and comment too); DSK/EDSK and raw files are
    patched in place. `fstest roundtrip` checks this on every image it is given.

@@ -1,7 +1,7 @@
 # Disc formats - CP/M Disk Wrangler
 
 The facts the code relies on for each format and container, how sure we are of each, and the real discs they were
-checked on. Read this before changing `src/diskimage`, `src/cpmformat`, `src/cpmfs`, `src/torchfs` or the diskdefs in
+checked on. Read this before changing `core/diskwrangler/device/` (the containers, in DiskWranglerCore), `src/cpmformat`, `src/cpmfs`, `src/torchfs` or the diskdefs in
 `src/resources/`. The design rules are in [AGENTS.md](../AGENTS.md), how a format is chosen in
 [detection.md](detection.md), and the tests named here in [testing.md](testing.md).
 

@@ -21,6 +21,7 @@ against the sources in `src/`. Run GUI tests with `QT_QPA_PLATFORM=offscreen`.
 | `tests/torch_check.py <image> <outdir>` | **independent** Torch CP/N reader and checker (from the format notes only): extracts every file, checks every chain, the record flags and that the map marks exactly the sectors in use. `verify_independent.sh` uses it for `fstest`'s Torch discs (cpmtools can't read them); `run_all.sh` compares its files with ours for every `<real>/torch/*.dsd` (the owner's discs, not in the repo) and adds a file to a copy of each |
 | `tests/acornz80_check.py <dsd> <outdir>` | **independent** Acorn Z80 reader (from Application Note 007 only); `run_all.sh` compares its files with ours for every `<real>/acorn/*.dsd` (the owner's discs, not in the repo) |
 | `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
+| `devicetest` (`core/tests/devicetest.pro`) | DiskWranglerCore's device layer (the containers this program used to have as `src/diskimage.*`): raw files read as needed and staged in blocks, the physical view, ImageDisk / DSK Save As, `Linear`, and the checked save (temporary copy, read-back, verify veto, `.bak` as a hard link, permissions). `run_all.sh` runs it |
 | `settingstest` (`core/tests/settingstest.pro`) | where settings live on Linux: an installed program has no portable mode; an AppImage keeps `<program>.ini` beside the `.AppImage` file (in DiskWranglerCore, shared with Acorn Disk Wrangler) |
 | `mkicon <dir>` | the PNG icons |
 

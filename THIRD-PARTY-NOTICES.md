@@ -26,14 +26,15 @@ directory size, reserved tracks, skew, and the data-track sector numbering) from
 (first sector ID on the data tracks) is that patch's key of the same name, implemented here independently in
 `Format::dataId` and `makeBlank`; no code was taken from the patch. Both definitions were checked against real discs.
 
-### LZHUF - `src/lzhuf.cpp`
+### LZHUF - `core/diskwrangler/device/lzhuf.cpp`
 The TeleDisk "advanced compression" decoder implements the LZHUF algorithm and follows the structure of
 **LZHUF.C**, written by **Haruyasu Yoshizaki** (1988, with English comments by **Haruhiko Okumura**, 1989),
 which builds on Okumura's LZSS. Okumura released his LZSS code into the public domain. LZHUF.C was published
 without any licence statement and has been redistributed and adapted freely for over thirty years (TeleDisk itself,
-LHA, MAME's and libdsk's TeleDisk readers); no terms are known that restrict this use. The code in `src/lzhuf.cpp`
-was written for this program (the position-code tables are generated, not copied) and is distributed under the GPL
-with the rest; the credit above is given because its structure follows LZHUF.C.
+LHA, MAME's and libdsk's TeleDisk readers); no terms are known that restrict this use. The code (now in
+DiskWranglerCore, `core/diskwrangler/device/lzhuf.cpp`, with the rest of the disc image containers) was written for
+this program (the position-code tables are generated, not copied) and is distributed under the GPL with the rest; the
+credit above is given because its structure follows LZHUF.C.
 
 ### Acorn Disk Wrangler
 Parts of this program are adapted from **Acorn Disk Wrangler** (<https://github.com/drdpj/AcornDiskWrangler>),
