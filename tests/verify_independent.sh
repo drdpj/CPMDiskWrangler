@@ -65,7 +65,9 @@ PY
       rm -rf $t; continue
     fi
     ( cd $t && fsck.cpm -n -f "$fmtname" "$logical" >$t/fsck 2>&1 ); fr=$?
-    if [ $fr -ne 0 ] || grep -q -i -E "error|bad|illegal" $t/fsck; then echo "FAIL $name: fsck.cpm: $(head -3 $t/fsck | tr '\n' ' ')"; fail=1; else echo "ok   $name: fsck.cpm clean"; fi
+    # (the words are looked for in fsck.cpm's findings, not in the file name it prints: mktemp's random name can
+    # hold "bad" in any case, as /tmp/tmp.xaqbADrgMl did)
+    if [ $fr -ne 0 ] || sed "s|$logical|<image>|g" $t/fsck | grep -q -i -E "error|bad|illegal"; then echo "FAIL $name: fsck.cpm: $(head -3 $t/fsck | tr '\n' ' ')"; fail=1; else echo "ok   $name: fsck.cpm clean"; fi
     n=0; bad=0
     for f in $(cd "$base".expect && find . -type f | sed 's|^\./||'); do
       u=${f%%/*}; fn=${f#*/}; n=$((n+1))
