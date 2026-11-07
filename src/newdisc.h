@@ -19,7 +19,7 @@
 #pragma once
 #include <QDialog>
 #include "cpmformat.h"
-#include "diskimage.h"
+#include <diskwrangler/device/container.h>
 
 class QCheckBox;
 class QComboBox;
@@ -32,11 +32,11 @@ class NewDiscDialog : public QDialog {
 public:
     explicit NewDiscDialog(QWidget *parent = nullptr);
     Cpm::Format format() const;
-    Disk::Kind kind() const;
+    dw::device::Kind kind() const;
     bool stamps() const;
     QString label() const;
     bool selectFormat(const QString &name);           // for tests
-    void setKind(Disk::Kind k);
+    void setKind(dw::device::Kind k);
 private slots:
     void filter(const QString &text);
     void changed();

@@ -31,7 +31,7 @@ namespace {
 
 // ------------------------------------------------------------------------------------------- reading
 
-bool readLogical(const Disk::Image &img, const Cpm::Format &f, qint64 off, int len, QByteArray *out) {
+bool readLogical(const dw::device::Container &img, const Cpm::Format &f, qint64 off, int len, QByteArray *out) {
     out->clear();
     out->reserve(len);
     const int sl = f.seclen;
@@ -224,7 +224,7 @@ bool textExtension(const QByteArray &n11) {
 
 struct ContentScore { int textGood = 0, textBad = 0, startsBlank = 0, comGood = 0, comBad = 0, blankSectors = 0, zeroFiles = 0; };
 
-ContentScore scoreContents(const Disk::Image &img, const Cpm::Format &f, const QVector<EInfo> &ent) {
+ContentScore scoreContents(const dw::device::Container &img, const Cpm::Format &f, const QVector<EInfo> &ent) {
     ContentScore cs;
     // gather files: key -> (lext, entry index)
     QMap<QByteArray, QVector<QPair<int, int>>> files;
@@ -319,7 +319,7 @@ QString listingSignature(const Cpm::Format &f, const QVector<EInfo> &ent) {
 }
 
 // The Amstrad PCW / +3 boot sector spec: the first sector of track 0 describes the disc.
-bool pcwSpec(const Disk::Image &img, Cpm::Format *out) {
+bool pcwSpec(const dw::device::Container &img, Cpm::Format *out) {
     QByteArray s;
     if (!img.read(0, 0, 0, &s) || s.size() < 16) return false;
     const unsigned char *b = reinterpret_cast<const unsigned char *>(s.constData());
@@ -348,9 +348,9 @@ bool pcwSpec(const Disk::Image &img, Cpm::Format *out) {
     return true;
 }
 
-bool physicallyFits(const Cpm::Format &f, const Disk::Image &img, const Disk::Shape &sh) {
-    if (img.kind() == Disk::Kind::Raw) {
-        const Disk::RawLayout &l = img.rawLayout();
+bool physicallyFits(const Cpm::Format &f, const dw::device::Container &img, const dw::device::Shape &sh) {
+    if (img.kind() == dw::device::Kind::Raw) {
+        const dw::device::RawLayout &l = img.rawLayout();
         if (f.t0sectrk > 0 && l.t0sectrk > 0 && (f.t0sectrk != l.t0sectrk || f.t0seclen != l.t0seclen)) return false;
         if (f.separateSides) return f.seclen == l.seclen && f.sectrk == l.sectrk && l.heads == 2 && f.cylinders <= l.cyls;
         if (l.sideBySide && l.heads == 2) return false;          // side after side: only for discs with a filesystem per side
@@ -371,11 +371,11 @@ bool physicallyFits(const Cpm::Format &f, const Disk::Image &img, const Disk::Sh
 // directory entry accounts for, and the disc must not carry another filesystem's own structures.
 
 // The disc's first n bytes: a raw file's start, or cylinder 0 head 0's sectors in ID order.
-QByteArray discStart(const Disk::Image &img, int n, int *seclen) {
+QByteArray discStart(const dw::device::Container &img, int n, int *seclen) {
     QByteArray out, s;
     *seclen = 0;
-    if (img.kind() == Disk::Kind::Raw) return img.rawBytes().left(int(qMin<qint64>(n, img.rawFileSize())));
-    const Disk::Track *t = img.track(0, 0);
+    if (img.kind() == dw::device::Kind::Raw) return img.rawBytes().left(int(qMin<qint64>(n, img.rawFileSize())));
+    const dw::device::Track *t = img.track(0, 0);
     if (!t || t->secs.isEmpty()) return out;
     *seclen = t->secs[t->byId.value(0)].size;
     for (int i = 0; i < t->byId.size() && out.size() < n; ++i) {
@@ -412,12 +412,12 @@ bool dfsCatalogue(const QByteArray &b) {
 }
 
 // Another filesystem the disc plainly carries, in words, or empty.
-QString foreignFilesystem(const Disk::Image &img) {
+QString foreignFilesystem(const dw::device::Container &img) {
     int seclen = 0;
     QByteArray b = discStart(img, 4096, &seclen);
     auto at = [&](int off, const char *magic) { return b.size() >= off + 4 && b.mid(off, 4) == magic; };
     auto hugo = [&](int off) { return at(off, "Hugo") || at(off, "Nick"); };
-    const qint64 size = img.kind() == Disk::Kind::Raw ? img.rawFileSize() : 0;
+    const qint64 size = img.kind() == dw::device::Kind::Raw ? img.rawFileSize() : 0;
     // ADFS old map: the root directory (sector 2, five sectors) starts and ends with Hugo / Nick
     if ((seclen == 0 || seclen == 256) && hugo(0x201) && hugo(0x6FB))
         return "an Acorn ADFS disc (its root directory is where ADFS keeps it)";
@@ -438,7 +438,7 @@ QString foreignFilesystem(const Disk::Image &img) {
 }
 
 // True when the directory area is a single repeated byte (a freshly formatted directory, not one of deleted files).
-bool directoryBlank(const Disk::Image &img, const Cpm::Format &f) {
+bool directoryBlank(const dw::device::Container &img, const Cpm::Format &f) {
     QByteArray d;
     if (!readLogical(img, f, 0, f.maxdir * 32, &d) || d.isEmpty()) return false;
     return d.count(d[0]) == d.size();
@@ -448,7 +448,7 @@ bool directoryBlank(const Disk::Image &img, const Cpm::Format &f) {
 // byte. Formatting writes every track, so a freshly formatted disc has none; a disc with an empty directory and
 // data elsewhere is another kind of disc. (Data before a format's offset counts too: it is another partition,
 // and reading an empty one of a disc that holds data says nothing.)
-int strayRecords(const Disk::Image &img, const Cpm::Format &f) {
+int strayRecords(const dw::device::Container &img, const Cpm::Format &f) {
     QSet<quint32> boot;
     auto key = [](int c, int h, int i) { return quint32(c) << 16 | quint32(h) << 8 | quint32(i); };
     for (int side = 0; side < (f.separateSides ? 2 : 1); ++side) {
@@ -475,11 +475,11 @@ int strayRecords(const Disk::Image &img, const Cpm::Format &f) {
     return n;
 }
 
-Candidate evaluateSide(const Disk::Image &img, const Cpm::Format &f, int head);
+Candidate evaluateSide(const dw::device::Container &img, const Cpm::Format &f, int head);
 
 // An empty reading (a blank directory, and no files on the other side of a disc with a filesystem per side) of a
 // disc that holds data. A few records are tolerated (a boot loader spilling past its tracks, say).
-bool emptyButUsed(const Disk::Image &img, const Cpm::Format &f) {
+bool emptyButUsed(const dw::device::Container &img, const Cpm::Format &f) {
     if (!directoryBlank(img, f)) return false;
     if (f.separateSides && evaluateSide(img, f, 1 - f.fixedHead).files > 0) return false;
     return strayRecords(img, f) >= 4;
@@ -500,7 +500,7 @@ const Cpm::Format *libraryMatch(const Cpm::Format &f, int firstId, bool haveIds)
 // Torch CP/N (format key "torchcpn"): its own directory, not a CP/M one. A reading needs the map's fixed bits;
 // then +4 a file, +2 a file whose index chain is sound, -15 an entry that isn't a file, -8 a broken chain or a sector
 // used twice, +10 for the map and +6 for the formatter's two sectors.
-Candidate evaluateTorch(const Disk::Image &img, Candidate c) {
+Candidate evaluateTorch(const dw::device::Container &img, Candidate c) {
     Torch::Scan s = Torch::scan([&](int n, QByteArray *out) { return readLogical(img, c.fmt, qint64(n) * Torch::SecLen, Torch::SecLen, out); });
     if (!s.readable) { c.score = -1e9; c.evidence << "the Torch CP/N directory tracks can't be read with this layout"; return c; }
     if (!s.mapOk) { c.score = -1e9; c.evidence << "no Torch CP/N allocation map here (its fixed bits are missing)"; return c; }
@@ -535,12 +535,12 @@ QString Candidate::key() const {
            QString("%1|%2|%3|%4%5").arg(f.blocksize).arg(f.maxdir).arg(f.dirBlocks).arg(sk).arg(f.torch ? "|torch" : "");
 }
 
-Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
+Candidate evaluate(const dw::device::Container &img, const Cpm::Format &fIn, bool deep) {
     Candidate c;
     c.fmt = fIn;
     QString e;
     if (!c.fmt.derived && !c.fmt.derive(&e)) { c.score = -1e9; c.evidence << "invalid: " + e; return c; }
-    if (img.kind() == Disk::Kind::Raw) c.raw = img.rawLayout();
+    if (img.kind() == dw::device::Kind::Raw) c.raw = img.rawLayout();
     if (c.fmt.torch) return evaluateTorch(img, c);
     QByteArray dir;
     if (!readLogical(img, c.fmt, 0, c.fmt.maxdir * 32, &dir)) {
@@ -590,7 +590,7 @@ Candidate evaluate(const Disk::Image &img, const Cpm::Format &fIn, bool deep) {
     return c;
 }
 
-Candidate reevaluate(const Disk::Image &img, const Candidate &old) {
+Candidate reevaluate(const dw::device::Container &img, const Candidate &old) {
     Candidate fresh = evaluate(img, old.fmt, true);
     if (fresh.score < -1e8) return old;
     Candidate c = old;
@@ -605,7 +605,7 @@ Candidate reevaluate(const Disk::Image &img, const Candidate &old) {
 }
 
 namespace {
-Candidate evaluateSide(const Disk::Image &img, const Cpm::Format &f, int head) {
+Candidate evaluateSide(const dw::device::Container &img, const Cpm::Format &f, int head) {
     Cpm::Format g = f;
     g.fixedHead = head;
     g.derived = false;
@@ -613,15 +613,15 @@ Candidate evaluateSide(const Disk::Image &img, const Cpm::Format &f, int head) {
 }
 } // namespace
 
-void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const Disk::Image &img) {
+void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const dw::device::Container &img) {
     Candidate &c = *cp;
-    const bool haveIds = img.kind() != Disk::Kind::Raw;
-    const Disk::Shape sh = img.shape();
+    const bool haveIds = img.kind() != dw::device::Kind::Raw;
+    const dw::device::Shape sh = img.shape();
     c.fromLibrary = true;
     c.score += 3;
     c.evidence << "a known format (" + lib.origin + ")";
     if (lib.t0sectrk > 0) {
-        const Disk::Track *t0 = img.track(0, 0);
+        const dw::device::Track *t0 = img.track(0, 0);
         bool same = t0 && t0->secs.size() == lib.t0sectrk && !t0->secs.isEmpty() && t0->secs[0].size == lib.t0seclen &&
                     (t0->mode < 0 || (t0->mode <= 2) == lib.t0fm);
         if (same) { c.score += 3; c.evidence << QString("track 0 is %1 x %2 %3, as this format's is").arg(lib.t0sectrk).arg(lib.t0seclen).arg(lib.t0fm ? "FM" : "MFM"); }
@@ -642,7 +642,7 @@ void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const Disk::Image &
 
 // Some Sharp formats (sds400) hold every byte inverted: where a CP/M disc is filled with E5, theirs is filled with 1A. Lots of 1A and
 // hardly any E5 means "try it inverted" (a disc of ^Z-padded text has 1A too, but also E5 somewhere).
-static bool looksInverted(const Disk::Image &img) {
+static bool looksInverted(const dw::device::Container &img) {
     qint64 n1a = 0, ne5 = 0;
     QByteArray s;
     for (int c = 0; c < img.cylinders(); ++c)
@@ -659,7 +659,7 @@ static bool looksInverted(const Disk::Image &img) {
 // end of the volume it costs nothing; with data after it, the reading breaks the volume in two. The penalty is the share of
 // the data that comes after such a track (up to 3 points), which is how outback is told from outout when a disc's odd track
 // is cylinder 0, side 1: outback puts it last, outout puts it in the middle.
-static double oddTrackPenalty(const Disk::Image &img, const Cpm::Format &f, QString *note) {
+static double oddTrackPenalty(const dw::device::Container &img, const Cpm::Format &f, QString *note) {
     if (!f.derived || f.separateSides || f.torch || f.sectrk <= 0) return 0;
     const int reserved = f.dataStart / f.sectrk;
     const int dataTracks = f.tracks - reserved;
@@ -668,7 +668,7 @@ static double oddTrackPenalty(const Disk::Image &img, const Cpm::Format &f, QStr
     for (int t = reserved; t < f.tracks; ++t) {
         int c, h, i;
         if (!f.locate(t * f.sectrk, &c, &h, &i)) continue;
-        const Disk::Track *tr = img.track(c, h);
+        const dw::device::Track *tr = img.track(c, h);
         if (tr && int(tr->secs.size()) == f.sectrk && tr->secs[0].size == f.seclen) continue;
         const double after = double(f.tracks - 1 - t) / dataTracks;
         if (after > 0) {
@@ -682,7 +682,7 @@ static double oddTrackPenalty(const Disk::Image &img, const Cpm::Format &f, QStr
 // A raw file says nothing of how the disc was laid out, and the same bytes read the same as 32 x 128 on one side, 16 x 256
 // on two sides or 8 x 512: each gets the same score. This tells them apart by what real discs are like (a drive has 35, 40,
 // 77 or 80 tracks a side, and a few sector layouts are common) - less than a point, so it never outweighs the directory.
-static double plausibleGeometry(const Disk::RawLayout &l) {
+static double plausibleGeometry(const dw::device::RawLayout &l) {
     if (!l.valid()) return 0;
     double b = 0;
     if (l.cyls == 35 || l.cyls == 40 || l.cyls == 77 || l.cyls == 80) b += 0.5;
@@ -702,17 +702,17 @@ static QString readingSignature(const Candidate &c) {
         .arg(f.maxdir).arg(f.physHeads == 2 ? int(f.sides) : 0).arg(c.evidence.isEmpty() ? QString() : c.evidence.first());
 }
 
-Result detect(Disk::Image &img, const QString &remembered, int keep) {
+Result detect(dw::device::Container &img, const QString &remembered, int keep) {
     Result res;
     QVector<Candidate> all;
-    QVector<Disk::RawLayout> layouts;
-    const bool raw = img.kind() == Disk::Kind::Raw;
+    QVector<dw::device::RawLayout> layouts;
+    const bool raw = img.kind() == dw::device::Kind::Raw;
 
     // ----- physical layouts to try
     if (raw) {
         qint64 size = img.rawFileSize();
-        auto addLayout = [&](const Disk::RawLayout &l) {
-            for (const Disk::RawLayout &o : layouts)
+        auto addLayout = [&](const dw::device::RawLayout &l) {
+            for (const dw::device::RawLayout &o : layouts)
                 if (o.sameShape(l)) return;
             layouts.append(l);
         };
@@ -720,7 +720,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             if (f.t0sectrk > 0 && !f.offsetSectors) {
                 // a track 0 of its own size: one side, or two sides (side after side, or cylinder by cylinder),
                 // each side with its own track 0 - a disc with a filesystem per side, or one over both sides
-                Disk::RawLayout l;
+                dw::device::RawLayout l;
                 l.seclen = f.seclen; l.sectrk = f.sectrk; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen;
                 l.heads = 1;
                 l.cyls = f.physHeads == 1 ? f.tracks : f.cylinders;
@@ -739,7 +739,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             bool fits = size == full || (size < full && size % trackBytes == 0 && size > qint64(f.dataStart + 4) * f.seclen &&
                                          size * 10 >= full * 6);
             if (!fits) continue;
-            Disk::RawLayout l;
+            dw::device::RawLayout l;
             l.seclen = f.seclen; l.sectrk = f.sectrk; l.heads = f.physHeads;
             l.cyls = int((qint64(f.tracks) * f.sectrk + f.offsetSectors + qint64(f.sectrk) * f.physHeads - 1) / (qint64(f.sectrk) * f.physHeads));
             addLayout(l);
@@ -754,7 +754,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
                     qint64 cyl = size / tb;
                     if (cyl < 30 || cyl > 86 || (h == 1 && cyl > 86)) continue;
                     if (h == 2 && cyl < 35) continue;
-                    Disk::RawLayout l;
+                    dw::device::RawLayout l;
                     l.seclen = sl; l.sectrk = st; l.heads = h; l.cyls = int(cyl);
                     addLayout(l);
                 }
@@ -768,7 +768,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
                     if (size <= t0b || (size - t0b) % tb) continue;
                     qint64 cyl = (size - t0b) / tb + 1;
                     if (cyl < 30 || cyl > 86) continue;
-                    Disk::RawLayout l;
+                    dw::device::RawLayout l;
                     l.seclen = sl; l.sectrk = st; l.heads = 1; l.cyls = int(cyl);
                     l.t0sectrk = t0[0]; l.t0seclen = t0[1];
                     addLayout(l);
@@ -780,7 +780,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
             return res;
         }
     } else {
-        layouts.append(Disk::RawLayout());          // the container's own
+        layouts.append(dw::device::RawLayout());          // the container's own
     }
 
     Cpm::Format rememberedFmt;
@@ -790,14 +790,14 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         if (!r.isEmpty()) { rememberedFmt = r.first(); haveRemembered = true; }
     }
 
-    for (const Disk::RawLayout &layout : layouts) {
+    for (const dw::device::RawLayout &layout : layouts) {
         if (raw) {
             QString e;
-            Disk::RawLayout l = layout;
+            dw::device::RawLayout l = layout;
             l.firstId = 1;
             if (!img.setRawLayout(l, &e)) continue;
         }
-        Disk::Shape sh = img.shape();
+        dw::device::Shape sh = img.shape();
         const bool haveIds = !raw;
         int heads = raw ? layout.heads : sh.heads;
         int cyls = raw ? layout.cyls : sh.cyls;
@@ -832,7 +832,7 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
                             c.evidence << "side 1 doesn't read as a disc of this format";
                         }
                         if (lf.t0sectrk > 0) {
-                            const Disk::Track *t0 = img.track(0, 0), *t1 = img.track(0, 1);
+                            const dw::device::Track *t0 = img.track(0, 0), *t1 = img.track(0, 1);
                             bool same = t0 && t1 && t0->secs.size() == lf.t0sectrk && t1->secs.size() == lf.t0sectrk &&
                                         t0->secs[0].size == lf.t0seclen && (t0->mode < 0 || (t0->mode <= 2) == lf.t0fm);
                             if (same) { c.score += 3; c.evidence << QString("track 0 of each side is %1 x %2, as this format's is").arg(lf.t0sectrk).arg(lf.t0seclen); }
@@ -949,20 +949,20 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
 
     // ----- rank, one per layout
     int emptyButUsedCount = 0;
-    const Disk::RawLayout lastLayout = raw ? img.rawLayout() : Disk::RawLayout();
+    const dw::device::RawLayout lastLayout = raw ? img.rawLayout() : dw::device::RawLayout();
     for (Candidate &c : all) c.raw = raw && !c.raw.valid() ? lastLayout : c.raw;
     // an empty reading of a disc that holds data: not this format (see emptyButUsed)
     auto usedButEmpty = [&](const Candidate &c) {
         if (c.files != 0 || c.remembered || c.score < -1e8 || c.fmt.torch) return false;   // Torch: its map says
         if (raw && !img.rawLayout().sameShape(c.raw)) {
             QString e;
-            Disk::RawLayout l = c.raw;
+            dw::device::RawLayout l = c.raw;
             l.firstId = 1;
             if (!img.setRawLayout(l, &e)) return false;
         }
         return emptyButUsed(img, c.fmt);
     };
-    Disk::RawLayout droppedLayout;       // the best dropped reading's, to describe the disc if nothing is left
+    dw::device::RawLayout droppedLayout;       // the best dropped reading's, to describe the disc if nothing is left
     double droppedScore = -1e9;
     for (Candidate &c : all) {
         if (usedButEmpty(c)) {
@@ -1026,9 +1026,9 @@ Result detect(Disk::Image &img, const QString &remembered, int keep) {
         QString e;
         img.setRawLayout(res.ranked.isEmpty() ? droppedLayout : res.ranked.first().raw, &e);
     }
-    Disk::Shape sh = img.shape();
+    dw::device::Shape sh = img.shape();
     res.physical = QString("%1: %2 cylinder%3, %4 side%5, %6 x %7-byte sectors per track")
-                       .arg(Disk::kindName(img.kind())).arg(sh.cyls).arg(sh.cyls == 1 ? "" : "s").arg(sh.heads)
+                       .arg(dw::device::kindName(img.kind())).arg(sh.cyls).arg(sh.cyls == 1 ? "" : "s").arg(sh.heads)
                        .arg(sh.heads == 1 ? "" : "s").arg(sh.sectrk).arg(sh.seclen);
     if (!raw) res.physical += QString(", sector IDs from %1").arg(sh.firstId);
     if (sh.oddTracks) res.physical += QString(", %1 track%2 of another shape").arg(sh.oddTracks).arg(sh.oddTracks == 1 ? "" : "s");

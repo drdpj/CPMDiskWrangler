@@ -34,7 +34,7 @@ class FormatDialog : public QDialog {
     Q_OBJECT
 public:
     // img: the open image (a raw image's layout may be changed while previewing; the caller sets it back).
-    FormatDialog(Disk::Image *img, const Detect::Result &det, int currentIndex, bool writable, QWidget *parent = nullptr);
+    FormatDialog(dw::device::Container *img, const Detect::Result &det, int currentIndex, bool writable, QWidget *parent = nullptr);
     Detect::Candidate chosen() const;
     bool allowChanges() const;
     // for tests: try a format given in diskdefs syntax and select it
@@ -51,7 +51,7 @@ private:
     bool formFormat(Cpm::Format *f, QString *err) const;
     bool evaluateFormat(const Cpm::Format &f, Detect::Candidate *out, QString *err);
 
-    Disk::Image *m_img;
+    dw::device::Container *m_img;
     bool m_keepForm = false;         // selecting a reading just tried by hand: leave the form as typed
     QVector<Detect::Candidate> m_cands;
     QTreeWidget *m_list;

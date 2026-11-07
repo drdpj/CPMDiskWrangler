@@ -15,10 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-// cpmfs.h - the CP/M filesystem on a Disk::Image laid out by a Cpm::Format: directory, files and their extents,
+// cpmfs.h - the CP/M filesystem on a dw::device::Container laid out by a Cpm::Format: directory, files and their extents,
 // CP/M 3 / P2DOS time stamps and disc labels; adding, deleting, renaming files and setting attributes.
 //
-// Every change goes through the image's staging (Disk::Image::write), so nothing reaches the file until the image
+// Every change goes through the image's staging (dw::device::Container::write), so nothing reaches the file until the image
 // is committed. Each mutating call is atomic: it takes a snapshot of the staged writes and restores it on failure.
 #pragma once
 
@@ -31,7 +31,7 @@
 #include "cpmformat.h"
 #include "torchfs.h"
 
-#include "diskimage.h"
+#include <diskwrangler/device/container.h>
 
 namespace Cpm {
 
@@ -75,7 +75,7 @@ class Volume {
 public:
     Volume() = default;
     // Reads the directory. A disc whose directory fails check() can still be browsed; the caller makes it read-only.
-    bool attach(Disk::Image *img, const Format &f, QString *err);
+    bool attach(dw::device::Container *img, const Format &f, QString *err);
     void detach() { m_img = nullptr; m_files.clear(); m_dir.clear(); }
     bool attached() const { return m_img != nullptr; }
     const Format &format() const { return m_fmt; }
@@ -152,7 +152,7 @@ private:
     bool torchWriteSector(int lsec, const QByteArray &d, QString *err);
     Torch::SectorReader torchReader() const;
 
-    Disk::Image *m_img = nullptr;
+    dw::device::Container *m_img = nullptr;
     Format m_fmt;
     QVector<QByteArray> m_dir;
     QVector<File> m_files;
@@ -163,7 +163,7 @@ private:
 
 // A new, empty disc in the given container: every sector E5 (the format's sector IDs and ImageDisk mode), then an
 // empty directory (with CP/M 3 time stamp entries and a label when stamps is set).
-bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &f, bool stamps, const QString &label, QString *err);
+bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &f, bool stamps, const QString &label, QString *err);
 int defaultImdMode(const Format &f);
 
 // CP/M 3 dates: days since 31 Dec 1977 (day 1 = 1 Jan 1978), hours and minutes in BCD.

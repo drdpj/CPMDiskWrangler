@@ -46,13 +46,13 @@ NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
     m_info->setWordWrap(true);
     m_info->setTextInteractionFlags(Qt::TextSelectableByMouse);
     m_kind = new QComboBox;
-    m_kind->addItem("ImageDisk (.IMD)", int(Disk::Kind::Imd));
-    m_kind->addItem("Extended DSK image (.DSK)", int(Disk::Kind::Edsk));
+    m_kind->addItem("ImageDisk (.IMD)", int(dw::device::Kind::Imd));
+    m_kind->addItem("Extended DSK image (.DSK)", int(dw::device::Kind::Edsk));
     m_kind->setItemData(1, "The DSK format CPCEMU introduced, now used by emulators and tools for many machines", Qt::ToolTipRole);
-    m_kind->addItem("Standard DSK image (.DSK)", int(Disk::Kind::Dsk));
+    m_kind->addItem("Standard DSK image (.DSK)", int(dw::device::Kind::Dsk));
     m_kind->setItemData(2, "The original CPCEMU DSK header, which older emulators (ubee512, for one) read; every track must be the same "
                            "size, so formats with a different track 0 can't use it", Qt::ToolTipRole);
-    m_kind->addItem("Raw sector image (.IMG)", int(Disk::Kind::Raw));
+    m_kind->addItem("Raw sector image (.IMG)", int(dw::device::Kind::Raw));
     m_twoSided = new QCheckBox("Double-sided: a separate disc on each side");
     m_twoSided->setToolTip("Research Machines double-sided discs hold two separate CP/M discs, one on each side, each with its "
                            "own single-density boot track.\nTick this to make one: both sides are formatted and each is its own "
@@ -114,7 +114,7 @@ bool NewDiscDialog::selectFormat(const QString &name) {
     return false;
 }
 
-void NewDiscDialog::setKind(Disk::Kind k) { m_kind->setCurrentIndex(qMax(0, m_kind->findData(int(k)))); }
+void NewDiscDialog::setKind(dw::device::Kind k) { m_kind->setCurrentIndex(qMax(0, m_kind->findData(int(k)))); }
 
 Cpm::Format NewDiscDialog::format() const {
     QListWidgetItem *it = m_list->currentItem();
@@ -131,6 +131,6 @@ Cpm::Format NewDiscDialog::format() const {
     return *f;
 }
 
-Disk::Kind NewDiscDialog::kind() const { return Disk::Kind(m_kind->currentData().toInt()); }
+dw::device::Kind NewDiscDialog::kind() const { return dw::device::Kind(m_kind->currentData().toInt()); }
 bool NewDiscDialog::stamps() const { return m_stamps->isChecked(); }
 QString NewDiscDialog::label() const { return m_label->text().trimmed().toUpper(); }

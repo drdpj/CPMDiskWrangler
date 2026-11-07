@@ -27,7 +27,7 @@
 
 #include "cpmfs.h"
 #include "detect.h"
-#include "diskimage.h"
+#include "diskimage.h"          // dw::device::Container, and the Disk:: names guitest still uses
 #include "natchars.h"
 #include "dragout.h"
 #include "mainwindow_p.h"
@@ -93,9 +93,10 @@ public:
     QString natId() const { return m_natId; }
     QString natHint() const { return m_natHint; }
     bool openImage(const QString &path);
-    bool newImage(const QString &path, Disk::Kind kind, const Cpm::Format &f, bool stamps, const QString &label);
+    bool newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label);
     bool save();
-    bool saveAs(const QString &path, Disk::Kind kind);
+    bool saveAs(const QString &path, dw::device::Kind kind);
+    bool checkWritten(dw::device::Container &written, QString *err) const;
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
     // user -1: each file's own user number (0 for files without one); side: which side's filesystem
     void importPaths(const QStringList &paths, int user, int side = 0);
@@ -106,7 +107,7 @@ public:
     bool deleteFiles(const QVector<FileRef> &refs, QString *err);
     void refresh();
 
-    Disk::Image &image() { return m_img; }
+    dw::device::Container &image() { return m_img; }
     Cpm::Volume &volume(int side = 0) { return m_vols[side]; }
     int sides() const { return m_nvols; }
     bool dropOpensImage() const { return m_nvols == 0; }   // nothing read as CP/M here: a drop opens an image               // filesystems shown: 1, or 2 for a disc on each side
@@ -181,7 +182,7 @@ private:
     bool clipboardUsable() const;                       // something Paste can add
     bool pasteItems(const QMimeData *m, int user, int side);
 
-    Disk::Image m_img;
+    dw::device::Container m_img;
     Cpm::Volume m_vols[2];
     int m_nvols = 0;
     Detect::Result m_det;

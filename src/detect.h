@@ -30,13 +30,13 @@
 #include <QVector>
 
 #include "cpmformat.h"
-#include "diskimage.h"
+#include <diskwrangler/device/container.h>
 
 namespace Detect {
 
 struct Candidate {
     Cpm::Format fmt;                 // derived; name = library name, or "detected"
-    Disk::RawLayout raw;             // raw images: the physical layout this reading uses
+    dw::device::RawLayout raw;             // raw images: the physical layout this reading uses
     double score = 0;
     bool fromLibrary = false;        // the layout equals a library format
     bool remembered = false;         // the user chose this format for this image before
@@ -59,19 +59,19 @@ struct Result {
 
 // Scores one format against an image (raw images must already have their layout set). Used by detect() and by
 // the format dialog when the user picks or edits a format by hand.
-Candidate evaluate(const Disk::Image &img, const Cpm::Format &f, bool deep);
+Candidate evaluate(const dw::device::Container &img, const Cpm::Format &f, bool deep);
 // The points detection adds to a reading that has the layout of a library format (its definition in lib): +3 for being a
 // known format, track 0's shape, the Acorn DFS catalogue, whether the sector IDs start where the definition says. The
 // format dialog uses it too, so a format typed by hand that equals a library one scores the same as the detected one.
-void scoreKnownFormat(Candidate *c, const Cpm::Format &lib, const Disk::Image &img);
+void scoreKnownFormat(Candidate *c, const Cpm::Format &lib, const dw::device::Container &img);
 
 // The same reading scored again on the disc as it is now (files added or deleted since detection, a new disc
 // that has been filled): what evaluate() found is replaced, the bonuses detection added are kept. A raw image
 // must already have the candidate's layout set.
-Candidate reevaluate(const Disk::Image &img, const Candidate &c);
+Candidate reevaluate(const dw::device::Container &img, const Candidate &c);
 
 // rememberedDiskdef: a format the user confirmed for this file earlier (diskdefs text), or empty.
 // For a raw image, the image's layout is set to the winner's before returning.
-Result detect(Disk::Image &img, const QString &rememberedDiskdef = QString(), int keep = 25);
+Result detect(dw::device::Container &img, const QString &rememberedDiskdef = QString(), int keep = 25);
 
 } // namespace Detect

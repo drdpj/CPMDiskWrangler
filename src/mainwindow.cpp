@@ -458,7 +458,7 @@ void MainWindow::natDialog() {
 }
 
 bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
-    if (m_img.kind() == Disk::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, err)) return false;
+    if (m_img.kind() == dw::device::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, err)) return false;
     detachAll();
     int n = c.fmt.separateSides ? 2 : 1;
     for (int side = 0; side < n; ++side) {
@@ -483,7 +483,7 @@ bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
 bool MainWindow::openImage(const QString &path) {
     if (m_img.isOpen() && !confirmDiscard()) return false;
     QString err;
-    Disk::Image img;
+    dw::device::Container img;
     if (!img.open(path, &err)) { message("Open", QString("%1:\n%2").arg(path, err)); return false; }
     detachAll();
     m_img = img;
@@ -522,9 +522,9 @@ bool MainWindow::openImage(const QString &path) {
     return true;
 }
 
-bool MainWindow::newImage(const QString &path, Disk::Kind kind, const Cpm::Format &f, bool stamps, const QString &label) {
+bool MainWindow::newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label) {
     QString err;
-    Disk::Image img;
+    dw::device::Container img;
     if (!Cpm::makeBlank(&img, kind, f, stamps, label, &err) || !img.saveAs(path, kind, &err)) {
         message("New disc image", err);
         return false;
@@ -546,7 +546,7 @@ bool MainWindow::newImage(const QString &path, Disk::Kind kind, const Cpm::Forma
     m_det.ranked << c;
     m_det.confidence = "high";
     m_det.why = "A new disc made here.";
-    m_det.physical = QString("%1, new").arg(Disk::kindName(kind));
+    m_det.physical = QString("%1, new").arg(dw::device::kindName(kind));
     m_detIndex = 0;
     m_safe = true;
     if (!attachFormat(c, &err)) { message("New disc image", err); return false; }
@@ -605,7 +605,7 @@ void MainWindow::newImageDialog() {
     NewDiscDialog d(this);
     if (d.exec() != QDialog::Accepted) return;
     Cpm::Format f = d.format();
-    QString ext = Disk::kindExtension(d.kind());
+    QString ext = dw::device::kindExtension(d.kind());
     QString p = QFileDialog::getSaveFileName(this, "New disc image", AppSettings().value("lastDir").toString() + "/" + f.name + (f.separateSides ? "-2sides" : "") + "." + ext,
                                              QString("Disc image (*.%1)").arg(ext));
     if (p.isEmpty()) return;
@@ -644,7 +644,10 @@ bool MainWindow::save() {
         return false;
     }
     QString err;
-    if (!m_img.commit(&err, m_optBackup->isChecked())) { message("Save", "Not saved: " + err); return false; }
+    dw::device::Container::SaveOptions opt;
+    opt.backup = m_optBackup->isChecked();
+    opt.verify = [this](dw::device::Container &written, QString *e) { return checkWritten(written, e); };
+    if (!m_img.commit(opt, &err)) { message("Save", "Not saved: " + err); return false; }
     for (int side = 0; side < m_nvols; ++side) m_vols[side].reload(&err);
     m_fileTime = QFileInfo(m_img.path()).lastModified();
     m_fileSize = QFileInfo(m_img.path()).size();
@@ -654,7 +657,24 @@ bool MainWindow::save() {
     return true;
 }
 
-bool MainWindow::saveAs(const QString &path, Disk::Kind kind) {
+// The saved copy, before it replaces anything: each side's directory is read from it again and checked.
+bool MainWindow::checkWritten(dw::device::Container &written, QString *err) const {
+    for (int side = 0; side < m_nvols; ++side) {
+        Cpm::Volume v;
+        Cpm::Format f = m_vols[side].format();
+        f.derived = false;
+        QString e;
+        if (!v.attach(&written, f, &e)) { *err = "the saved copy can't be read back: " + e; return false; }
+        const Cpm::Report r = v.check();
+        if (!r.ok())
+            { *err = QString("the saved copy's directory%1 is not consistent:\n\n").arg(m_nvols > 1 ? QString(" on side %1").arg(side) : QString()) +
+                     r.errors.mid(0, 10).join("\n"); return false; }
+        if (v.files().size() != m_vols[side].files().size()) { *err = "the saved copy does not hold the same files"; return false; }
+    }
+    return true;
+}
+
+bool MainWindow::saveAs(const QString &path, dw::device::Kind kind) {
     if (!m_img.isOpen()) return false;
     bool ok = true;
     for (int side = 0; side < m_nvols; ++side) ok = ok && m_vols[side].check().ok();
@@ -663,7 +683,8 @@ bool MainWindow::saveAs(const QString &path, Disk::Kind kind) {
         return false;
     }
     QString err;
-    if (!m_img.saveAs(path, kind, &err)) { message("Save As", "Not saved: " + err); return false; }
+    auto verify = [this, ok](dw::device::Container &written, QString *e) { return !ok || checkWritten(written, e); };
+    if (!m_img.saveAs(path, kind, &err, verify)) { message("Save As", "Not saved: " + err); return false; }
     m_current.raw = m_img.rawLayout();
     for (int side = 0; side < m_nvols; ++side)
         if (!m_vols[side].reload(&err)) { message("Save As", err); return false; }
@@ -686,15 +707,15 @@ void MainWindow::saveAsDialog() {
     QString filter = imd;
     QString name = QFileInfo(m_img.path()).completeBaseName() + ".imd";
     switch (m_img.kind()) {
-    case Disk::Kind::Raw: filter = raw; name = QFileInfo(m_img.path()).fileName(); break;
-    case Disk::Kind::Dsk: filter = sdsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
-    case Disk::Kind::Edsk: filter = dsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
+    case dw::device::Kind::Raw: filter = raw; name = QFileInfo(m_img.path()).fileName(); break;
+    case dw::device::Kind::Dsk: filter = sdsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
+    case dw::device::Kind::Edsk: filter = dsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
     default: break;
     }
     QString p = QFileDialog::getSaveFileName(this, "Save as", QFileInfo(m_img.path()).absolutePath() + "/" + name,
                                              imd + ";;" + dsk + ";;" + sdsk + ";;" + raw, &filter);
     if (p.isEmpty()) return;
-    Disk::Kind k = filter == imd ? Disk::Kind::Imd : filter == dsk ? Disk::Kind::Edsk : filter == sdsk ? Disk::Kind::Dsk : Disk::Kind::Raw;
+    dw::device::Kind k = filter == imd ? dw::device::Kind::Imd : filter == dsk ? dw::device::Kind::Edsk : filter == sdsk ? dw::device::Kind::Dsk : dw::device::Kind::Raw;
     saveAs(p, k);
 }
 
@@ -1377,16 +1398,16 @@ void MainWindow::checkDisc() {
 
 void MainWindow::discInfo() {
     QStringList l;
-    Disk::Shape sh = m_img.shape();
+    dw::device::Shape sh = m_img.shape();
     l << "<h3>" + QFileInfo(m_img.path()).fileName().toHtmlEscaped() + "</h3>";
-    l << "<b>Container:</b> " + Disk::kindName(m_img.kind());
+    l << "<b>Container:</b> " + dw::device::kindName(m_img.kind());
     if (!m_img.headerLine().isEmpty()) l << "<b>ImageDisk header:</b> " + m_img.headerLine().toHtmlEscaped();
     if (!m_img.comment().isEmpty()) l << "<b>Comment / creator:</b> " + m_img.comment().toHtmlEscaped().replace("\n", "<br>");
     l << QString("<b>Physical:</b> %1 cylinders, %2 side(s); %3 tracks of %4 x %5 bytes, sector IDs from %6")
              .arg(m_img.cylinders()).arg(m_img.heads()).arg(sh.uniformTracks).arg(sh.sectrk).arg(sh.seclen).arg(sh.firstId);
     if (sh.oddTracks) l << QString("&nbsp;&nbsp;%1 track(s) of another shape (often a single-density boot track)").arg(sh.oddTracks);
     if (sh.badSectors) l << QString("&nbsp;&nbsp;%1 bad, missing or duplicated sector(s)").arg(sh.badSectors);
-    if (m_img.kind() == Disk::Kind::Raw) l << QString("<b>Raw file size:</b> %1 bytes").arg(m_img.rawFileSize());
+    if (m_img.kind() == dw::device::Kind::Raw) l << QString("<b>Raw file size:</b> %1 bytes").arg(m_img.rawFileSize());
     if (m_nvols) {
         const Cpm::Format &f = m_vols[0].format();
         l << "<b>Format:</b> " + f.displayName().toHtmlEscaped() + " (" + f.origin.toHtmlEscaped() + ")";
@@ -1440,24 +1461,24 @@ void MainWindow::discInfo() {
 // The readings as the disc is now: files may have been added or deleted since it was detected, and a disc made
 // here was scored when it was empty. (Tools > Disc format needs no unsaved changes, so this is the saved disc.)
 void MainWindow::rescoreReadings() {
-    Disk::RawLayout before = m_img.rawLayout();
+    dw::device::RawLayout before = m_img.rawLayout();
     QString e;
     for (Detect::Candidate &c : m_det.ranked) {
-        if (m_img.kind() == Disk::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, &e)) continue;
+        if (m_img.kind() == dw::device::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, &e)) continue;
         c = Detect::reevaluate(m_img, c);
     }
-    if (m_img.kind() == Disk::Kind::Raw && before.valid()) m_img.setRawLayout(before, &e);
+    if (m_img.kind() == dw::device::Kind::Raw && before.valid()) m_img.setRawLayout(before, &e);
 }
 
 void MainWindow::formatDialog() {
     if (!m_img.isOpen()) return;
     if (m_img.hasPending()) { message("Disc format", "Save or revert your changes before reading the disc with another format."); return; }
-    Disk::RawLayout before = m_img.rawLayout();
+    dw::device::RawLayout before = m_img.rawLayout();
     rescoreReadings();
     FormatDialog d(&m_img, m_det, m_detIndex, m_safe, this);
     int r = d.exec();
     QString err;
-    if (m_img.kind() == Disk::Kind::Raw && before.valid()) m_img.setRawLayout(before, &err);   // previews may change it
+    if (m_img.kind() == dw::device::Kind::Raw && before.valid()) m_img.setRawLayout(before, &err);   // previews may change it
     if (r != QDialog::Accepted) { for (int side = 0; side < m_nvols; ++side) m_vols[side].reload(); return; }
     Detect::Candidate c = d.chosen();
     if (!c.fmt.derived) return;

@@ -23,8 +23,6 @@
 #include <QStringList>
 #include <QVector>
 
-namespace Disk { class Image; }
-
 namespace Cpm {
 
 enum class SideOrder { Alt, OutBack, OutOut, AltRev };   // AltRev: cylinder by cylinder, side 1 first (Sharp)

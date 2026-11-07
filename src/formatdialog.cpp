@@ -123,7 +123,7 @@ static void showScoringHelp(QWidget *parent) {
     d.exec();
 }
 
-FormatDialog::FormatDialog(Disk::Image *img, const Detect::Result &det, int currentIndex, bool writable, QWidget *parent)
+FormatDialog::FormatDialog(dw::device::Container *img, const Detect::Result &det, int currentIndex, bool writable, QWidget *parent)
     : QDialog(parent), m_img(img) {
     setWindowTitle("Disc format");
     resize(1120, 680);
@@ -257,7 +257,7 @@ void FormatDialog::selectionChanged() {
     for (const QString &e : c.evidence) if (!e.startsWith("signature:")) out << "  " + e;
     out << "" << "Files this reading lists:";
     QString err;
-    if (m_img->kind() == Disk::Kind::Raw && c.raw.valid()) m_img->setRawLayout(c.raw, &err);
+    if (m_img->kind() == dw::device::Kind::Raw && c.raw.valid()) m_img->setRawLayout(c.raw, &err);
     Cpm::Volume v;
     if (!v.attach(m_img, c.fmt, &err)) out << "  (can't read: " + err + ")";
     else {
@@ -325,15 +325,15 @@ bool FormatDialog::formFormat(Cpm::Format *f, QString *err) const {
 }
 
 bool FormatDialog::evaluateFormat(const Cpm::Format &f, Detect::Candidate *out, QString *err) {
-    if (m_img->kind() == Disk::Kind::Raw) {
-        Disk::RawLayout l;
+    if (m_img->kind() == dw::device::Kind::Raw) {
+        dw::device::RawLayout l;
         l.seclen = f.seclen; l.sectrk = f.sectrk; l.heads = f.physHeads; l.cyls = f.cylinders;
         if (l.bytes() < m_img->rawFileSize() - qint64(f.sectrk) * f.seclen * f.physHeads)
             *err = QString("note: this geometry covers %1 bytes of the %2-byte image").arg(l.bytes()).arg(m_img->rawFileSize());
         QString e;
         if (!m_img->setRawLayout(l, &e)) { *err = e; return false; }
     } else {
-        Disk::Shape sh = m_img->shape();
+        dw::device::Shape sh = m_img->shape();
         if (f.seclen != sh.seclen || f.sectrk != sh.sectrk) {
             *err = QString("this disc's tracks hold %1 x %2-byte sectors").arg(sh.sectrk).arg(sh.seclen);
             return false;

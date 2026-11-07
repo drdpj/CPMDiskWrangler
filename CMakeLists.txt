@@ -32,9 +32,9 @@ if(APPLE)
 endif()
 add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} src/resources.qrc src/licences.qrc
     src/main.cpp src/mainwindow.cpp src/formatdialog.cpp src/newdisc.cpp src/natchars.cpp src/viewer.cpp src/viewtext.cpp src/icon.cpp src/dragout.cpp
-    src/diskimage.cpp src/lzhuf.cpp src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp
+    src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp
     src/mainwindow.h src/mainwindow_p.h src/formatdialog.h src/newdisc.h src/natchars.h src/viewer.h src/viewtext.h src/icon.h src/dragout.h
-    src/diskimage.h src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h)
+    src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/licences-bundled.qrc)   # a release build's library licences (ci/)
     target_sources(cpmdiskwrangler PRIVATE licences-bundled.qrc)
 endif()

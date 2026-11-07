@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "cpmfs.h"
-#include "diskimage.h"
+#include <diskwrangler/device/container.h>
 
 #include <QFileInfo>
 #include <QMap>
@@ -165,7 +165,7 @@ bool Volume::writeBytes(qint64 off, const QByteArray &data, QString *err) {
 
 // ------------------------------------------------------------------------------------------- directory
 
-bool Volume::attach(Disk::Image *img, const Format &f, QString *err) {
+bool Volume::attach(dw::device::Container *img, const Format &f, QString *err) {
     m_img = img;
     m_fmt = f;
     if (!m_fmt.derived && !m_fmt.derive(err)) { m_img = nullptr; return false; }
@@ -679,24 +679,24 @@ int defaultImdMode(const Format &f) {
     return eightInch ? 3 : 5;
 }
 
-bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps, const QString &label, QString *err) {
+bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &fIn, bool stamps, const QString &label, QString *err) {
     Format f = fIn;
     if (!f.derived && !f.derive(err)) return false;
     if (f.offsetSectors) { *err = "formats with an image offset (hard disc partitions) can't be made as new discs"; return false; }
     if (f.complement) { *err = QString("%1 stores its data inverted and numbers its sectors differently on each side: new discs of it can't be made here yet").arg(f.name); return false; }
-    Disk::RawLayout l;
+    dw::device::RawLayout l;
     l.seclen = f.seclen;
     l.sectrk = f.sectrk;
     l.heads = f.physHeads;
     l.cyls = f.cylinders;
     l.firstId = f.secbase >= 0 ? f.secbase : 1;
     l.mode = defaultImdMode(f);
-    if (f.t0sectrk > 0 && kind == Disk::Kind::Raw && !f.separateSides) {
+    if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && !f.separateSides) {
         *err = QString("%1 has a track 0 of its own shape (%2 x %3 %4), which a raw image can't hold: make it as ImageDisk or DSK")
                    .arg(f.name).arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM");
         return false;
     }
-    if (kind == Disk::Kind::Raw && f.separateSides) {
+    if (kind == dw::device::Kind::Raw && f.separateSides) {
         // a disc with a filesystem per side: the file holds all of side 0, then all of side 1, each side with its own
         // track 0 (the layout detection reads real Research Machines images in)
         l.sideBySide = true;
@@ -704,7 +704,7 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
         l.t0seclen = f.t0seclen;
     }
     img->createBlank(kind, l, QString("Made by CP/M Disk Wrangler, format %1%2").arg(f.name, f.separateSides ? ", a separate disc on each side" : ""));
-    if (f.t0sectrk > 0 && kind != Disk::Kind::Raw) {
+    if (f.t0sectrk > 0 && kind != dw::device::Kind::Raw) {
         // the same data rate as the other tracks, in FM or MFM (ImageDisk modes 0-2 FM, 3-5 MFM)
         int rate = l.mode % 3;
         int mode = f.t0fm ? rate : 3 + rate;
@@ -716,7 +716,7 @@ bool makeBlank(Disk::Image *img, Disk::Kind kind, const Format &fIn, bool stamps
     }
     // Some discs number the sectors of their data tracks differently from the reserved ones (Microbee DS80: 1-10, then 21-30;
     // "datasect"). The BIOS looks the sectors up by ID, so a disc whose data tracks are numbered from 1 is "Bad Sector".
-    if (f.dataId >= 0 && f.dataId != l.firstId && !f.separateSides && f.sectrk > 0 && kind != Disk::Kind::Raw) {   // (a raw file has no IDs)
+    if (f.dataId >= 0 && f.dataId != l.firstId && !f.separateSides && f.sectrk > 0 && kind != dw::device::Kind::Raw) {   // (a raw file has no IDs)
         const int heads = qMax(1, f.physHeads);
         const int total = f.cylinders * heads;
         for (int t = f.boottrk; t < total; ++t) {                  // logical tracks after the reserved ones, sides alternating
