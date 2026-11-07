@@ -11,7 +11,7 @@ step() { echo; echo "######## $*"; }
 build() { mkdir -p "$b/$1" && (cd "$b/$1" && qmake "$2" ${3:+"$3"} >/dev/null && make -j8 >/dev/null 2>"$b/$1.log") || { echo "BUILD FAILED: $1 (see $b/$1.log)"; fail=1; }; }
 step build
 build app "$src/cpmdiskwrangler.pro"
-for t in detecttest fstest guitest screenshot mkicon chartest; do build $t "$src/tests/$t.pro"; done
+for t in detecttest fstest voltest guitest screenshot mkicon chartest; do build $t "$src/tests/$t.pro"; done
 build settingstest "$src/core/tests/settingstest.pro"      # in DiskWranglerCore
 build xfertest "$src/core/tests/xfertest.pro"
 build uitest "$src/core/tests/uitest.pro"
@@ -55,6 +55,11 @@ mkdir -p "$W/foreign" && python3 "$src/tests/make_foreign.py" "$W/foreign"
 "$b/detecttest/detecttest" "$W"/foreign/* > "$W/foreign.log" 2>&1
 nf=$(ls "$W"/foreign | wc -l); nn=$(grep -c 'confidence none' "$W/foreign.log")
 echo "read as not CP/M: $nn of $nf"; [ "$nn" -eq "$nf" ] || { grep -B2 'confidence [lmh]' "$W/foreign.log"; fail=1; }
+nh=$(grep -c 'verdict: handoff' "$W/foreign.log")          # the DFS ones are Acorn Disk Wrangler's (DiskWranglerCore v0.4.0 on)
+nd=$(grep -c 'verdict: none' "$W/foreign.log"); echo "handed to Acorn Disk Wrangler: $nh, not recognised (wiped): $nd"
+[ $((nh + nd)) -eq "$nf" ] && [ "$nh" -ge 1 ] || { grep 'verdict:' "$W/foreign.log"; fail=1; }
+step "DiskWranglerCore's filesystem interface: Volume, Disc, detection by tiers (voltest)"
+"$b/voltest/voltest" "$W/voltest" > "$W/voltest.log" 2>&1 && tail -1 "$W/voltest.log" | grep -q "all ok" && echo "voltest: ok" || { grep FAIL "$W/voltest.log"; echo "FAIL voltest"; fail=1; }
 if [ -n "$real" ]; then
   O="$real/Myrcurial_o1next/research"; Z="$real/udo-munk_z80pack/cpmsim/disks/library"
   step "real images: round trip, detection, cpmtools comparison"
@@ -63,7 +68,8 @@ if [ -n "$real" ]; then
       "$real"/lesbird_H89/disks/*.H8D $(ls "$real"/rm/*.img 2>/dev/null) > "$W/detect.log" 2>&1
   echo "detection: $(grep -c 'confidence high; writable' "$W/detect.log") known and writable, \
 $(grep -c 'confidence high; read-only' "$W/detect.log") found by search (read-only until confirmed), \
-$(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0-9]* errors' "$W/detect.log") with check errors"
+$(grep -c 'confidence none' "$W/detect.log") not CP/M; $(grep -c 'check: [1-9][0-9]* errors' "$W/detect.log") with check errors; \
+$(grep -c 'verdict: ask' "$W/detect.log") would ask"
   grep -q 'check: [1-9][0-9]* errors' "$W/detect.log" && fail=1
   for v in "$real"/vector/*; do        # a Vector Graphic disc: track 0 FM 26 x 128, then 26 x 256, skew 5 (not in the repo)
     [ -f "$v" ] || continue

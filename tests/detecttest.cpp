@@ -24,6 +24,7 @@
 #include <cstdio>
 #include "../src/cpmfs.h"
 #include "../src/detect.h"
+#include "../src/cpmvolume.h"
 #include "../src/diskimage.h"
 
 int main(int argc, char **argv) {
@@ -52,6 +53,14 @@ int main(int argc, char **argv) {
             printf("  %2d. %7.1f  %-14s %s\n", i + 1, c.score, qPrintable(c.fmt.name), qPrintable(c.fmt.summary()));
             if (verbose || i == 0) printf("        %s\n", qPrintable(c.evidence.mid(1).join("; ")));
             if (verbose) printf("        key %s\n", qPrintable(c.key()));
+        }
+        {   // detection by tiers (DiskWranglerCore): what the program does with it - open, ask, or hand it to Acorn Disk Wrangler
+            const dw::fs::Verdict vd = Cpm::verdict(img, p, r);
+            const char *act[] = {"none", "open", "ask", "handoff"};
+            printf("  verdict: %s%s\n", act[vd.action],
+                   vd.bestCandidate() ? qPrintable(" (" + vd.bestCandidate()->description + ", " + dw::fs::tierName(vd.bestCandidate()->tier) +
+                                                   (vd.rivalCandidate() ? " / " + vd.rivalCandidate()->description : QString()) + ")")
+                                      : "");
         }
         if (r.ranked.isEmpty()) { ++failures; continue; }
         int sides = r.ranked.first().fmt.separateSides ? 2 : 1;
