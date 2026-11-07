@@ -4,6 +4,7 @@ QT -= gui
 CONFIG += c++17 console
 CONFIG -= app_bundle
 TARGET = fstest
-SOURCES += fstest.cpp ../src/diskimage.cpp ../src/lzhuf.cpp ../src/cpmformat.cpp ../src/cpmfs.cpp ../src/torchfs.cpp ../src/detect.cpp
+SOURCES += fstest.cpp ../src/cpmformat.cpp ../src/cpmfs.cpp ../src/torchfs.cpp ../src/detect.cpp
 HEADERS += ../src/diskimage.h ../src/cpmformat.h ../src/cpmfs.h ../src/torchfs.h ../src/detect.h
 RESOURCES += ../src/resources.qrc
+!include(../core/diskwrangler-device.pri): error("core/ is empty: run 'git submodule update --init'")   # the disc image containers
