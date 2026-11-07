@@ -124,7 +124,7 @@ jobs:
               "/DProgUrl=$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" "/DDeployDir=$PWD\deploy" "/DSourceRoot=$PWD" `
               "/DOutDir=$PWD\dist" "/DOutName=$env:APP-$env:VERSION-windows-x64-setup" core\ci\installer.iss
           if ($LASTEXITCODE) { throw "the installer didn't build (ISCC exit code $LASTEXITCODE)" }
-      - name: Check the installer installs, starts and uninstalls
+      - name: Check the installer installs, starts, sees itself when run again and uninstalls
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
@@ -142,6 +142,15 @@ jobs:
           if ($a.HasExited) { throw "the installed $env:APP.exe exited at once (code $($a.ExitCode))" }
           Stop-Process -Id $a.Id
           Start-Sleep -Seconds 2
+          # setup again over the same version: it must find the installed copy (core/ci/installer.iss, InitializeSetup)
+          $log = Join-Path $env:RUNNER_TEMP 'reinstall.log'
+          $p = Start-Process -FilePath $setup.FullName -Wait -PassThru `
+              -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/DIR=$dir", "/LOG=$log"
+          if ($p.ExitCode) { throw "$($setup.Name) failed over the installed copy (exit code $($p.ExitCode))" }
+          $seen = Select-String -LiteralPath $log -Pattern 'Installed copy: .* for the current user only'
+          if (-not $seen) { Get-Content $log | Select-Object -Last 40; throw "$($setup.Name) didn't see the installed copy" }
+          Write-Host $seen.Line
+          if (-not (Test-Path "$dir\$env:APP.exe")) { throw "$env:APP.exe is gone after installing again" }
           # the uninstaller hands over to a copy of itself and returns at once: wait for the program to go
           Start-Process -FilePath "$dir\unins000.exe" -Wait -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
           for ($i = 0; $i -lt 60 -and (Test-Path "$dir\$env:APP.exe"); $i++) { Start-Sleep -Seconds 1 }
