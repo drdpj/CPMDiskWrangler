@@ -11,7 +11,7 @@ step() { echo; echo "######## $*"; }
 build() { mkdir -p "$b/$1" && (cd "$b/$1" && qmake "$2" ${3:+"$3"} >/dev/null && make -j8 >/dev/null 2>"$b/$1.log") || { echo "BUILD FAILED: $1 (see $b/$1.log)"; fail=1; }; }
 step build
 build app "$src/cpmdiskwrangler.pro"
-for t in detecttest fstest guitest mkicon chartest; do build $t "$src/tests/$t.pro"; done
+for t in detecttest fstest guitest screenshot mkicon chartest; do build $t "$src/tests/$t.pro"; done
 build settingstest "$src/core/tests/settingstest.pro"      # in DiskWranglerCore
 build xfertest "$src/core/tests/xfertest.pro"
 build uitest "$src/core/tests/uitest.pro"
@@ -122,6 +122,11 @@ n = next(i for i, x in enumerate(e) if x[5:10] == b'ADDED'); sys.exit(any(x == b
   rmimg=$(ls "$real"/rm/*.img 2>/dev/null | head -1)
   "$b/guitest/guitest" "$W/gui" "$O/shipped-software/OS1DBASE.IMD" "$O/copower88/kaypro/copwrcpm.td0" $adwdir ${rmimg:+--rm "$rmimg"} 2>/dev/null > "$W/gui.log"
   grep -E "FAIL|all ok|FAILURES" "$W/gui.log"; grep -q "^all ok" "$W/gui.log" || fail=1
+  # screenshot: the main window and each dialog, on copies of the three ImageDisk discs fstest wrote above
+  mkdir -p "$W/shots" "$W/shotsrc"
+  for k in ibm-3740 pcw torch-cpn; do cp "$W/fs/imd/$k.imd" "$W/shotsrc/$k.imd"; done
+  timeout 120 "$b/screenshot/screenshot" "$W/shots" "$W/shotsrc/ibm-3740.imd" "$W/shotsrc/pcw.imd" "$W/shotsrc/torch-cpn.imd" > "$W/shots.log" 2>&1 \
+    && echo "screenshot: $(ls "$W/shots" | wc -l) PNGs" || { echo "FAIL screenshot (see $W/shots.log)"; fail=1; }
   [ -n "$adw" ] && { "$b/interop/interop_adw" read "$W/gui/out.json" | grep -q "GAME.COM" && echo "Acorn Disk Wrangler reads our drag: ok" || { echo "FAIL: Acorn Disk Wrangler could not read our drag"; fail=1; }; }
 fi
 echo; [ $fail -eq 0 ] && echo "ALL PASSED" || echo "SOME TESTS FAILED"
