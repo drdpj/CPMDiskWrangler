@@ -526,6 +526,8 @@ Candidate evaluateTorch(const dw::device::Container &img, Candidate c) {
 
 } // namespace
 
+QString otherFilesystem(const dw::device::Container &img) { return foreignFilesystem(img); }
+
 QString Candidate::key() const {
     const Cpm::Format &f = fmt;
     QString sk;

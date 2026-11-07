@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "mainwindow.h"
+#include "cpmvolume.h"
+#include <diskwrangler/ui/handoffdialog.h>
 #include <diskwrangler/app/appsettings.h>
 
 #include <diskwrangler/ui/buttonbar.h>
@@ -494,12 +496,25 @@ bool MainWindow::openImage(const QString &path) {
     m_fileSize = QFileInfo(path).size();
     m_safe = m_det.safeToWrite;
     m_detIndex = 0;
-    if (m_det.ranked.isEmpty() || !attachFormat(m_det.ranked.first(), &err)) {
+    // Detection by tiers (DiskWranglerCore): CP/M's reading against a recogniser for Acorn Disk Wrangler's discs. A disc
+    // that is plainly Acorn's is opened there; one that reads as CP/M and also looks like Acorn's is asked about.
+    const dw::fs::Verdict verdict = Cpm::verdict(m_img, path, m_det);
+    const dw::fs::Candidate *pick = verdict.bestCandidate();
+    if (verdict.action == dw::fs::Verdict::Ask && !autoAnswer) {
+        const int a = dw::ui::askWhich(this, path, *verdict.bestCandidate(), *verdict.rivalCandidate());
+        if (a < 0) { detachAll(); refresh(); return false; }
+        if (a == 1) pick = verdict.rivalCandidate();
+    }
+    const bool handOff = pick && pick->foreign();
+    if (handOff || m_det.ranked.isEmpty() || !attachFormat(m_det.ranked.first(), &err)) {
         detachAll();
         refresh();
+        // started in Acorn Disk Wrangler (it says so), or the message as before, with where to get it
+        if (handOff && dw::ui::handOff(this, *pick, path, QString(), QString(), !autoAnswer, !autoAnswer)) return false;
         if (!autoAnswer) {
             QMessageBox box(QMessageBox::Warning, "Open", QString("%1\n\n%2\n%3").arg(QFileInfo(path).fileName(), m_det.physical, m_det.why),
                             QMessageBox::Ok, this);
+            if (handOff) box.setInformativeText(dw::ui::releasesLink(pick->owner));
             QPushButton *fmt = box.addButton("Choose a format...", QMessageBox::ActionRole);
             box.exec();
             if (box.clickedButton() == fmt) formatDialog();

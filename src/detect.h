@@ -70,6 +70,10 @@ void scoreKnownFormat(Candidate *c, const Cpm::Format &lib, const dw::device::Co
 // must already have the candidate's layout set.
 Candidate reevaluate(const dw::device::Container &img, const Candidate &c);
 
+// Another filesystem the disc plainly carries (ADFS, DFS, FAT: Acorn Disk Wrangler's discs), in words ("an Acorn DFS
+// disc (a DFS catalogue fills its first two sectors)"), or empty. detect() takes it into account already.
+QString otherFilesystem(const dw::device::Container &img);
+
 // rememberedDiskdef: a format the user confirmed for this file earlier (diskdefs text), or empty.
 // For a raw image, the image's layout is set to the winner's before returning.
 Result detect(dw::device::Container &img, const QString &rememberedDiskdef = QString(), int keep = 25);
