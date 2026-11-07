@@ -10,3 +10,4 @@ HEADERS += ../src/mainwindow.h ../src/mainwindow_p.h ../src/formatdialog.h ../sr
            ../src/dragout.h ../src/diskimage.h ../src/cpmformat.h ../src/cpmfs.h ../src/torchfs.h ../src/detect.h
 RESOURCES += ../src/resources.qrc
 !include(../core/diskwranglercore.pri): error("core/ is empty: run 'git submodule update --init'")
+include(../core/diskwrangler-dfs.pri)                # DiskWranglerCore's DFS module (step 4)
