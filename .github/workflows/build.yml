@@ -50,7 +50,7 @@ jobs:
           msystem: UCRT64
           update: true
           pacboy: gcc:p make:p
-          install: zip git      # git: the version in the package names comes from git describe
+          install: zip git diffutils      # git: the version in the package names comes from git describe; diffutils: cmp, for collect-licences.sh
       - name: Install Qt ${{ env.QT }}
         run: |
           if [ "$QT" = 6 ]; then pkgs=(qt6-base); else pkgs=(qt5-base qt5-tools); fi
