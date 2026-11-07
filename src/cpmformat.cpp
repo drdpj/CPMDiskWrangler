@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "cpmformat.h"
+#include <diskwrangler/fs/dfs/dfs.h>
 
 #include <QFile>
 #include <QRegularExpression>
@@ -415,25 +416,10 @@ const Format *findFormat(const QString &name) {
     return nullptr;
 }
 
-QByteArray acornDfsCatalogue(int sectorsPerSide) {
-    QByteArray c(512, '\0');
-    c.replace(0, 8, "Acorn CP");                 // title, first 8 characters (sector 0)
-    c.replace(8, 7, "CPMDISC");
-    c[15] = char('$' | 0x80);                    // directory $, locked
-    c.replace(256, 4, "/M  ");                   // title, last 4 characters (sector 1)
-    c[256 + 5] = 8;                              // one file
-    c[256 + 6] = char((sectorsPerSide >> 8) & 3);   // boot option 0, sector count high bits
-    c[256 + 7] = char(sectorsPerSide & 0xFF);
-    const int start = 2, len = (sectorsPerSide - start) * 256;
-    c[256 + 12] = char(len & 0xFF);              // load and exec 0
-    c[256 + 13] = char((len >> 8) & 0xFF);
-    c[256 + 14] = char(((len >> 16) & 3) << 4 | ((start >> 8) & 3));
-    c[256 + 15] = char(start & 0xFF);
-    return c;
-}
+QByteArray acornDfsCatalogue(int sectorsPerSide) { return dw::dfs::cpmFenceCatalogue(sectorsPerSide); }   // DiskWranglerCore's DFS module
 
 bool isAcornDfsCatalogue(const QByteArray &b) {
-    if (b.size() < 512 || quint8(b[256 + 5]) != 8 || b.mid(8, 7) != "CPMDISC" || (quint8(b[15]) & 0x7F) != '$') return false;
+    if (!dw::dfs::isCpmFence(b)) return false;
     int sectors = (quint8(b[256 + 6]) & 3) << 8 | quint8(b[256 + 7]);
     return sectors > 2;
 }

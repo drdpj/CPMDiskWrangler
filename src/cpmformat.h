@@ -125,7 +125,8 @@ void setExtraDiskdefFiles(const QStringList &paths, QStringList *warnings);
 QStringList extraDiskdefFiles();
 const Format *findFormat(const QString &name);
 
-// The Acorn DFS catalogue Acorn's CP/M puts in the first two sectors of side 0 (format key "acorndfs"): title
+// The Acorn DFS catalogue Acorn's CP/M puts in the first two sectors of side 0 (format key "acorndfs"; made and
+// recognised by DiskWranglerCore's DFS module, dw::dfs::cpmFenceCatalogue and isCpmFence): title
 // "Acorn CP/M", one locked file $.CPMDISC from sector 2 to the end of the side, so DFS never writes on the disc.
 // The same on three real Acorn Z80 discs (Colossal Cave, installation discs 1 and 2); sectorsPerSide is 800 on an 80-track disc.
 QByteArray acornDfsCatalogue(int sectorsPerSide);

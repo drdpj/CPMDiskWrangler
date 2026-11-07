@@ -32,9 +32,9 @@ if(APPLE)
 endif()
 add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} src/resources.qrc src/licences.qrc
     src/main.cpp src/mainwindow.cpp src/formatdialog.cpp src/newdisc.cpp src/natchars.cpp src/viewer.cpp src/viewtext.cpp src/icon.cpp src/dragout.cpp
-    src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp
+    src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp src/cpmvolume.cpp
     src/mainwindow.h src/mainwindow_p.h src/formatdialog.h src/newdisc.h src/natchars.h src/viewer.h src/viewtext.h src/icon.h src/dragout.h
-    src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h)
+    src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/licences-bundled.qrc)   # a release build's library licences (ci/)
     target_sources(cpmdiskwrangler PRIVATE licences-bundled.qrc)
 endif()
@@ -43,7 +43,7 @@ if(APP_VERSION_NUMBER)
     set_target_properties(cpmdiskwrangler PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING ${APP_VERSION_NUMBER}
                                                  MACOSX_BUNDLE_BUNDLE_VERSION ${APP_VERSION_NUMBER})
 endif()
-target_link_libraries(cpmdiskwrangler DiskWrangler::Core Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(cpmdiskwrangler DiskWrangler::Core DiskWrangler::Dfs Qt${QT_VERSION_MAJOR}::Widgets)
 set_target_properties(cpmdiskwrangler PROPERTIES
     MACOSX_BUNDLE_BUNDLE_NAME "CP/M Disk Wrangler"
     MACOSX_BUNDLE_GUI_IDENTIFIER io.github.drdpj.cpmdiskwrangler
