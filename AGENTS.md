@@ -36,9 +36,10 @@ windows, the desktop and other programs via the `retro-files` format shared with
 | `diskimage.h` | forwarding names (`Disk::Image` = `dw::device::Container`, `Disk::Kind`, ...) for the tests only; program code uses the core's names |
 | `natchars.h/.cpp` | `Nat`: ISO 646 national character sets (map `@ [ \ ] ^ ` { | } ~`, never `#` `$`), host<->disc name/text conversion, evidence scan and language guess, the chooser dialog. Per disc, remembered in settings (`charset/<sha1 of path>`); Volume accepts `[ \ ] |` in names only while a national set is chosen (`setExtraNameChars`). Not done: SE-C/DEC variants, UK (`#`->£) |
 | `core/diskwrangler/device/lzhuf.cpp` | TeleDisk 2.x "advanced compression" decoder (Okumura's LZHUF; tables generated, not copied). In DiskWranglerCore |
-| `cpmformat.h/.cpp` | `Cpm::Format`: a diskdef plus the derived DPB (DSM, EXM, pointer width, skew table, `locate()`); the diskdefs parser; the library |
+| `cpmformat.h/.cpp` | `Cpm::Format`: a diskdef plus the derived DPB (DSM, EXM, pointer width, skew table, `locate()`); the diskdefs parser; the library. Acorn Z80's DFS catalogue comes from DiskWranglerCore's DFS module |
 | `cpmfs.h/.cpp` | `Cpm::Volume`: directory, files, extents, CP/M 3 / P2DOS stamps and labels, add/delete/rename/attrs, `check()`, `makeBlank()` |
 | `detect.h/.cpp` | working out the format: candidates, scoring, ranking, confidence, `safeToWrite` |
+| `cpmvolume.h/.cpp` | DiskWranglerCore's filesystem interface: `Cpm::verdict` (detection by tiers: open, ask, or hand to Acorn Disk Wrangler, used by `openImage`), `CpmVolume` (a `Cpm::Volume` as a `dw::fs::Volume`, user areas as namespace levels) and `OpenedDisc` (the disc as a `dw::fs::Disc`; `voltest` and the command-line program of step 4b) |
 | `resources/builtin-diskdefs` (in `src/`) | this program's definitions (Acorn Z80, Amstrad, Kaypro) and descriptions for cpmtools' ones |
 | `resources/cpmtools-diskdefs` (in `src/`) | cpmtools 2.23's diskdefs file, unchanged (Michael Haardt and contributors, GPL v3+; see THIRD-PARTY-NOTICES.md) |
 | `mainwindow.*`, `mainwindow_p.h` | window, `DropTree`, importing/exporting, Copy / Paste, menus; `mainwindow_p.h` has the shared tree helpers (same as Acorn Disk Wrangler's) and `XItem` |

@@ -47,6 +47,11 @@ relies on are in [disc-formats.md](disc-formats.md).
    (Hugo/Nick at 0x201 and 0x6FB) and D/E, and FAT (BPB, or a media byte + FF FF at 0 or 512, as on DOS 1.x and
    Acorn DOS Plus 800K): with no CP/M files that means "not CP/M" (pointing at Acorn Disk Wrangler); with files,
    the reading is shown but read-only until confirmed. A remembered (confirmed) format is exempt from both.
+   On top of this sits DiskWranglerCore's detection by tiers (`src/cpmvolume.cpp`, `Cpm::verdict`): the best reading
+   is one candidate (`Certain` at high confidence or once confirmed, `Likely` with CP/M files, else `Possible`), and
+   `foreignFilesystem()` (as `Detect::otherFilesystem`) another, `Likely` and owned by Acorn Disk Wrangler. A disc
+   that is only Acorn's is opened in Acorn Disk Wrangler, with a message (or, if it isn't installed, the message
+   above with a link to it); one that reads as CP/M with files and also looks like Acorn's is asked about.
 7. Confidence: `high` if nothing with a different file listing comes within 6 points; `medium` if a known
    format with a different layout lists the same files; `low` for empty directories. `safeToWrite` per rule 6 in [AGENTS.md](../AGENTS.md).
 

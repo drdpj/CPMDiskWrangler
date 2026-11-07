@@ -9,7 +9,8 @@ against the sources in `src/`. Run GUI tests with `QT_QPA_PLATFORM=offscreen`.
 ## The tests
 | Test | What |
 |---|---|
-| `detecttest [-v] [-x dir] images...` | prints the ranked readings and listing; `-x` extracts every file (compare with cpmtools: `tests/cmp_cpmtools.sh`) |
+| `detecttest [-v] [-x dir] images...` | prints the ranked readings, the verdict of detection by tiers (open, ask, handoff) and the listing; `-x` extracts every file (compare with cpmtools: `tests/cmp_cpmtools.sh`) |
+| `voltest <dir>` | DiskWranglerCore's filesystem interface (`src/cpmvolume.h`): a CP/M and a Torch CP/N disc as `dw::fs::Disc` (user areas as namespace levels, attributes, renaming into another user, a failed transaction put back, the checked save); detection by tiers (CP/M discs open here, DFS and FAT discs go to Acorn Disk Wrangler); Acorn Z80's catalogue from the core's DFS module |
 | `fstest <out> <format> raw\|imd\|edsk` | new disc, awkward file sizes, replace/delete/rename/attrs, commit, reopen **by detection**, verify; leaves material for `verify_independent.sh` |
 | `fstest roundtrip images...` | unchanged images serialise byte-identically |
 | `fstest atomic <out>` | failed adds leave nothing behind |
@@ -21,8 +22,9 @@ against the sources in `src/`. Run GUI tests with `QT_QPA_PLATFORM=offscreen`.
 | `tests/interop_adw` (qmake `ADW=<Acorn Disk Wrangler source>`) | built from **Acorn Disk Wrangler's own dragout.cpp**: `make <dir>` writes its drags (ADFS, DFS, FAT) for guitest; `read <json>` reads ours |
 | `tests/torch_check.py <image> <outdir>` | **independent** Torch CP/N reader and checker (from the format notes only): extracts every file, checks every chain, the record flags and that the map marks exactly the sectors in use. `verify_independent.sh` uses it for `fstest`'s Torch discs (cpmtools can't read them); `run_all.sh` compares its files with ours for every `<real>/torch/*.dsd` (the owner's discs, not in the repo) and adds a file to a copy of each |
 | `tests/acornz80_check.py <dsd> <outdir>` | **independent** Acorn Z80 reader (from Application Note 007 only); `run_all.sh` compares its files with ours for every `<real>/acorn/*.dsd` (the owner's discs, not in the repo) |
-| `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M (`run_all.sh` checks) |
+| `tests/make_foreign.py <dir>` | Acorn DFS discs (and copies with the catalogue wiped) that must all detect as not CP/M, the DFS ones handed to Acorn Disk Wrangler (`run_all.sh` checks) |
 | `devicetest` (`core/tests/devicetest.pro`) | DiskWranglerCore's device layer (the containers this program used to have as `src/diskimage.*`): raw files read as needed and staged in blocks, the physical view, ImageDisk / DSK Save As, `Linear`, and the checked save (temporary copy, read-back, verify veto, `.bak` as a hard link, permissions). `run_all.sh` runs it |
+| `volumetest`, `moduletest` (`core/tests/`) | DiskWranglerCore's filesystem layer and its DFS and FAT modules; built and run by Acorn Disk Wrangler's `acorn_all.sh` and the core's `ctest` |
 | `settingstest` (`core/tests/settingstest.pro`) | where settings live on Linux: an installed program has no portable mode; an AppImage keeps `<program>.ini` beside the `.AppImage` file (in DiskWranglerCore, shared with Acorn Disk Wrangler) |
 | `mkicon <dir>` | the PNG icons |
 
