@@ -1,0 +1,6 @@
+$TOOL mv img.img 0:GAME.COM 3:A.COM --format=ibm-3740 --json
+$TOOL mv img.img 3:A.COM 0:A.COM --format=ibm-3740 --json
+$TOOL mv img.img 0:A.COM 3:TEXT.TXT --format=ibm-3740 --json
+$TOOL rm img.img 3:NOSUCH.COM --format=ibm-3740 --json
+$TOOL rm img.img 0:A.COM 3:TEXT.TXT --format=ibm-3740 --json
+$TOOL ls img.img -R --format=ibm-3740 --json

@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": null,
+            "note": "exists",
+            "op": "skip",
+            "path": "bye.asm",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.dsk",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

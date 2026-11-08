@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "--stamps takes no value",
+        "path": null
+    },
+    "exit": 2,
+    "image": null,
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

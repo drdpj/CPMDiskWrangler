@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": {
+        "code": 6,
+        "kind": "unsupported",
+        "message": "side 1 is read-only: the format isn't confirmed: name it with --format",
+        "path": null
+    },
+    "exit": 6,
+    "image": "img_sep.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "side 1",
+    "warnings": [
+    ]
+}

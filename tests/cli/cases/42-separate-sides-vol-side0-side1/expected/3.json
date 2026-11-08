@@ -1,0 +1,30 @@
+{
+    "changes": [
+        {
+            "from": null,
+            "note": "rm-qd",
+            "op": "new",
+            "path": "img_plain.img",
+            "vol": ""
+        }
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_plain.img",
+    "ok": true,
+    "result": {
+        "file": "img_plain.img",
+        "format": "rm-qd",
+        "volumes": [
+            "cpm"
+        ]
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

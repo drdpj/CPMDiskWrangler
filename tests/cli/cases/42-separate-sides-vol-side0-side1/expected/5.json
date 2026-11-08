@@ -1,0 +1,287 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_sep.img",
+    "ok": true,
+    "result": {
+        "app": {
+            "charset": "ascii",
+            "confidence": "low",
+            "format": {
+                "description": "Research Machines 480Z quad density (MQ), 80 track: track 0 FM 16 x 128",
+                "name": "rm-qd",
+                "origin": "built-in",
+                "summary": "9 x 512 bytes/track, 80 tracks (per side; 2 sides, a disc on each), skew 5, 3 boot tracks (track 0: 16 x 128 FM), 2K blocks, 128 directory entries, CP/M 2.2, 346K"
+            },
+            "kind": "cpm",
+            "lowerCaseNames": false,
+            "os": "2.2",
+            "physical": "ImageDisk (.IMD): 80 cylinders, 2 sides, 9 x 512-byte sectors per track, sector IDs from 1, 2 tracks of another shape",
+            "safeToWrite": false,
+            "separateSides": true,
+            "why": "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape. Confirm the format (Tools > Disc format) before changing the disc."
+        },
+        "candidates": [
+            {
+                "description": "CP/M disc (rm-qd)",
+                "evidence": [
+                    "signature:d41d8cd98f00b204e9800998ecf8427e",
+                    "0 files in 0 directory entries",
+                    "a known format (built-in), a separate disc on each side",
+                    "side 1: 0 files, a sensible directory",
+                    "track 0 of each side is 16 x 128, as this format's is"
+                ],
+                "fsId": "cpm",
+                "name": "CP/M",
+                "notes": [
+                    "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape. Confirm the format (Tools > Disc format) before changing the disc."
+                ],
+                "probe": "cpm",
+                "safeToWrite": false,
+                "supported": true,
+                "tier": "possible"
+            }
+        ],
+        "chosen": {
+            "description": "CP/M disc (rm-qd)",
+            "evidence": [
+                "signature:d41d8cd98f00b204e9800998ecf8427e",
+                "0 files in 0 directory entries",
+                "a known format (built-in), a separate disc on each side",
+                "side 1: 0 files, a sensible directory",
+                "track 0 of each side is 16 x 128, as this format's is"
+            ],
+            "fsId": "cpm",
+            "name": "CP/M",
+            "notes": [
+                "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape. Confirm the format (Tools > Disc format) before changing the disc."
+            ],
+            "probe": "cpm",
+            "safeToWrite": false,
+            "supported": true,
+            "tier": "possible"
+        },
+        "container": {
+            "kind": "imd",
+            "name": "ImageDisk (.IMD)",
+            "readOnly": false,
+            "size": 5266
+        },
+        "owner": null,
+        "verdict": "open",
+        "volumes": [
+            {
+                "caps": {
+                    "contiguousOnly": false,
+                    "dates": false,
+                    "dirs": false,
+                    "maxEntriesPerDir": 128,
+                    "namespaces": true,
+                    "rename": true,
+                    "renameAcrossDirs": true,
+                    "settableDates": false,
+                    "title": false
+                },
+                "fileAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "readonly",
+                        "label": "R/O",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "system",
+                        "label": "SYS",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "archive",
+                        "label": "ARC",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f1",
+                        "label": "F1",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f2",
+                        "label": "F2",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f3",
+                        "label": "F3",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f4",
+                        "label": "F4",
+                        "type": "bool"
+                    }
+                ],
+                "fsId": "cpm",
+                "info": {
+                    "entriesFree": 128,
+                    "free": 350208,
+                    "largestFree": -1,
+                    "title": "",
+                    "total": 354304
+                },
+                "label": "side 0",
+                "readOnly": true,
+                "readOnlyWhy": "the format isn't confirmed: name it with --format",
+                "vol": "side0",
+                "volumeAttrSpecs": [
+                ],
+                "volumeAttrs": {
+                }
+            },
+            {
+                "caps": {
+                    "contiguousOnly": false,
+                    "dates": false,
+                    "dirs": false,
+                    "maxEntriesPerDir": 128,
+                    "namespaces": true,
+                    "rename": true,
+                    "renameAcrossDirs": true,
+                    "settableDates": false,
+                    "title": false
+                },
+                "fileAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "readonly",
+                        "label": "R/O",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "system",
+                        "label": "SYS",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "archive",
+                        "label": "ARC",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f1",
+                        "label": "F1",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f2",
+                        "label": "F2",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f3",
+                        "label": "F3",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f4",
+                        "label": "F4",
+                        "type": "bool"
+                    }
+                ],
+                "fsId": "cpm",
+                "info": {
+                    "entriesFree": 128,
+                    "free": 350208,
+                    "largestFree": -1,
+                    "title": "",
+                    "total": 354304
+                },
+                "label": "side 1",
+                "readOnly": true,
+                "readOnlyWhy": "the format isn't confirmed: name it with --format",
+                "vol": "side1",
+                "volumeAttrSpecs": [
+                ],
+                "volumeAttrs": {
+                }
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

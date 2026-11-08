@@ -1,0 +1,68 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_ibm-3740.img",
+    "ok": true,
+    "result": {
+        "entries": [
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:GAME.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "GAME.COM",
+                "path": [
+                    "user 0",
+                    "GAME.COM"
+                ],
+                "problem": null,
+                "size": 9,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:TEXT.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "TEXT.TXT",
+                "path": [
+                    "user 0",
+                    "TEXT.TXT"
+                ],
+                "problem": null,
+                "size": 13,
+                "sizeExact": true
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

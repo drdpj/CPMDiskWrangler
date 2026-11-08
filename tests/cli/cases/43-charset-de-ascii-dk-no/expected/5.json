@@ -1,0 +1,31 @@
+{
+    "changes": [
+        {
+            "from": "host/ÆØÅ.TXT",
+            "note": null,
+            "op": "add",
+            "path": "0:ÆØÅ.TXT",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_dk.img",
+    "ok": true,
+    "result": {
+        "added": 1,
+        "dirs": 0,
+        "renamed": [
+        ],
+        "replaced": 0,
+        "skipped": 0
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

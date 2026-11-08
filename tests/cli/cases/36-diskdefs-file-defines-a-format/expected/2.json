@@ -1,0 +1,37 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "--format: no format called 'mytest' (cpmdw new --list)",
+        "path": null
+    },
+    "exit": 2,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+        "app": null,
+        "candidates": [
+        ],
+        "chosen": null,
+        "container": {
+            "kind": "imd",
+            "name": "ImageDisk (.IMD)",
+            "readOnly": false,
+            "size": 1475
+        },
+        "owner": null,
+        "verdict": "none",
+        "volumes": [
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

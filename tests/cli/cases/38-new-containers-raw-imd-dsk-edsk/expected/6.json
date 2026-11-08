@@ -1,0 +1,182 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_imd.img",
+    "ok": true,
+    "result": {
+        "app": {
+            "charset": "ascii",
+            "confidence": "high",
+            "format": {
+                "description": "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
+                "name": "ibm-3740",
+                "origin": "cpmtools",
+                "summary": "26 x 128 bytes/track, 77 tracks (1 side), skew 6, 2 boot tracks, 1K blocks, 64 directory entries, CP/M 2.2, 243K"
+            },
+            "kind": "cpm",
+            "lowerCaseNames": false,
+            "os": "2.2",
+            "physical": "ImageDisk (.IMD)",
+            "safeToWrite": true,
+            "separateSides": false,
+            "why": "the format was named on the command line"
+        },
+        "candidates": [
+            {
+                "description": "CP/M disc (ibm-3740)",
+                "evidence": [
+                    "signature:d41d8cd98f00b204e9800998ecf8427e",
+                    "0 files in 0 directory entries",
+                    "the format was named with --format"
+                ],
+                "fsId": "cpm",
+                "name": "CP/M",
+                "notes": [
+                    "the format was named on the command line"
+                ],
+                "probe": "cpm",
+                "safeToWrite": true,
+                "supported": true,
+                "tier": "certain"
+            }
+        ],
+        "chosen": {
+            "description": "CP/M disc (ibm-3740)",
+            "evidence": [
+                "signature:d41d8cd98f00b204e9800998ecf8427e",
+                "0 files in 0 directory entries",
+                "the format was named with --format"
+            ],
+            "fsId": "cpm",
+            "name": "CP/M",
+            "notes": [
+                "the format was named on the command line"
+            ],
+            "probe": "cpm",
+            "safeToWrite": true,
+            "supported": true,
+            "tier": "certain"
+        },
+        "container": {
+            "kind": "imd",
+            "name": "ImageDisk (.IMD)",
+            "readOnly": false,
+            "size": 6468
+        },
+        "owner": null,
+        "verdict": "open",
+        "volumes": [
+            {
+                "caps": {
+                    "contiguousOnly": false,
+                    "dates": false,
+                    "dirs": false,
+                    "maxEntriesPerDir": 64,
+                    "namespaces": true,
+                    "rename": true,
+                    "renameAcrossDirs": true,
+                    "settableDates": false,
+                    "title": false
+                },
+                "fileAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "readonly",
+                        "label": "R/O",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "system",
+                        "label": "SYS",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "archive",
+                        "label": "ARC",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f1",
+                        "label": "F1",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f2",
+                        "label": "F2",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f3",
+                        "label": "F3",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f4",
+                        "label": "F4",
+                        "type": "bool"
+                    }
+                ],
+                "fsId": "cpm",
+                "info": {
+                    "entriesFree": 64,
+                    "free": 246784,
+                    "largestFree": -1,
+                    "title": "",
+                    "total": 248832
+                },
+                "label": "CP/M",
+                "readOnly": false,
+                "readOnlyWhy": null,
+                "vol": "cpm",
+                "volumeAttrSpecs": [
+                ],
+                "volumeAttrs": {
+                }
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

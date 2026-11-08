@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": {
+        "code": 5,
+        "kind": "conflict",
+        "message": "out/bye.asm exists: use --replace or --skip",
+        "path": "bye.asm"
+    },
+    "exit": 5,
+    "image": "img.dsk",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

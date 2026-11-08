@@ -1,0 +1,3 @@
+#!/bin/bash
+# needs-real
+cp "$REAL/udo-munk_z80pack/cpmsim/disks/library/cpm22-2.dsk" img.dsk

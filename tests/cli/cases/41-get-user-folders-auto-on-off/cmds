@@ -1,0 +1,6 @@
+$TOOL get img.img '*:*' out --user-folders=auto --format=ibm-3740 --json
+$TOOL get img.img '*:*' out_off --user-folders=off --format=ibm-3740 --json
+$TOOL get img.img '*:*' out_on --user-folders=on --format=ibm-3740 --json
+$TOOL get one.img '*:*' out_one_auto --user-folders=auto --format=ibm-3740 --json
+$TOOL get one.img '*:*' out_one_on --user-folders=on --format=ibm-3740 --json
+$TOOL get img.img '*:*' out --user-folders=sometimes --format=ibm-3740 --json

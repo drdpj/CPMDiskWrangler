@@ -1,0 +1,16 @@
+$TOOL new img_pcw.img --format=pcw --json
+$TOOL put img_pcw.img host/GAME.COM host/TEXT.TXT / --format=pcw --json
+$TOOL ls img_pcw.img --format=pcw --json
+$TOOL info img_pcw.img --format=pcw --json
+$TOOL new img_kpii.img --format=kpii --json
+$TOOL put img_kpii.img host/GAME.COM host/TEXT.TXT / --format=kpii --json
+$TOOL ls img_kpii.img --format=kpii --json
+$TOOL info img_kpii.img --format=kpii --json
+$TOOL new img_ibm-3740.img --format=ibm-3740 --json
+$TOOL put img_ibm-3740.img host/GAME.COM host/TEXT.TXT / --format=ibm-3740 --json
+$TOOL ls img_ibm-3740.img --format=ibm-3740 --json
+$TOOL info img_ibm-3740.img --format=ibm-3740 --json
+$TOOL new img_torch-cpn.img --format=torch-cpn --json
+$TOOL put img_torch-cpn.img host/GAME.COM host/TEXT.TXT / --format=torch-cpn --json
+$TOOL ls img_torch-cpn.img --format=torch-cpn --json
+$TOOL info img_torch-cpn.img --format=torch-cpn --json

@@ -1,0 +1,13 @@
+$TOOL new img_raw.img --format=ibm-3740 --container=raw --json
+$TOOL new img_imd.img --format=ibm-3740 --json
+$TOOL new img_dsk.dsk --format=ibm-3740 --container=dsk --json
+$TOOL new img_edsk.dsk --format=ibm-3740 --container=edsk --json
+$TOOL info img_raw.img --format=ibm-3740 --json
+$TOOL info img_imd.img --format=ibm-3740 --json
+$TOOL info img_dsk.dsk --format=ibm-3740 --json
+$TOOL info img_edsk.dsk --format=ibm-3740 --json
+$TOOL put img_raw.img host/GAME.COM / --format=ibm-3740 --json
+$TOOL put img_edsk.dsk host/GAME.COM / --format=ibm-3740 --json
+$TOOL ls img_raw.img --format=ibm-3740 --json
+$TOOL ls img_edsk.dsk --format=ibm-3740 --json
+$TOOL new img_zip.img --format=ibm-3740 --container=zip --json

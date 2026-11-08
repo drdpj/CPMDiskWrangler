@@ -1,0 +1,34 @@
+{
+    "changes": [
+        {
+            "from": "BYE.ASM",
+            "note": null,
+            "op": "add",
+            "path": "bye.asm",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.dsk",
+    "ok": true,
+    "result": {
+        "manifest": "out/manifest.json",
+        "written": [
+            {
+                "from": "BYE.ASM",
+                "host": "bye.asm",
+                "sidecar": false,
+                "size": 468
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": {
+        "code": 6,
+        "kind": "unsupported",
+        "message": "ibm-3740 doesn't exist as a disc with a separate CP/M disc on each side",
+        "path": null
+    },
+    "exit": 6,
+    "image": "img_nosep.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

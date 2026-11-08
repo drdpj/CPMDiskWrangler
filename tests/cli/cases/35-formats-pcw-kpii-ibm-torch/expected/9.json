@@ -1,0 +1,30 @@
+{
+    "changes": [
+        {
+            "from": null,
+            "note": "ibm-3740",
+            "op": "new",
+            "path": "img_ibm-3740.img",
+            "vol": ""
+        }
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_ibm-3740.img",
+    "ok": true,
+    "result": {
+        "file": "img_ibm-3740.img",
+        "format": "ibm-3740",
+        "volumes": [
+            "cpm"
+        ]
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

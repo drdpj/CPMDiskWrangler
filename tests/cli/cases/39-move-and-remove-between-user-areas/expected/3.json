@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "mv",
+    "dryRun": false,
+    "error": {
+        "code": 5,
+        "kind": "conflict",
+        "message": "3:TEXT.TXT exists",
+        "path": "3:TEXT.TXT"
+    },
+    "exit": 5,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

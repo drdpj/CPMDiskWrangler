@@ -1,0 +1,10 @@
+$TOOL new img_sep.img --format=rm-qd --separate-sides --json
+$TOOL new img_sepraw.img --format=rm-qd --separate-sides --container=raw --json
+$TOOL new img_plain.img --format=rm-qd --json
+$TOOL new img_nosep.img --format=ibm-3740 --separate-sides --json
+$TOOL info img_sep.img --json
+$TOOL ls img_sep.img --vol=side0 --json
+$TOOL ls img_sep.img --vol=side1 --json
+$TOOL put img_sep.img host/GAME.COM 0: --vol=side0 --json
+$TOOL put img_sep.img host/GAME.COM 1: --vol=side1 --json
+$TOOL ls img_plain.img --json

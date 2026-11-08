@@ -1,0 +1,3 @@
+#!/bin/bash
+$TOOL new img_de.img --format=ibm-3740 --charset=de --quiet
+$TOOL new img_dk.img --format=ibm-3740 --charset=dk-no --quiet

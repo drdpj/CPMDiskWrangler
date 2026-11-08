@@ -1,0 +1,12 @@
+diskdef mytest
+  seclen 512
+  tracks 40
+  sectrk 10
+  blocksize 1024
+  maxdir 64
+  skew 0
+  boottrk 1
+  os 2.2
+  dsm 0
+  offset 0
+end

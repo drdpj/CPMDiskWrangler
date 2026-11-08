@@ -1,0 +1,7 @@
+$TOOL new img_st.img --format=pcw --stamps --label=HELLO --json
+$TOOL info img_st.img --format=pcw --json
+$TOOL title img_st.img --format=pcw --json
+$TOOL title img_st.img NEWLBL --format=pcw --json
+$TOOL title img_st.img "" --format=pcw --json
+$TOOL new img_nost.img --format=pcw --label=X --json
+$TOOL new img_st2.img --format=pcw --stamps=yes --json

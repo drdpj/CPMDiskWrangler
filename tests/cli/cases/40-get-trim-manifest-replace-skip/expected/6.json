@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": {
+        "code": 5,
+        "kind": "conflict",
+        "message": "out2/cls.mac exists: use --replace or --skip",
+        "path": "cls.mac"
+    },
+    "exit": 5,
+    "image": "img.dsk",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

@@ -1,0 +1,6 @@
+$TOOL get img.dsk 0:BYE.ASM out --trim --manifest=out/manifest.json --format=ibm-3740 --json
+$TOOL get img.dsk 0:BYE.ASM out --trim --format=ibm-3740 --json
+$TOOL get img.dsk 0:BYE.ASM out --skip --format=ibm-3740 --json
+$TOOL get img.dsk 0:BYE.ASM out --replace --format=ibm-3740 --json
+$TOOL get img.dsk 0:CLS.MAC out2 --trim --format=ibm-3740 --json
+$TOOL get img.dsk 0:CLS.MAC out2 --format=ibm-3740 --json

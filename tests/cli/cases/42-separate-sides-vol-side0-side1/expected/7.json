@@ -1,0 +1,20 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_sep.img",
+    "ok": true,
+    "result": {
+        "entries": [
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "side 1",
+    "warnings": [
+    ]
+}

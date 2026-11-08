@@ -1,0 +1,8 @@
+$TOOL --diskdefs=host/my.diskdefs new img.img --format=mytest --json
+$TOOL info img.img --format=mytest --json
+$TOOL --diskdefs=host/my.diskdefs info img.img --format=mytest --json
+$TOOL --diskdefs=host/my.diskdefs put img.img host/GAME.COM / --format=mytest --json
+$TOOL --diskdefs=host/my.diskdefs ls img.img --format=mytest --json
+$TOOL --diskdefs=host/my.diskdefs new img2.img --format=mytest --json
+$TOOL --diskdefs=host/nosuch.diskdefs new img3.img --format=mytest --json
+$TOOL --diskdefs=host/my.diskdefs new --format=ibm-3740 img4.img --json

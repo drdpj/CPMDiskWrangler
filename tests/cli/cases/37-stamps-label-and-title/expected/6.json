@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "--label needs --stamps (a label belongs to a CP/M 3 disc with time stamps)",
+        "path": null
+    },
+    "exit": 2,
+    "image": "img_nost.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

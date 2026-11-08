@@ -1,0 +1,7 @@
+$TOOL put img_de.img host/ÄÖÜ.TXT host/PLAIN.TXT / --charset=de --format=ibm-3740 --json
+$TOOL ls img_de.img --charset=de --format=ibm-3740 --json
+$TOOL ls img_de.img --charset=ascii --format=ibm-3740 --json
+$TOOL get img_de.img 'ÄÖÜ.TXT' out --charset=de --format=ibm-3740 --json
+$TOOL put img_dk.img host/ÆØÅ.TXT / --charset=dk-no --format=ibm-3740 --json
+$TOOL ls img_dk.img --charset=dk-no --format=ibm-3740 --json
+$TOOL put img_dk.img host/PLAIN.TXT / --charset=klingon --format=ibm-3740 --json
