@@ -129,6 +129,74 @@ too:
   `fat`, `cpm`): a tool for another kind of disc adds its own group and reads the ones it understands. The
   [specification](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/retro-files-format.md) explains the format and why it exists.
 
+## Command line
+`cpmdw` is the console version of this program: the same detection, the same checks and the same checked save, with
+no window, so it works in scripts. It has the form
+
+    cpmdw [GLOBAL OPTIONS] COMMAND [OPTIONS] ARGS...
+
+Global options can come before or after the command. An image and a path are always separate arguments (`games.img`,
+then `0:GAME.COM`), never `games.img:0:GAME.COM`. A bare name or `0:` is user 0, `3:` is user area 3, and `*:` means
+that name in every user area.
+
+**Where it's installed**
+* **Windows:** `cpmdw.exe` sits beside `cpmdiskwrangler.exe`, in the zip or in the installer's folder. Run it from
+  there, or add that folder to your PATH.
+* **macOS:** inside the app, at `Contents/MacOS/cpmdw`. To run it from Terminal, make a link:
+  `sudo ln -s "/Applications/CP:M Disk Wrangler.app/Contents/MacOS/cpmdw" /usr/local/bin/cpmdw`
+  (the Finder shows the app as CP/M Disk Wrangler; the file name has a colon in it).
+* **Linux, `.deb`:** `/usr/bin/cpmdw`, installed with the program.
+* **Linux, AppImage:** the AppImage runs the console program when it is started under the name `cpmdw`, so make a
+  link to it: `ln -s cpmdiskwrangler-<version>-linux-x86_64.AppImage cpmdw`, then run `./cpmdw`.
+
+**Examples.** Run in order in a folder that holds two host files, `HELLO.TXT` and `GAME.COM`:
+
+    cpmdw new games.img --format=kpii                    # a blank Kaypro II disc
+    cpmdw put games.img --format=kpii HELLO.TXT GAME.COM 0:  # add both files to user 0
+    cpmdw ls games.img                                   # list the disc
+    cpmdw get games.img 0:GAME.COM out/                  # extract to out/game.com
+    cpmdw check games.img                                # check the disc; exit 4 if it fails
+    cpmdw convert games.img games.dsk --container=dsk    # write the same disc as a standard DSK file
+
+`cpmdw new --list` lists the formats, and `--format` (or `-f`) takes the name of one of them.
+
+**Formats.** When cpmdw can't confirm which layout a disc uses, it opens the disc read-only. That is so for an empty
+disc, one found by search, and one just made with `new`. Every command that changes such a disc needs `--format=NAME`
+too; without it the change fails with exit 6. Once a disc has files on it, detection confirms its format, and the
+examples above show the later commands without the option.
+
+`--dry-run` does everything, including every check, and writes nothing. Use it before a `put`, `rm` or `script` on a
+disc you care about:
+
+    cpmdw --dry-run rm games.img 0:HELLO.TXT
+
+`--json` replaces the text with one JSON document on stdout (schema 1), and nothing else is written there. It has
+`ok`, `exit`, `command`, `image`, `vol`, `changes`, `warnings` and `error`, plus a `result` that depends on the command.
+On failure, `error` gives the code and the name of the kind of failure. Scripts should read `exit` for the outcome and
+the envelope for detail. The full schema is in
+[docs/cli.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/cli.md) in DiskWranglerCore.
+
+    cpmdw --json ls games.img
+
+**Exit codes**
+
+| Code | Kind | Meaning |
+| --- | --- | --- |
+| 0 | ok | |
+| 1 | failed | The operation failed (disc full, bad name, unreadable file) |
+| 2 | usage | Wrong arguments |
+| 3 | not-found | The image, a path on it, or a host file isn't there |
+| 4 | check | The disc fails its check, so nothing was written |
+| 5 | conflict | A name exists and neither `--replace` nor `--skip` was given |
+| 6 | unsupported | The filesystem or container can't do that (a TeleDisk image can't be written; a disc with an unconfirmed format is read-only) |
+| 7 | foreign | The disc belongs to the other Wrangler (`info` names it; the program never launches it) |
+| 8 | ambiguous | Two readings are equally likely: say `--fs=ID` |
+| 9 | unrecognised | Nothing recognised the disc (`--fs=ID` tries a reading anyway) |
+| 10 | save | The checked save failed; the original is untouched |
+
+The full reference, with every command and option, is in
+[docs/cli.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/cli.md).
+
 ## Limitations
 * TeleDisk images can't be saved as TeleDisk, and TeleDisk 1.x "advanced compression" isn't supported.
 * A raw image can't hold a disc whose track 0 differs from the rest; use ImageDisk or DSK for those.
