@@ -31,9 +31,9 @@ if(APPLE)
     set_source_files_properties(${CPMDW_ICNS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 endif()
 add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} src/resources.qrc src/licences.qrc
-    src/main.cpp src/mainwindow.cpp src/formatdialog.cpp src/newdisc.cpp src/natchars.cpp src/viewer.cpp src/viewtext.cpp src/icon.cpp src/dragout.cpp
+    src/main.cpp src/mainwindow.cpp src/formatdialog.cpp src/newdisc.cpp src/natchars.cpp src/natsets.cpp src/viewer.cpp src/viewtext.cpp src/icon.cpp src/dragout.cpp src/hostpolicy.cpp
     src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp src/cpmvolume.cpp
-    src/mainwindow.h src/mainwindow_p.h src/formatdialog.h src/newdisc.h src/natchars.h src/viewer.h src/viewtext.h src/icon.h src/dragout.h
+    src/mainwindow.h src/mainwindow_p.h src/formatdialog.h src/newdisc.h src/natchars.h src/natsets.h src/viewer.h src/viewtext.h src/icon.h src/dragout.h src/hostpolicy.h
     src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/licences-bundled.qrc)   # a release build's library licences (ci/)
     target_sources(cpmdiskwrangler PRIVATE licences-bundled.qrc)
@@ -49,6 +49,20 @@ set_target_properties(cpmdiskwrangler PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER io.github.drdpj.cpmdiskwrangler
     MACOSX_BUNDLE_ICON_FILE cpmdiskwrangler.icns)
 install(TARGETS cpmdiskwrangler RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION .)
+# cpmdw: the command-line program (QtCore only; no window, no display). Built beside the GUI program.
+add_executable(cpmdw src/resources.qrc src/cli/main.cpp src/cli/backend.cpp src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp
+    src/cpmvolume.cpp src/natsets.cpp src/hostpolicy.cpp
+    src/cli/backend.h src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h src/natsets.h src/hostpolicy.h)
+target_compile_definitions(cpmdw PRIVATE APP_VERSION="${APP_VERSION}")
+target_link_libraries(cpmdw DiskWrangler::Cli DiskWrangler::Dfs Qt${QT_VERSION_MAJOR}::Core)
+if(WIN32)
+    set_target_properties(cpmdw PROPERTIES WIN32_EXECUTABLE FALSE)
+endif()
+if(APPLE)                       # inside the bundle, beside the GUI program (README: symlink it)
+    install(TARGETS cpmdw RUNTIME DESTINATION cpmdiskwrangler.app/Contents/MacOS)
+else()
+    install(TARGETS cpmdw RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 if(UNIX AND NOT APPLE)
     install(FILES cpmdiskwrangler.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
     install(FILES icons/cpmdiskwrangler.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)

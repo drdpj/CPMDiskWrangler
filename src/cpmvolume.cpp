@@ -45,6 +45,52 @@ int CpmVolume::userOf(const QString &level) {
     return ok && u >= 0 && u <= 31 ? u : -1;
 }
 
+void CpmVolume::applyRules() {
+    m_extra = Nat::extraNameChars(m_set) + (m_lower ? Nat::lowerLetters() : QString());
+    m_v->setExtraNameChars(m_extra);
+}
+
+void CpmVolume::setCharset(const QString &id, bool lower) {
+    m_set = Nat::find(id);
+    m_lower = lower;
+    applyRules();
+}
+
+bool CpmVolume::parsePath(const QString &text, Path *out, QString *err) const {
+    QString t = text.trimmed();
+    if (t.startsWith('/')) t = t.mid(1);
+    if (t.isEmpty()) { *out = Path(); return true; }
+    int user = 0;
+    QString name = t, level;
+    const int colon = t.indexOf(':');
+    if (colon >= 0) {
+        const QString u = t.left(colon).trimmed();
+        bool ok = false;
+        user = u.toInt(&ok);
+        if (u == "*" || u == "?") level = "user *";                  // every user area (a wildcard, as in a name)
+        else if (!ok || user < 0 || user > 31) { *err = "a CP/M path is USER:NAME (a user number from 0 to 31, or *, before the colon)"; return false; }
+        name = t.mid(colon + 1);
+    }
+    Path p({level.isEmpty() ? userName(user) : level});
+    if (!name.isEmpty()) p = p.child(Nat::fromHost(name, m_set, !m_lower));
+    *out = p;
+    return true;
+}
+
+QString CpmVolume::displayPath(const Path &p) const {
+    if (p.isRoot() || (p.parts.size() == 1 && p.parts[0].isEmpty())) return "/";
+    const int u = userOf(p.parts[0]);
+    QString s = u >= 0 ? QString("%1:").arg(u) : p.parts[0] + ":";
+    if (p.parts.size() > 1) s += Nat::toHost(p.parts[1], m_set);
+    return s;
+}
+
+QString CpmVolume::hostNameFor(const dw::fs::Entry &e) const {
+    if (e.kind == NodeKind::Namespace) return QString("user%1").arg(userOf(e.name));   // as extraction writes the folders
+    if (m_set.id == "ascii") return QString();
+    return Nat::toHost(e.name, m_set);
+}
+
 dw::fs::Caps CpmVolume::caps() const {
     dw::fs::Caps c;
     c.namespaces = true;
@@ -167,7 +213,13 @@ bool CpmVolume::read(const Path &file, QByteArray *out, QString *err) const {
 bool CpmVolume::write(const Path &dir, const QString &name, const QByteArray &data, const AttrValues &a,
                       const QDateTime &when, bool replace, QString *err) {
     int u;
-    return userOfDir(dir, &u, err) && m_v->addFile(u, name, data, attrBits(a), when, replace, err);
+    if (!userOfDir(dir, &u, err)) return false;
+    // placeIncoming has made the name: a name from another CP/M disc keeps its [ \ ] | (letters there), so this write
+    // allows them, as importing in the main window does; the disc's own rules are put back after.
+    m_v->setExtraNameChars(QStringLiteral("[\\]|") + Nat::lowerLetters());
+    const bool ok = m_v->addFile(u, name, data, attrBits(a), when, replace, err);
+    m_v->setExtraNameChars(m_extra);
+    return ok;
 }
 
 bool CpmVolume::mkdir(const Path &dir, const QString &name, QString *err) {
@@ -229,11 +281,24 @@ QMap<QString, QJsonObject> CpmVolume::toRetro(const dw::fs::Entry &e) const {
     return m;
 }
 
+QMap<QString, QJsonObject> CpmVolume::toRetroIn(const Path &dir, const dw::fs::Entry &e) const {
+    QMap<QString, QJsonObject> m = toRetro(e);
+    const int u = dir.parts.isEmpty() ? -1 : userOf(dir.parts[0]);
+    if (u >= 0 && e.kind == NodeKind::File) { QJsonObject c = m.value("cpm"); c["user"] = u; m["cpm"] = c; }
+    return m;
+}
+
 dw::fs::Placement CpmVolume::placeIncoming(const dw::TransferItem &item, const Path &targetDir) const {
     dw::fs::Placement p = dw::fs::Volume::placeIncoming(item, targetDir);
     QString name = item.name;
     if (item.sourceFs == "dfs" && name.size() >= 3 && name[1] == '.') name = name.mid(2);   // "D.NAME": drop D
-    p.name = m_names.fromHost(name, NodeKind::File);
+    // A name from another CP/M disc is kept exactly ([ \ ] | were letters there); a host name is read as Unicode and put
+    // into this disc's national set; names from other filesystems are bytes, upper-cased.
+    const bool fromCpm = item.sourceFs == "cpm", fromHost = item.sourceFs.isEmpty();
+    const QString extra = fromCpm ? QStringLiteral("[\\]|") + Nat::lowerLetters() : m_extra;
+    const QString want = fromHost ? Nat::fromHost(name, m_set, !m_lower) : fromCpm && m_lower ? name : name.toUpper();
+    QString why;
+    p.name = Cpm::Volume::validName(want, &why, extra) ? want : Cpm::Volume::toCpmName(fromHost ? want : name, extra);
     const QJsonObject c = item.attrs.value("cpm");
     if (c.contains("user")) p.dir = Path({userName(c.value("user").toInt())});
     else if (targetDir.isRoot()) p.dir = Path({userName(0)});
@@ -264,7 +329,7 @@ bool OpenedDisc::attach(const Detect::Candidate &c, QString *err) {
         f.derived = false;
         if (!m_vols[side].attach(&m_img, f, err)) { if (n > 1) *err = QString("side %1: %2").arg(side).arg(*err); return false; }
         m_disc.addMount({n > 1 ? QString("side %1").arg(side) : QString("CP/M"), std::make_shared<CpmVolume>(&m_vols[side]),
-                         false, QString(), "cpm"});
+                         !m_roWhy.isEmpty(), m_roWhy, "cpm"});
     }
     return true;
 }

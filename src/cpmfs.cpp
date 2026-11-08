@@ -17,6 +17,7 @@
  */
 #include "cpmfs.h"
 #include <diskwrangler/device/container.h>
+#include <diskwrangler/app/clock.h>
 
 #include <QFileInfo>
 #include <QMap>
@@ -538,7 +539,7 @@ bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, qu
         QString er;
         if (!writeEntry(freeSlotList[k], e, &er)) return fail(er);
     }
-    QDateTime t = when.isValid() ? when : QDateTime::currentDateTime();
+    QDateTime t = when.isValid() ? when : dw::now();
     QString er;
     if (!writeStamps(freeSlotList[0], t, t, &er)) return fail(er);
     reload();
@@ -629,7 +630,7 @@ bool Volume::setLabel(const QString &labelIn, QString *err) {
     if (m_label.present) {
         QByteArray e = m_dir[m_label.index];
         for (int c = 0; c < 11; ++c) e[1 + c] = n11[c];
-        encodeStamp(&e, 28, QDateTime::currentDateTime());
+        encodeStamp(&e, 28, dw::now());
         if (!writeEntry(m_label.index, e, &er)) return fail(er);
     } else {
         int slot = -1;
@@ -639,8 +640,8 @@ bool Volume::setLabel(const QString &labelIn, QString *err) {
         e[0] = char(0x20);
         for (int c = 0; c < 11; ++c) e[1 + c] = n11[c];
         e[12] = char(0x01);
-        encodeStamp(&e, 24, QDateTime::currentDateTime());
-        encodeStamp(&e, 28, QDateTime::currentDateTime());
+        encodeStamp(&e, 24, dw::now());
+        encodeStamp(&e, 28, dw::now());
         if (!writeEntry(slot, e, &er)) return fail(er);
     }
     reload();
@@ -660,8 +661,8 @@ bool Volume::initDirectory(bool stamps, const QString &labelName, QString *err) 
             QByteArray n11 = name11(labelName.toUpper());
             for (int c = 0; c < 11; ++c) e[1 + c] = n11[c];
             e[12] = char(0x01 | 0x10 | 0x20);          // label exists, create and update stamps
-            encodeStamp(&e, 24, QDateTime::currentDateTime());
-            encodeStamp(&e, 28, QDateTime::currentDateTime());
+            encodeStamp(&e, 24, dw::now());
+            encodeStamp(&e, 28, dw::now());
         }
         if (!writeBytes(qint64(i) * 32, e, &er)) return fail(er);
     }

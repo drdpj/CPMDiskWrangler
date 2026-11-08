@@ -121,12 +121,9 @@ Cpm::Format NewDiscDialog::format() const {
     const Cpm::Format *f = it ? Cpm::findFormat(it->data(Qt::UserRole).toString()) : nullptr;
     if (!f) return Cpm::Format();
     if (m_twoSided->isChecked() && f->twoSidedOk && f->physHeads == 1) {
-        Cpm::Format g = *f;                        // the same disc on both sides, each with a filesystem of its own
-        g.separateSides = true;
-        g.heads = 2;
-        g.derived = false;
+        Cpm::Format g;
         QString e;
-        if (g.derive(&e)) return g;
+        if (Cpm::separateSidesVariant(*f, &g, &e)) return g;
     }
     return *f;
 }

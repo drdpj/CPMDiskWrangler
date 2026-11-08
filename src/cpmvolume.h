@@ -30,6 +30,7 @@
 
 #include "cpmfs.h"
 #include "detect.h"
+#include "natsets.h"
 
 namespace Cpm {
 
@@ -53,6 +54,13 @@ public:
     static QString userName(int user) { return QString("user %1").arg(user); }
     static int userOf(const QString &level);      // "user 3" -> 3, -1 if not a user level
 
+    // The national character set (natsets.h) names are shown and typed in, and whether the disc keeps lower-case names
+    // (lower: names are kept in the case given). Entry names stay as the disc holds them; displayPath, hostNameFor and
+    // placeIncoming convert, as the main window does. Also sets the volume's name rules.
+    void setCharset(const QString &id, bool lower);
+    const Nat::Set &charset() const { return m_set; }
+    bool lowerNames() const { return m_lower; }
+
     QString fsId() const override { return m_v->format().torch ? "torch" : "cpm"; }
     dw::fs::Caps caps() const override;
     QVector<dw::fs::AttrSpec> fileAttrs() const override;
@@ -60,6 +68,12 @@ public:
     dw::fs::AttrValues volumeValues() const override;
     const dw::fs::NameRules &names() const override { return m_names; }
     dw::fs::VolumeInfo info() const override;
+
+    // CP/M paths: "0:NAME", "NAME" (user 0), "3:" (a user area), "" or "/" (the root: the users); shown as "0:NAME".
+    // Names are typed in the disc's character set.
+    bool parsePath(const QString &text, dw::fs::Path *out, QString *err) const override;
+    QString displayPath(const dw::fs::Path &p) const override;
+    QString hostNameFor(const dw::fs::Entry &e) const override;
 
     bool list(const dw::fs::Path &dir, QVector<dw::fs::Entry> *out, QString *err) const override;
     bool read(const dw::fs::Path &file, QByteArray *out, QString *err) const override;
@@ -73,7 +87,8 @@ public:
     dw::fs::Report check() const override;
     bool reload(QString *err) override { return m_v->reload(err); }
 
-    QMap<QString, QJsonObject> toRetro(const dw::fs::Entry &e) const override;    // with "user"
+    QMap<QString, QJsonObject> toRetro(const dw::fs::Entry &e) const override;
+    QMap<QString, QJsonObject> toRetroIn(const dw::fs::Path &dir, const dw::fs::Entry &e) const override;   // with "user"
     // An item copied in goes in the user area of its retro-files "cpm" user, if it has one, else the target's.
     dw::fs::Placement placeIncoming(const dw::TransferItem &item, const dw::fs::Path &targetDir) const override;
 
@@ -82,9 +97,12 @@ public:
 private:
     bool userOfDir(const dw::fs::Path &dir, int *user, QString *err) const;
     bool find(const dw::fs::Path &p, int *idx, QString *err) const;
+    void applyRules();
     Cpm::Volume *m_v;
     QString m_extra;
     CpmNameRules m_names;
+    Nat::Set m_set = Nat::find("ascii");
+    bool m_lower = false;
 };
 
 // The opened disc: the container and its volumes, attached as detection's candidate says.
@@ -99,11 +117,14 @@ public:
     dw::device::Container &container() { return m_img; }
     const Detect::Result &detection() const { return m_det; }
     bool save(QString *err, bool backup = false);      // every mount checked, then the copy checked as written
+    // Call before open(path, candidate): the mounts are read-only, for this reason (the format isn't confirmed).
+    void setReadOnly(const QString &why) { m_roWhy = why; }
 private:
     bool attach(const Detect::Candidate &c, QString *err);
     dw::device::Container m_img;
     Detect::Result m_det;
     Volume m_vols[2];
+    QString m_roWhy;
     dw::fs::Disc m_disc;
 };
 

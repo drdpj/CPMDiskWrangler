@@ -27,6 +27,8 @@
 #include <QStringList>
 #include <QVector>
 
+#include "natsets.h"          // the sets and the name conversions (QtCore only: cpmdw uses them too)
+
 class QListWidget;
 class QPlainTextEdit;
 class QLabel;
@@ -34,26 +36,6 @@ namespace Cpm { class Volume; }
 
 namespace Nat {
 
-struct Set {
-    QString id;            // "ascii", "dk-no", ... (kept in the settings)
-    QString name;          // "Danish / Norwegian"
-    QString shown;         // what each of positions() shows, in order
-};
-
-const QVector<Set> &sets();                 // [0] is "ascii": as on the disc
-const Set &find(const QString &id);         // ascii if the id is unknown
-QString positions();                        // "@[\]^`{|}~"
-
-// Disc bytes (as a Latin-1 string) -> what to show or give the host, and back. fromHost upper-cases (CP/M names are
-// upper case; ß is kept) unless upper is false. Characters the set has no position for are left as they are.
-QString toHost(const QString &s, const Set &set);
-QString fromHost(const QString &s, const Set &set, bool upper = true);
-// Name characters a set needs that Volume's normal list does not allow ("[\]|"); empty for ascii.
-QString extraNameChars(const Set &set);
-// Some discs (COMAL's, for one) hold lower-case names. CP/M tools upper-case what you type, so a disc with any lower-case
-// name is offered "Allow lower-case file names" (ticked), and names then go back exactly as they came out.
-QString lowerLetters();                                          // "a".."z": allowed in names on such a disc
-bool usesLowerCase(const QVector<const Cpm::Volume *> &vols);
 
 // Letters in host file names that plain ASCII cannot hold (ø, å, ü ...), upper-cased, each once; and the national set
 // that has a place for all of them (the first in the list if several do; empty if none does).

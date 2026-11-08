@@ -32,6 +32,7 @@
 #include <diskwrangler/ui/dragoutmime.h>
 #include <diskwrangler/xfer/transferitem.h>
 
+#include "hostpolicy.h"
 #include "mainwindow_p.h"
 
 namespace RetroFiles {
@@ -60,7 +61,7 @@ bool readJson(const QByteArray &json, QVector<XItem> *out, QString *err);
 
 // The CP/M ^Z (0x1A) padding after the end of a text file: everything from the first ^Z in the last record on,
 // if the rest of the record is ^Z too. Returns the data unchanged if it doesn't look like padded text.
-QByteArray trimCpmText(const QByteArray &d);
+// trimCpmText (the ^Z padding trim) and CpmPolicy are in hostpolicy.h.
 
 QString newDragDir(QString *err);
 QString dragDirPrefix();

@@ -125,6 +125,10 @@ void setExtraDiskdefFiles(const QStringList &paths, QStringList *warnings);
 QStringList extraDiskdefFiles();
 const Format *findFormat(const QString &name);
 
+// The same format as a disc with a separate CP/M disc on each side (Research Machines'): each side its own track 0 and
+// directory. File > New disc image's "Double-sided" box uses it. false (and why) if the format doesn't exist as one.
+bool separateSidesVariant(const Format &f, Format *out, QString *err);
+
 // The Acorn DFS catalogue Acorn's CP/M puts in the first two sectors of side 0 (format key "acorndfs"; made and
 // recognised by DiskWranglerCore's DFS module, dw::dfs::cpmFenceCatalogue and isCpmFence): title
 // "Acorn CP/M", one locked file $.CPMDISC from sector 2 to the end of the side, so DFS never writes on the disc.

@@ -424,4 +424,15 @@ bool isAcornDfsCatalogue(const QByteArray &b) {
     return sectors > 2;
 }
 
+bool separateSidesVariant(const Format &f, Format *out, QString *err) {
+    if (!(f.twoSidedOk && f.physHeads == 1)) { *err = f.name + " doesn't exist as a disc with a separate CP/M disc on each side"; return false; }
+    Format g = f;                              // the same disc on both sides, each with a filesystem of its own
+    g.separateSides = true;
+    g.heads = 2;
+    g.derived = false;
+    if (!g.derive(err)) return false;
+    *out = g;
+    return true;
+}
+
 } // namespace Cpm
