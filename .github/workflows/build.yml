@@ -1,4 +1,5 @@
-# Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root.
+# Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root that doesn't end in dw.pro;
+# that one (acorndw.pro, cpmdw.pro) is its console program, built, tested and shipped beside it.
 #
 # Builds Windows (x64 zip; for a release tag or Run workflow also an installer, core/ci/installer.iss), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
 # AppImage, and a .deb that uses the system's Qt for Ubuntu 22.04+ / Debian 12+), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
@@ -60,9 +61,10 @@ jobs:
           # MSYS2's git may call a checkout made by another git "dubious" and refuse it; qmake's git describe
           # (the version shown in Help > About) needs it too
           git config --global --add safe.directory "$(pwd)"
-          app=$(basename "$(ls ./*.pro)" .pro)
+          app=$(basename "$(ls ./*.pro | grep -v 'dw\.pro$')" .pro)
           {
             echo "APP=$app"
+            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw
             echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
@@ -84,6 +86,17 @@ jobs:
           Start-Sleep -Seconds 8
           if ($p.HasExited) { throw "$env:APP.exe exited at once (code $($p.ExitCode)): a DLL is probably missing" }
           Stop-Process -Id $p.Id
+      - name: Check the console program runs outside MSYS2 and reads a disc it makes
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Windows\System32;C:\Windows"
+          $fmt = if ($env:CLI -eq 'cpmdw') { 'ibm-3740' } else { 'adfs-m' }
+          & "deploy\$env:CLI.exe" --version
+          if ($LASTEXITCODE) { throw "$env:CLI --version failed (exit code $LASTEXITCODE)" }
+          & "deploy\$env:CLI.exe" new "$env:RUNNER_TEMP\t.img" "--format=$fmt" --quiet
+          if ($LASTEXITCODE) { throw "$env:CLI new failed (exit code $LASTEXITCODE)" }
+          & "deploy\$env:CLI.exe" info "$env:RUNNER_TEMP\t.img"
+          if ($LASTEXITCODE) { throw "$env:CLI info failed (exit code $LASTEXITCODE)" }
       - name: Installer (release tags and Run workflow)
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: pwsh
@@ -183,9 +196,10 @@ jobs:
           echo "$(brew --prefix qt@5)/bin" >> "$GITHUB_PATH"
       - name: Identify
         run: |
-          app=$(basename "$(ls ./*.pro)" .pro)
+          app=$(basename "$(ls ./*.pro | grep -v 'dw\.pro$')" .pro)
           {
             echo "APP=$app"
+            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw
             # A file name can't contain "/", but the Finder shows ":" as "/", so "CP:M Disk Wrangler.app"
             # appears as "CP/M Disk Wrangler". The disk image's name just drops the slash.
             name=$(sed -n 's/^QMAKE_TARGET_PRODUCT *= *//p' "$app.pro")
@@ -221,6 +235,13 @@ jobs:
           cp -R LICENSE THIRD-PARTY-NOTICES.md licences dmg/
           ln -s /Applications dmg/Applications
           hdiutil create -volname "$VOLUME" -srcfolder dmg -format UDZO -ov "dist/$APP-$VERSION-macos-$MACARCH.dmg"
+      - name: Check the console program in the bundle
+        run: |
+          fmt=adfs-m; [ "$CLI" = cpmdw ] && fmt=ibm-3740
+          cli="dmg/$BUNDLE.app/Contents/MacOS/$CLI"
+          "$cli" --version
+          "$cli" new "$RUNNER_TEMP/t.img" "--format=$fmt" --quiet
+          "$cli" info "$RUNNER_TEMP/t.img"
       - name: Check it starts
         run: |
           "dmg/$BUNDLE.app/Contents/MacOS/$APP" & pid=$!
@@ -257,13 +278,19 @@ jobs:
           echo "$HOME/tools" >> "$GITHUB_PATH"
       - name: Identify
         run: |
-          app=$(basename "$(ls ./*.pro)" .pro)
+          app=$(basename "$(ls ./*.pro | grep -v 'dw\.pro$')" .pro)
           {
             echo "APP=$app"
+            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw
             echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
         run: bash core/ci/build.sh linux
+      - name: Console program - golden-image tests, and no Qt GUI libraries
+        run: |
+          # setpriv (util-linux) runs the exit-10 case as nobody; the cases are tests/cli/cases, made with SOURCE_DATE_EPOCH fixed
+          bash tests/cli/run_cli.sh "build-cli/$CLI" "$RUNNER_TEMP/cli"
+          ! ldd "build-cli/$CLI" | grep -iE 'QtGui|QtWidgets'
       - name: Collect licences
         run: bash core/ci/collect-licences.sh linux build/AppDir
       - name: Rebuild with the licences compiled in
@@ -278,13 +305,22 @@ jobs:
           # won't make the AppImage's icon from the SVG that linuxdeploy puts there
           cp "../icons/$APP-256.png" "AppDir/$APP.png"
           # name the file ourselves: linuxdeploy would use the desktop file's Name, and "CP/M" has a slash in it
+          extra=(); [ -f AppRun.custom ] && extra=(--custom-apprun AppRun.custom --executable "AppDir/usr/bin/$CLI")
           OUTPUT="../dist/$APP-$VERSION-linux-x86_64.AppImage" \
-              linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+              linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage "${extra[@]}"
       - name: Check it starts
         run: |
           set +e
           timeout 8 xvfb-run -a "dist/$APP-$VERSION-linux-x86_64.AppImage"
           [ $? = 124 ] || { echo "::error::$APP exited before the timeout"; exit 1; }
+      - name: Check the console program in the AppImage
+        run: |
+          # started under the console program's name (a symlink to the AppImage) it is that program
+          fmt=adfs-m; [ "$CLI" = cpmdw ] && fmt=ibm-3740
+          ln -s "$PWD/dist/$APP-$VERSION-linux-x86_64.AppImage" "$RUNNER_TEMP/$CLI"
+          "$RUNNER_TEMP/$CLI" --version
+          "$RUNNER_TEMP/$CLI" new "$RUNNER_TEMP/t.img" "--format=$fmt" --quiet
+          "$RUNNER_TEMP/$CLI" info "$RUNNER_TEMP/t.img"
       - name: Package the .deb (the system's Qt)
         run: |
           # The .deb uses the system's libraries, so it has no bundled ones to list in Help > Licences: build its
@@ -292,6 +328,8 @@ jobs:
           mv licences-bundled.qrc "$RUNNER_TEMP/"
           mkdir build-deb
           (cd build-deb && "$QMAKE" "../$APP.pro" CONFIG+=release PREFIX=/usr && make -j"$(nproc)")
+          mkdir build-deb-cli
+          (cd build-deb-cli && "$QMAKE" "../$CLI.pro" CONFIG+=release PREFIX=/usr && make -j"$(nproc)")
           bash core/ci/make-deb.sh build-deb dist
       - name: Check the .deb installs and starts
         run: |
@@ -299,6 +337,8 @@ jobs:
           set +e
           timeout 8 xvfb-run -a "$APP"
           [ $? = 124 ] || { echo "::error::the installed $APP exited before the timeout"; exit 1; }
+          set -e
+          "$CLI" --version
       - uses: actions/upload-artifact@v7
         with:
           name: linux
