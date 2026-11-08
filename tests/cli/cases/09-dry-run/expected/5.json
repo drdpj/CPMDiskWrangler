@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "img.img",
+            "note": "imd",
+            "op": "convert",
+            "path": "conv.imd",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": true,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "container": "ImageDisk (.IMD)",
+        "out": "conv.imd",
+        "size": 8119
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

@@ -1,0 +1,86 @@
+{
+    "changes": [
+        {
+            "from": "A.TXT",
+            "note": null,
+            "op": "add",
+            "path": "user0/a.txt",
+            "vol": "CP/M"
+        },
+        {
+            "from": "B.COM",
+            "note": null,
+            "op": "add",
+            "path": "user0/b.com",
+            "vol": "CP/M"
+        },
+        {
+            "from": "D.TXT",
+            "note": null,
+            "op": "add",
+            "path": "user0/d.txt",
+            "vol": "CP/M"
+        },
+        {
+            "from": "A.TXT",
+            "note": null,
+            "op": "add",
+            "path": "user5/a.txt",
+            "vol": "CP/M"
+        },
+        {
+            "from": "C.TXT",
+            "note": null,
+            "op": "add",
+            "path": "user5/c.txt",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+            {
+                "from": "A.TXT",
+                "host": "user0/a.txt",
+                "sidecar": false,
+                "size": 12
+            },
+            {
+                "from": "B.COM",
+                "host": "user0/b.com",
+                "sidecar": false,
+                "size": 1505
+            },
+            {
+                "from": "D.TXT",
+                "host": "user0/d.txt",
+                "sidecar": false,
+                "size": 12
+            },
+            {
+                "from": "A.TXT",
+                "host": "user5/a.txt",
+                "sidecar": false,
+                "size": 306
+            },
+            {
+                "from": "C.TXT",
+                "host": "user5/c.txt",
+                "sidecar": false,
+                "size": 12
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

@@ -1,0 +1,30 @@
+{
+    "changes": [
+        {
+            "from": null,
+            "note": "pcw",
+            "op": "new",
+            "path": "b.img",
+            "vol": ""
+        }
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "b.img",
+    "ok": true,
+    "result": {
+        "file": "b.img",
+        "format": "pcw",
+        "volumes": [
+            "cpm"
+        ]
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

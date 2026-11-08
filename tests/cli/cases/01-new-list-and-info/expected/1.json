@@ -1,0 +1,1320 @@
+{
+    "changes": [
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": null,
+    "ok": true,
+    "result": {
+        "formats": [
+            {
+                "description": "Torch Z80 second processor, CP/N, 400K (80 track double-sided, FM)",
+                "doubleSided": true,
+                "id": "torch-cpn",
+                "name": "torch-cpn - Torch Z80 second processor, CP/N, 400K (80 track double-sided, FM)",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x256, 160 trk (2 sides alt), Torch CP/N filesystem"
+            },
+            {
+                "description": "Acorn Z80 second processor, CP/M 2.2, 400K (80 track double-sided, FM)",
+                "doubleSided": true,
+                "id": "acorn-z80",
+                "name": "acorn-z80 - Acorn Z80 second processor, CP/M 2.2, 400K (80 track double-sided, FM)",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x256, 160 trk (2 sides outback), skew table, boot 3, 2K, 128 dir"
+            },
+            {
+                "description": "Amstrad CPC data format, 178K (sector IDs C1-C9)",
+                "doubleSided": false,
+                "id": "cpcdata",
+                "name": "cpcdata - Amstrad CPC data format, 178K (sector IDs C1-C9)",
+                "origin": "built-in",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "9x512, 40 trk, no skew, boot 0, 1K, 64 dir"
+            },
+            {
+                "description": "Amstrad CPC system format, 169K (sector IDs 41-49)",
+                "doubleSided": false,
+                "id": "cpcsys",
+                "name": "cpcsys - Amstrad CPC system format, 169K (sector IDs 41-49)",
+                "origin": "built-in",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "9x512, 40 trk, no skew, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "Amstrad CPC IBM format, 156K (sector IDs 1-8)",
+                "doubleSided": false,
+                "id": "cpcibm",
+                "name": "cpcibm - Amstrad CPC IBM format, 156K (sector IDs 1-8)",
+                "origin": "built-in",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "8x512, 40 trk, no skew, boot 1, 1K, 64 dir"
+            },
+            {
+                "description": "Amstrad PCW 180K (3-inch CF2, single-sided)",
+                "doubleSided": false,
+                "id": "pcw",
+                "name": "pcw - Amstrad PCW 180K (3-inch CF2, single-sided)",
+                "origin": "built-in",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "9x512, 40 trk, no skew, boot 1, 1K, 64 dir"
+            },
+            {
+                "description": "Amstrad PCW 720K (CF2DD, double-sided 80 track)",
+                "doubleSided": true,
+                "id": "pcw720",
+                "name": "pcw720 - Amstrad PCW 720K (CF2DD, double-sided 80 track)",
+                "origin": "built-in",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "9x512, 160 trk (2 sides alt), no skew, boot 1, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "microbee-ds84",
+                "name": "microbee-ds84",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 160 trk (2 sides alt), skew table, boot 2, 4K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "microbee-ds80",
+                "name": "microbee-ds80",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 160 trk (2 sides alt), skew table, boot 4, 4K, 128 dir"
+            },
+            {
+                "description": "Microbee 3.5-inch SS80 (80 track, single sided), 390K",
+                "doubleSided": false,
+                "id": "microbee-ss80",
+                "name": "microbee-ss80 - Microbee 3.5-inch SS80 (80 track, single sided), 390K",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew table, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Microbee 5.25-inch DS40 (40 track, double sided), 390K",
+                "doubleSided": true,
+                "id": "microbee-ds40",
+                "name": "microbee-ds40 - Microbee 5.25-inch DS40 (40 track, double sided), 390K",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk (2 sides alt), skew table, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Sharp SDS400 (40 cylinders, 2 sides, 10 x 512), data stored inverted, 390K",
+                "doubleSided": true,
+                "id": "sharp-sds400",
+                "name": "sharp-sds400 - Sharp SDS400 (40 cylinders, 2 sides, 10 x 512), data stored inverted, 390K",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk (2 sides altrev), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Tatung Einstein 3-inch, 190K (40 track single-sided, Xtal DOS)",
+                "doubleSided": false,
+                "id": "einstein",
+                "name": "einstein - Tatung Einstein 3-inch, 190K (40 track single-sided, Xtal DOS)",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 40 trk, no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "Kaypro II, single-sided 191K",
+                "doubleSided": false,
+                "id": "kpii",
+                "name": "kpii - Kaypro II, single-sided 191K",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 40 trk, no skew, boot 1, 1K, 64 dir"
+            },
+            {
+                "description": "Kaypro 4 / 10 floppy, double-sided 390K",
+                "doubleSided": true,
+                "id": "kpiv",
+                "name": "kpiv - Kaypro 4 / 10 floppy, double-sided 390K",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk (2 sides alt), no skew, boot 1, 2K, 64 dir"
+            },
+            {
+                "description": "Osborne 8-inch double density (OCC development discs), 600K: track 0 FM 26 x 128",
+                "doubleSided": false,
+                "id": "osborne-8dd",
+                "name": "osborne-8dd - Osborne 8-inch double density (OCC development discs), 600K: track 0 FM 26 x 128",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x1024, 77 trk, skew 3, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Vector Graphic CP/M 2.2 (56K), 57 tracks: track 0 FM 26 x 128, then 26 x 256, skew 5",
+                "doubleSided": false,
+                "id": "vector-26x256",
+                "name": "vector-26x256 - Vector Graphic CP/M 2.2 (56K), 57 tracks: track 0 FM 26 x 128, then 26 x 256, skew 5",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x256, 57 trk, skew 5, boot 2, 4K, 48 dir"
+            },
+            {
+                "description": "Research Machines 480Z double density (MD), 40 track: track 0 FM 16 x 128",
+                "doubleSided": false,
+                "id": "rm-dd",
+                "name": "rm-dd - Research Machines 480Z double density (MD), 40 track: track 0 FM 16 x 128",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": true,
+                "summary": "9x512, 40 trk, skew 5, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "Research Machines 480Z quad density (MQ), 80 track: track 0 FM 16 x 128",
+                "doubleSided": false,
+                "id": "rm-qd",
+                "name": "rm-qd - Research Machines 480Z quad density (MQ), 80 track: track 0 FM 16 x 128",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": true,
+                "summary": "9x512, 80 trk, skew 5, boot 3, 2K, 128 dir"
+            },
+            {
+                "description": "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
+                "doubleSided": false,
+                "id": "ibm-3740",
+                "name": "ibm-3740 - 8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 77 trk, skew 6, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "4MB hard disc (z80pack / simh style)",
+                "doubleSided": true,
+                "id": "4mb-hd",
+                "name": "4mb-hd - 4MB hard disc (z80pack / simh style)",
+                "origin": "cpmtools",
+                "os": "p2dos",
+                "separateSidesOk": false,
+                "summary": "32x128, 1024 trk (2 sides alt), no skew, boot 0, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "sdcard",
+                "name": "sdcard",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "64x512, 256 trk (2 sides alt), no skew, boot 1, 8K, 256 dir"
+            },
+            {
+                "description": "PC-style 1.2M",
+                "doubleSided": false,
+                "id": "pc1.2m",
+                "name": "pc1.2m - PC-style 1.2M",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "30x512, 80 trk, no skew, boot 0, 4K, 256 dir"
+            },
+            {
+                "description": "CP/M-86 on 1.44M floppies",
+                "doubleSided": true,
+                "id": "cpm86-144feat",
+                "name": "cpm86-144feat - CP/M-86 on 1.44M floppies",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "18x512, 160 trk (2 sides alt), no skew, boot 2, 4K, 256 dir"
+            },
+            {
+                "description": "CP/M-86 on 720K floppies",
+                "doubleSided": true,
+                "id": "cpm86-720",
+                "name": "cpm86-720 - CP/M-86 on 720K floppies",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "9x512, 160 trk (2 sides alt), no skew, boot 2, 2K, 256 dir"
+            },
+            {
+                "description": "Amstrad 3-inch CF2DD",
+                "doubleSided": true,
+                "id": "cf2dd",
+                "name": "cf2dd - Amstrad 3-inch CF2DD",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "9x512, 160 trk (2 sides alt), no skew, boot 1, 2K, 256 dir"
+            },
+            {
+                "description": "Alphatronic PC",
+                "doubleSided": false,
+                "id": "alpha",
+                "name": "alpha - Alphatronic PC",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "32x256, 40 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Apple II CP/M, DOS 3.3 sector order",
+                "doubleSided": false,
+                "id": "apple-do",
+                "name": "apple-do - Apple II CP/M, DOS 3.3 sector order",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x256, 35 trk, skew table, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "Apple II CP/M, ProDOS sector order",
+                "doubleSided": false,
+                "id": "apple-po",
+                "name": "apple-po - Apple II CP/M, ProDOS sector order",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x256, 35 trk, skew table, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "MYZ80 hard disc",
+                "doubleSided": false,
+                "id": "myz80",
+                "name": "myz80 - MYZ80 hard disc",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "128x1024, 64 trk, no skew, boot 0, 4K, 1024 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "nigdos",
+                "name": "nigdos",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "10x512, 84 trk, no skew, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "Epson QX-10",
+                "doubleSided": false,
+                "id": "epsqx10",
+                "name": "epsqx10 - Epson QX-10",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "20x512, 40 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "8-inch single-sided double density",
+                "doubleSided": false,
+                "id": "ibm-8ss",
+                "name": "ibm-8ss - 8-inch single-sided double density",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x512, 40 trk, no skew, boot 1, 1K, 64 dir"
+            },
+            {
+                "description": "8-inch double-sided double density",
+                "doubleSided": false,
+                "id": "ibm-8ds",
+                "name": "ibm-8ds - 8-inch double-sided double density",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x512, 40 trk, no skew, boot 1, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "electroglas",
+                "name": "electroglas",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, no skew, boot 1, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "ibmpc-514ss",
+                "name": "ibmpc-514ss",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x512, 40 trk, no skew, boot 1, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "ibmpc-514ds",
+                "name": "ibmpc-514ds",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x512, 80 trk, no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "P112 1.44M",
+                "doubleSided": true,
+                "id": "p112",
+                "name": "p112 - P112 1.44M",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "18x512, 160 trk (2 sides alt), no skew, boot 2, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "p112-old",
+                "name": "p112-old",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "18x512, 160 trk (2 sides alt), no skew, boot 1, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "gide-cfa",
+                "name": "gide-cfa",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "16x512, 1000 trk (2 sides alt), no skew, boot 2, 4K, 1024 dir"
+            },
+            {
+                "description": "AT&T / Olivetti word processor",
+                "doubleSided": false,
+                "id": "attwp",
+                "name": "attwp - AT&T / Olivetti word processor",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "32x256, 80 trk, skew table, boot 1, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "interak",
+                "name": "interak",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "20x512, 80 trk, no skew, boot 2, 4K, 256 dir"
+            },
+            {
+                "description": "Timex FDD3000 3-inch",
+                "doubleSided": false,
+                "id": "fdd3000",
+                "name": "fdd3000 - Timex FDD3000 3-inch",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x256, 40 trk, skew 7, boot 4, 1K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "fdd3000_2",
+                "name": "fdd3000_2",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x256, 40 trk, skew 5, boot 2, 1K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "1715",
+                "name": "1715",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 40 trk, no skew, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "17153",
+                "name": "17153",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 4, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "scp624",
+                "name": "scp624",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x256, 160 trk (2 sides alt), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "scp640",
+                "name": "scp640",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x256, 160 trk (2 sides alt), no skew, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "scp780",
+                "name": "scp780",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "scp800",
+                "name": "scp800",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "z9001",
+                "name": "z9001",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 0, 2K, 192 dir"
+            },
+            {
+                "description": "Visual 1050",
+                "doubleSided": false,
+                "id": "v1050",
+                "name": "v1050 - Visual 1050",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "dreamdisk40",
+                "name": "dreamdisk40",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew table, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "dreamdisk80",
+                "name": "dreamdisk80",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 160 trk (2 sides alt), skew table, boot 2, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "rc75x",
+                "name": "rc75x",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "8x1024, 154 trk (2 sides alt), no skew, boot 4, 2K, 512 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "icl-comet-525ss",
+                "name": "icl-comet-525ss",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 40 trk, skew table, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "z80pack 4MB hard disc",
+                "doubleSided": false,
+                "id": "z80pack-hd",
+                "name": "z80pack-hd - z80pack 4MB hard disc",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "128x128, 255 trk, no skew, boot 0, 2K, 1024 dir"
+            },
+            {
+                "description": "Bondwell 12",
+                "doubleSided": false,
+                "id": "bw12",
+                "name": "bw12 - Bondwell 12",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x256, 40 trk, no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "Bondwell 14",
+                "doubleSided": false,
+                "id": "bw14",
+                "name": "bw14 - Bondwell 14",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x256, 80 trk, no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "North Star floppy",
+                "doubleSided": false,
+                "id": "nsfd",
+                "name": "nsfd - North Star floppy",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 70 trk, skew 5, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "nshd4",
+                "name": "nshd4",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x512, 512 trk (2 sides alt), no skew, boot 0, 4K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "nshd8",
+                "name": "nshd8",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x512, 1024 trk (2 sides alt), no skew, boot 0, 8K, 256 dir"
+            },
+            {
+                "description": "North Star MDS-A-D 175K",
+                "doubleSided": false,
+                "id": "mdsad175",
+                "name": "mdsad175 - North Star MDS-A-D 175K",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 35 trk, skew 5, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "North Star MDS-A-D 350K",
+                "doubleSided": false,
+                "id": "mdsad350",
+                "name": "mdsad350 - North Star MDS-A-D 350K",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 70 trk, skew 5, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "Osborne 1 double density, 185K",
+                "doubleSided": false,
+                "id": "osborne1",
+                "name": "osborne1 - Osborne 1 double density, 185K",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 40 trk, no skew, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "Osborne Executive / Nuevo / Vixen, double-sided",
+                "doubleSided": false,
+                "id": "osborne4",
+                "name": "osborne4 - Osborne Executive / Nuevo / Vixen, double-sided",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 80 trk, skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Lobo Max-80 8-inch CP/M 2",
+                "doubleSided": false,
+                "id": "lobo2",
+                "name": "lobo2 - Lobo Max-80 8-inch CP/M 2",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "30x256, 77 trk, no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "Lobo Max-80 8-inch CP/M 3",
+                "doubleSided": false,
+                "id": "lobo3",
+                "name": "lobo3 - Lobo Max-80 8-inch CP/M 3",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "17x512, 77 trk, no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "DEC Pro CP/M RX50",
+                "doubleSided": false,
+                "id": "dec_pro",
+                "name": "dec_pro - DEC Pro CP/M RX50",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "tdos-ds",
+                "name": "tdos-ds",
+                "origin": "cpmtools",
+                "os": "zsys",
+                "separateSidesOk": false,
+                "summary": "16x1024, 77 trk, no skew, boot 1, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "pmc101",
+                "name": "pmc101",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "5x1024, 80 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Heath/Zenith 8-inch SSDD",
+                "doubleSided": false,
+                "id": "heassdd8",
+                "name": "heassdd8 - Heath/Zenith 8-inch SSDD",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x512, 77 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Zenith Z-100 SSDD 5.25-inch",
+                "doubleSided": false,
+                "id": "zen7",
+                "name": "zen7 - Zenith Z-100 SSDD 5.25-inch",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x512, 40 trk, no skew, boot 2, 1K, 128 dir"
+            },
+            {
+                "description": "Zenith Z-100 DSDD 5.25-inch",
+                "doubleSided": false,
+                "id": "zen8",
+                "name": "zen8 - Zenith Z-100 DSDD 5.25-inch",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x512, 80 trk, no skew, boot 2, 2K, 256 dir"
+            },
+            {
+                "description": "Zenith Z-100 SSSD 8-inch",
+                "doubleSided": false,
+                "id": "zen9",
+                "name": "zen9 - Zenith Z-100 SSSD 8-inch",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 77 trk, skew 6, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "Zenith Z-100 SSDD 8-inch",
+                "doubleSided": false,
+                "id": "zena",
+                "name": "zena - Zenith Z-100 SSDD 8-inch",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x256, 77 trk, skew 9, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "mordsdd",
+                "name": "mordsdd",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 80 trk, skew 3, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "morsddd",
+                "name": "morsddd",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 40 trk, skew 3, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Osborne 1 single density, 92K",
+                "doubleSided": false,
+                "id": "osb1sssd",
+                "name": "osb1sssd - Osborne 1 single density, 92K",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x256, 40 trk, skew 2, boot 3, 2K, 64 dir"
+            },
+            {
+                "description": "Altos DSDD",
+                "doubleSided": true,
+                "id": "altdsdd",
+                "name": "altdsdd - Altos DSDD",
+                "origin": "cpmtools",
+                "os": "3",
+                "separateSidesOk": false,
+                "summary": "9x512, 160 trk (2 sides alt), no skew, boot 2, 4K, 177 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsomsssd",
+                "name": "trsomsssd",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x128, 35 trk, skew 4, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsg",
+                "name": "trsg",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x256, 40 trk, skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsh",
+                "name": "trsh",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 40 trk, skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsj",
+                "name": "trsj",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsk",
+                "name": "trsk",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x256, 80 trk, skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsl",
+                "name": "trsl",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "trsm",
+                "name": "trsm",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x256, 160 trk (2 sides alt), skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "trsn",
+                "name": "trsn",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 160 trk (2 sides alt), no skew, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trso",
+                "name": "trso",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 40 trk, skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsp",
+                "name": "trsp",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsq",
+                "name": "trsq",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "trsr",
+                "name": "trsr",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 160 trk (2 sides alt), skew 2, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trss",
+                "name": "trss",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "6x1024, 40 trk, skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trst",
+                "name": "trst",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "6x1024, 80 trk, skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsu",
+                "name": "trsu",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "6x1024, 80 trk, skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "trsv",
+                "name": "trsv",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "6x1024, 160 trk (2 sides alt), skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "trsw",
+                "name": "trsw",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, skew 2, boot 0, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type03",
+                "name": "memotech-type03",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 98 trk (2 sides alt), no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type07",
+                "name": "memotech-type07",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 196 trk (2 sides alt), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "memotech-type43",
+                "name": "memotech-type43",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 315 trk, no skew, boot 2, 4K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type47",
+                "name": "memotech-type47",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 630 trk (2 sides alt), no skew, boot 2, 4K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type4B",
+                "name": "memotech-type4B",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 1260 trk (2 sides alt), no skew, boot 2, 4K, 512 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "memotech-type4F",
+                "name": "memotech-type4F",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 2521 trk, no skew, boot 2, 4K, 512 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "memotech-type18",
+                "name": "memotech-type18",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 2521 trk, no skew, boot 2, 4K, 512 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "memotech-type50",
+                "name": "memotech-type50",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 79 trk, no skew, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type51",
+                "name": "memotech-type51",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 158 trk (2 sides alt), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type51-italy",
+                "name": "memotech-type51-italy",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 148 trk (2 sides alt), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type51-s2r64",
+                "name": "memotech-type51-s2r64",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 138 trk (2 sides alt), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "memotech-type51-s2r",
+                "name": "memotech-type51-s2r",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 44 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "memotech-type52",
+                "name": "memotech-type52",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 98 trk (2 sides alt), no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "Research Machines single density",
+                "doubleSided": false,
+                "id": "rm-sd",
+                "name": "rm-sd - Research Machines single density",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x128, 40 trk, skew 3, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "amp1",
+                "name": "amp1",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 40 trk, no skew, boot 2, 2K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "amp2",
+                "name": "amp2",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "amp3",
+                "name": "amp3",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 80 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "amp4",
+                "name": "amp4",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 2, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "amp5",
+                "name": "amp5",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 80 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "amp6",
+                "name": "amp6",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 2, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "ampro800",
+                "name": "ampro800",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 2, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "ampro400d",
+                "name": "ampro400d",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x512, 80 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "ampdsdd80",
+                "name": "ampdsdd80",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "5x1024, 160 trk (2 sides alt), no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "8megAltairSIMH",
+                "name": "8megAltairSIMH",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "32x128, 2048 trk (2 sides alt), no skew, boot 6, 4K, 1024 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "simh",
+                "name": "simh",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "32x128, 254 trk (2 sides alt), skew 17, boot 6, 2K, 256 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "all1",
+                "name": "all1",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "8x512, 160 trk (2 sides alt), no skew, boot 1, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "svi707",
+                "name": "svi707",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "17x256, 40 trk, no skew, boot 3, 2K, 64 dir"
+            },
+            {
+                "description": "Intel MDS double density",
+                "doubleSided": false,
+                "id": "mds-dd",
+                "name": "mds-dd - Intel MDS double density",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "52x128, 77 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "Intel MDS single density",
+                "doubleSided": false,
+                "id": "mds-sd",
+                "name": "mds-sd - Intel MDS single density",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 77 trk, no skew, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "Amstrad NC200 CP/M",
+                "doubleSided": false,
+                "id": "nc200cpm",
+                "name": "nc200cpm - Amstrad NC200 CP/M",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x512, 80 trk, no skew, boot 2, 2K, 128 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "zcna_boot",
+                "name": "zcna_boot",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "1x1024, 256 trk (2 sides alt), no skew, boot 13, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": true,
+                "id": "zcna_nonboot",
+                "name": "zcna_nonboot",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "1x1024, 256 trk (2 sides alt), no skew, boot 1, 1K, 64 dir"
+            },
+            {
+                "description": "",
+                "doubleSided": false,
+                "id": "HP25",
+                "name": "HP25",
+                "origin": "cpmtools",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "16x256, 66 trk, no skew, boot 3, 1K, 128 dir"
+            }
+        ]
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

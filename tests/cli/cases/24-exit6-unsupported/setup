@@ -1,0 +1,3 @@
+#!/bin/bash
+$TOOL new img.img --format=ibm-3740 --quiet
+$TOOL new rm.img --format=rm-dd --quiet

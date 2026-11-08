@@ -1,0 +1,4 @@
+$TOOL copy src.img dst.img '*:*' --format=ibm-3740 --json
+$TOOL copy src.img same.img 4:TEXT.TXT --into=9: --format=ibm-3740 --json
+$TOOL ls dst.img '*:' --format=pcw --json
+$TOOL ls same.img '*:' --format=ibm-3740 --json

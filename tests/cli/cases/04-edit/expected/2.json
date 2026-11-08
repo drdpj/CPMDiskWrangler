@@ -1,0 +1,27 @@
+{
+    "changes": [
+        {
+            "from": "0:TEXT.TXT",
+            "note": null,
+            "op": "rename",
+            "path": "0:TEXT.BAK",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "mv",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "from": "0:TEXT.TXT",
+        "to": "0:TEXT.BAK"
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

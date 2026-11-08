@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "attr",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "unknown attribute 'bogus' (this filesystem has: readonly, system, archive, f1, f2, f3, f4)",
+        "path": null
+    },
+    "exit": 2,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

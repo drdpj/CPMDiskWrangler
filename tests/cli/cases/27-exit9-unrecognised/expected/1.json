@@ -1,0 +1,37 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": {
+        "code": 9,
+        "kind": "unrecognised",
+        "message": "nothing recognised this disc (--fs=ID tries a reading anyway)",
+        "path": null
+    },
+    "exit": 9,
+    "image": "img.bin",
+    "ok": false,
+    "result": {
+        "app": null,
+        "candidates": [
+        ],
+        "chosen": null,
+        "container": {
+            "kind": "raw",
+            "name": "raw sector image",
+            "readOnly": false,
+            "size": 123456
+        },
+        "owner": null,
+        "verdict": "none",
+        "volumes": [
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

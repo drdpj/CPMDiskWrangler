@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_cpcdata.dsk",
+            "note": "raw",
+            "op": "convert",
+            "path": "r_cpcdata.raw",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_cpcdata.dsk",
+    "ok": true,
+    "result": {
+        "container": "raw sector image",
+        "out": "r_cpcdata.raw",
+        "size": 184320
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

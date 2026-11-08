@@ -1,0 +1,11 @@
+$TOOL new --list --json
+$TOOL new a.img --format=ibm-3740 --json
+$TOOL info a.img --json
+$TOOL info a.img --format=ibm-3740 --json
+$TOOL new b.img --format=pcw --stamps --label=HELLO --json
+$TOOL info b.img --format=pcw --json
+$TOOL title b.img --format=pcw --json
+$TOOL new c.img --format=ibm-3740 --container=raw --json
+$TOOL new d.img --format=rm-dd --separate-sides --json
+$TOOL info d.img --format=rm-dd --json
+$TOOL new e.img --format=nosuch --json

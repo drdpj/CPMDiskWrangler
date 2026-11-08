@@ -1,0 +1,3 @@
+title
+mkdir 6:
+ls *:

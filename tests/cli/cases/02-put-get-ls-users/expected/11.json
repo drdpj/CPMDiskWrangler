@@ -1,0 +1,24 @@
+{
+    "changes": [
+    ],
+    "command": "check",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "errors": [
+        ],
+        "info": [
+        ],
+        "warnings": [
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

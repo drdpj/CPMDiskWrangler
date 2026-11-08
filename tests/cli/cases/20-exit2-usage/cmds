@@ -1,0 +1,9 @@
+$TOOL --json
+$TOOL frobnicate img.img --json
+$TOOL ls --json
+$TOOL put img.img --json
+$TOOL ls img.img --nosuchoption --json
+$TOOL new x.img --json
+$TOOL attr img.img GAME.COM --set bogus=1 --format=ibm-3740 --json
+$TOOL ls img.img --charset=klingon --json
+$TOOL get img.img GAME.COM out --user-folders=maybe --format=ibm-3740 --json

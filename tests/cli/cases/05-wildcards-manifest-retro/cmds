@@ -1,0 +1,6 @@
+$TOOL ls img.img '*:*.C??' --format=ibm-3740 --json
+$TOOL ls img.img '*:T*' --format=ibm-3740 --json
+$TOOL get img.img '*:*' out --manifest=out/manifest.json --format=ibm-3740 --json
+$TOOL new img2.img --format=ibm-3740 --quiet
+$TOOL put img2.img / --retro=out/manifest.json --format=ibm-3740 --json
+$TOOL ls img2.img '*:' --format=ibm-3740 --json

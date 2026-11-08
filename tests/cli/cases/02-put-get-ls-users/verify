@@ -1,0 +1,4 @@
+cmp host/GAME.COM out/user0/game.com
+cmp host/TEXT.TXT out/user3/text.txt
+cmp host/GAME.COM out2/user0/game.com
+cmp host/GAME.COM out2/user3/game.com

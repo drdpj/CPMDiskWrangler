@@ -1,0 +1,34 @@
+{
+    "changes": [
+        {
+            "from": "[\\].TXT",
+            "note": null,
+            "op": "add",
+            "path": "æøå.txt",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+            {
+                "from": "[\\].TXT",
+                "host": "æøå.txt",
+                "sidecar": false,
+                "size": 12
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

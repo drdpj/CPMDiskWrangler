@@ -1,0 +1,3 @@
+#!/bin/bash
+$TOOL new img.img --format=ibm-3740 --quiet
+chmod a+rw img.img; chmod -R a+rX host; chmod a-w ./

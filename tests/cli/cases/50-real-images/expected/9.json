@@ -1,0 +1,500 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_c.dsk",
+    "ok": true,
+    "result": {
+        "entries": [
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:BIOS.HEX",
+                "kind": "file",
+                "modified": null,
+                "name": "BIOS.HEX",
+                "path": [
+                    "user 0",
+                    "BIOS.HEX"
+                ],
+                "problem": null,
+                "size": 1408,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:BIOS.Z80",
+                "kind": "file",
+                "modified": null,
+                "name": "BIOS.Z80",
+                "path": [
+                    "user 0",
+                    "BIOS.Z80"
+                ],
+                "problem": null,
+                "size": 10240,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:BOOT.HEX",
+                "kind": "file",
+                "modified": null,
+                "name": "BOOT.HEX",
+                "path": [
+                    "user 0",
+                    "BOOT.HEX"
+                ],
+                "problem": null,
+                "size": 256,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:BOOT.Z80",
+                "kind": "file",
+                "modified": null,
+                "name": "BOOT.Z80",
+                "path": [
+                    "user 0",
+                    "BOOT.Z80"
+                ],
+                "problem": null,
+                "size": 2054,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:BYE.ASM",
+                "kind": "file",
+                "modified": null,
+                "name": "BYE.ASM",
+                "path": [
+                    "user 0",
+                    "BYE.ASM"
+                ],
+                "problem": null,
+                "size": 512,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:BYE.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "BYE.COM",
+                "path": [
+                    "user 0",
+                    "BYE.COM"
+                ],
+                "problem": null,
+                "size": 128,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:CLS.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "CLS.COM",
+                "path": [
+                    "user 0",
+                    "CLS.COM"
+                ],
+                "problem": null,
+                "size": 128,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:CLS.MAC",
+                "kind": "file",
+                "modified": null,
+                "name": "CLS.MAC",
+                "path": [
+                    "user 0",
+                    "CLS.MAC"
+                ],
+                "problem": null,
+                "size": 256,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:CPM64.SYS",
+                "kind": "file",
+                "modified": null,
+                "name": "CPM64.SYS",
+                "path": [
+                    "user 0",
+                    "CPM64.SYS"
+                ],
+                "problem": null,
+                "size": 8704,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:R.ASM",
+                "kind": "file",
+                "modified": null,
+                "name": "R.ASM",
+                "path": [
+                    "user 0",
+                    "R.ASM"
+                ],
+                "problem": null,
+                "size": 7808,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:R.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "R.COM",
+                "path": [
+                    "user 0",
+                    "R.COM"
+                ],
+                "problem": null,
+                "size": 512,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:RESET.ASM",
+                "kind": "file",
+                "modified": null,
+                "name": "RESET.ASM",
+                "path": [
+                    "user 0",
+                    "RESET.ASM"
+                ],
+                "problem": null,
+                "size": 512,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:RESET.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "RESET.COM",
+                "path": [
+                    "user 0",
+                    "RESET.COM"
+                ],
+                "problem": null,
+                "size": 128,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SPEED.C",
+                "kind": "file",
+                "modified": null,
+                "name": "SPEED.C",
+                "path": [
+                    "user 0",
+                    "SPEED.C"
+                ],
+                "problem": null,
+                "size": 896,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SPEED.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "SPEED.COM",
+                "path": [
+                    "user 0",
+                    "SPEED.COM"
+                ],
+                "problem": null,
+                "size": 4480,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SURVEY.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "SURVEY.COM",
+                "path": [
+                    "user 0",
+                    "SURVEY.COM"
+                ],
+                "problem": null,
+                "size": 1152,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SURVEY.MAC",
+                "kind": "file",
+                "modified": null,
+                "name": "SURVEY.MAC",
+                "path": [
+                    "user 0",
+                    "SURVEY.MAC"
+                ],
+                "problem": null,
+                "size": 14503,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SYSGEN.SUB",
+                "kind": "file",
+                "modified": null,
+                "name": "SYSGEN.SUB",
+                "path": [
+                    "user 0",
+                    "SYSGEN.SUB"
+                ],
+                "problem": null,
+                "size": 256,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:W.ASM",
+                "kind": "file",
+                "modified": null,
+                "name": "W.ASM",
+                "path": [
+                    "user 0",
+                    "W.ASM"
+                ],
+                "problem": null,
+                "size": 7552,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:W.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "W.COM",
+                "path": [
+                    "user 0",
+                    "W.COM"
+                ],
+                "problem": null,
+                "size": 512,
+                "sizeExact": false
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

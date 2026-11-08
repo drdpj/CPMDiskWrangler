@@ -1,0 +1,6 @@
+$TOOL put img.img host/TEXT.TXT / --dry-run --format=ibm-3740 --json
+$TOOL rm img.img GAME.COM --dry-run --format=ibm-3740 --json
+$TOOL mv img.img GAME.COM G.COM --dry-run --format=ibm-3740 --json
+$TOOL attr img.img GAME.COM --set readonly=1 --dry-run --format=ibm-3740 --json
+$TOOL convert img.img conv.imd --container=imd --dry-run --json
+$TOOL ls img.img --format=ibm-3740 --json

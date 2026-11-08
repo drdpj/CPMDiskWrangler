@@ -27,6 +27,10 @@ against the sources in `src/`. Run GUI tests with `QT_QPA_PLATFORM=offscreen`.
 | `volumetest`, `moduletest` (`core/tests/`) | DiskWranglerCore's filesystem layer and its DFS and FAT modules; built and run by Acorn Disk Wrangler's `acorn_all.sh` and the core's `ctest` |
 | `settingstest` (`core/tests/settingstest.pro`) | where settings live on Linux: an installed program has no portable mode; an AppImage keeps `<program>.ini` beside the `.AppImage` file (in DiskWranglerCore, shared with Acorn Disk Wrangler) |
 | `mkicon <dir>` | the PNG icons |
+| `clitest` (`core/tests/clitest.pro`) | DiskWranglerCore's command-line layer on a small FAT backend: usage errors, the JSON envelope, exit codes, `script`, `--dry-run`, saving (`run_all.sh` runs it) |
+| `tests/cli/run_cli.sh [--update] <cpmdw> <work dir> [<real images dir>]` | `cpmdw`'s golden-image cases in `tests/cli/cases/<NN-name>/`: `setup` makes the image, `cmds` is one `$TOOL ...` per line (every command on a disc that is not yet confirmed needs `--format=NAME`), `host/` holds the files to put. Standard output, exit code, a hash of the images and of the files written to the host are compared with `expected/`, run with `SOURCE_DATE_EPOCH` fixed and `TZ=UTC`. Exit 10 runs as `nobody` (root ignores `chmod`). Cases marked `# needs-real` run only when the real images folder is given. `--update` rewrites `expected/`: **review the diff by hand**. Exit 8 (ambiguous) has no case: no disc has been found that two CP/M layouts or CP/M and another filesystem tie on at the same tier; Acorn Disk Wrangler's cases cover the code path |
+| `tests/cli/cross_tool.sh <cpmdw> <acorndw> <work dir>` | the two console programs hand files to each other through `get --manifest` and `put --retro`; run by `run_all.sh` when given the Acorn Disk Wrangler source |
+| `ldd cpmdw` | must show neither QtGui nor QtWidgets (`run_all.sh` checks) |
 
 ## Verify independently, not with our own code
 Our reader agreeing with our writer proves little. This

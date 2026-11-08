@@ -1,0 +1,3 @@
+$TOOL info img.ssd --json
+$TOOL ls img.ssd --json
+$TOOL put img.ssd host/GAME.COM / --json

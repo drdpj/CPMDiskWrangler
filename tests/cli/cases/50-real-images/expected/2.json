@@ -1,0 +1,380 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_a.imd",
+    "ok": true,
+    "result": {
+        "entries": [
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASE.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASE.COM",
+                "path": [
+                    "user 0",
+                    "DBASE.COM"
+                ],
+                "problem": null,
+                "size": 17920,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEAPP.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEAPP.OVR",
+                "path": [
+                    "user 0",
+                    "DBASEAPP.OVR"
+                ],
+                "problem": null,
+                "size": 3968,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEBRO.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEBRO.OVR",
+                "path": [
+                    "user 0",
+                    "DBASEBRO.OVR"
+                ],
+                "problem": null,
+                "size": 1664,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEJOI.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEJOI.OVR",
+                "path": [
+                    "user 0",
+                    "DBASEJOI.OVR"
+                ],
+                "problem": null,
+                "size": 1920,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEMAI.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEMAI.OVR",
+                "path": [
+                    "user 0",
+                    "DBASEMAI.OVR"
+                ],
+                "problem": null,
+                "size": 7040,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEMOD.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEMOD.OVR",
+                "path": [
+                    "user 0",
+                    "DBASEMOD.OVR"
+                ],
+                "problem": null,
+                "size": 3840,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEMSC.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEMSC.OVR",
+                "path": [
+                    "user 0",
+                    "DBASEMSC.OVR"
+                ],
+                "problem": null,
+                "size": 3456,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEMSG.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEMSG.COM",
+                "path": [
+                    "user 0",
+                    "DBASEMSG.COM"
+                ],
+                "problem": null,
+                "size": 7936,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASERPG.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASERPG.OVR",
+                "path": [
+                    "user 0",
+                    "DBASERPG.OVR"
+                ],
+                "problem": null,
+                "size": 5632,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASESRT.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASESRT.OVR",
+                "path": [
+                    "user 0",
+                    "DBASESRT.OVR"
+                ],
+                "problem": null,
+                "size": 1408,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASETTL.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASETTL.OVR",
+                "path": [
+                    "user 0",
+                    "DBASETTL.OVR"
+                ],
+                "problem": null,
+                "size": 2048,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DBASEUPD.OVR",
+                "kind": "file",
+                "modified": null,
+                "name": "DBASEUPD.OVR",
+                "path": [
+                    "user 0",
+                    "DBASEUPD.OVR"
+                ],
+                "problem": null,
+                "size": 1024,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DO.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "DO.COM",
+                "path": [
+                    "user 0",
+                    "DO.COM"
+                ],
+                "problem": null,
+                "size": 17920,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:EXAMPLE.CMD",
+                "kind": "file",
+                "modified": null,
+                "name": "EXAMPLE.CMD",
+                "path": [
+                    "user 0",
+                    "EXAMPLE.CMD"
+                ],
+                "problem": null,
+                "size": 640,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:EXAMPLE.DBF",
+                "kind": "file",
+                "modified": null,
+                "name": "EXAMPLE.DBF",
+                "path": [
+                    "user 0",
+                    "EXAMPLE.DBF"
+                ],
+                "problem": null,
+                "size": 1536,
+                "sizeExact": false
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

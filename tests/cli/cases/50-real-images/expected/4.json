@@ -1,0 +1,192 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_b.td0",
+    "ok": true,
+    "result": {
+        "app": {
+            "charset": "ascii",
+            "confidence": "high",
+            "format": {
+                "description": "Kaypro 4 / 10 floppy, double-sided 390K",
+                "name": "kpiv",
+                "origin": "built-in",
+                "summary": "10 x 512 bytes/track, 80 tracks (2 sides, alt), no skew, 1 boot track, 2K blocks, 64 directory entries, CP/M 2.2, 394K"
+            },
+            "kind": "cpm",
+            "lowerCaseNames": false,
+            "os": "2.2",
+            "physical": "TeleDisk (.TD0): 40 cylinders, 2 sides, 10 x 512-byte sectors per track, sector IDs from 0",
+            "safeToWrite": true,
+            "separateSides": false,
+            "why": "No other layout comes close."
+        },
+        "candidates": [
+            {
+                "description": "CP/M disc (kpiv)",
+                "evidence": [
+                    "signature:3592f734f96a956981a7c3bd712d32dc",
+                    "30 files in 32 directory entries",
+                    "block counts match record counts in 32 of 32 entries",
+                    "the first file block follows the directory",
+                    "text files read as text: 8 of 8",
+                    ".COM files starting with a likely instruction: 20 of 20",
+                    "a known format (built-in)",
+                    "sector IDs start at 0, as this format's do"
+                ],
+                "fsId": "cpm",
+                "name": "CP/M",
+                "notes": [
+                    "No other layout comes close."
+                ],
+                "probe": "cpm",
+                "safeToWrite": true,
+                "supported": true,
+                "tier": "certain"
+            }
+        ],
+        "chosen": {
+            "description": "CP/M disc (kpiv)",
+            "evidence": [
+                "signature:3592f734f96a956981a7c3bd712d32dc",
+                "30 files in 32 directory entries",
+                "block counts match record counts in 32 of 32 entries",
+                "the first file block follows the directory",
+                "text files read as text: 8 of 8",
+                ".COM files starting with a likely instruction: 20 of 20",
+                "a known format (built-in)",
+                "sector IDs start at 0, as this format's do"
+            ],
+            "fsId": "cpm",
+            "name": "CP/M",
+            "notes": [
+                "No other layout comes close."
+            ],
+            "probe": "cpm",
+            "safeToWrite": true,
+            "supported": true,
+            "tier": "certain"
+        },
+        "container": {
+            "kind": "td0",
+            "name": "TeleDisk (.TD0)",
+            "readOnly": true,
+            "size": 171212
+        },
+        "owner": null,
+        "verdict": "open",
+        "volumes": [
+            {
+                "caps": {
+                    "contiguousOnly": false,
+                    "dates": false,
+                    "dirs": false,
+                    "maxEntriesPerDir": 64,
+                    "namespaces": true,
+                    "rename": true,
+                    "renameAcrossDirs": true,
+                    "settableDates": false,
+                    "title": false
+                },
+                "fileAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "readonly",
+                        "label": "R/O",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "system",
+                        "label": "SYS",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "archive",
+                        "label": "ARC",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f1",
+                        "label": "F1",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f2",
+                        "label": "F2",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f3",
+                        "label": "F3",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f4",
+                        "label": "F4",
+                        "type": "bool"
+                    }
+                ],
+                "fsId": "cpm",
+                "info": {
+                    "entriesFree": 32,
+                    "free": 73728,
+                    "largestFree": -1,
+                    "title": "",
+                    "total": 403456
+                },
+                "label": "CP/M",
+                "readOnly": false,
+                "readOnlyWhy": null,
+                "vol": "cpm",
+                "volumeAttrSpecs": [
+                ],
+                "volumeAttrs": {
+                }
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

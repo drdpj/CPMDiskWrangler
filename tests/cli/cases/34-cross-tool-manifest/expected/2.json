@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": {
+        "code": 3,
+        "kind": "not-found",
+        "message": "img2.img: no such file",
+        "path": "img2.img"
+    },
+    "exit": 3,
+    "image": "img2.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

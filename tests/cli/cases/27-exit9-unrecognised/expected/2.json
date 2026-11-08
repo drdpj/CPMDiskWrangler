@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": {
+        "code": 9,
+        "kind": "unrecognised",
+        "message": "nothing recognised this disc (--fs=ID tries a reading anyway)",
+        "path": null
+    },
+    "exit": 9,
+    "image": "img.bin",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

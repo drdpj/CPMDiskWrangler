@@ -1,0 +1,4 @@
+# The fixtures are compared byte for byte, and some hold CR LF, ^Z or high bytes: never convert them, and give them to
+# git format-patch / git am as binary patches (an ordinary text patch loses the CR of a CR LF when it is applied).
+cases/*/host/** binary
+* -text

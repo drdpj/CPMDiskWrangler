@@ -1,0 +1,47 @@
+{
+    "changes": [
+        {
+            "from": "GAME.COM",
+            "note": null,
+            "op": "add",
+            "path": "user0/game.com",
+            "vol": "CP/M"
+        },
+        {
+            "from": "TEXT.TXT",
+            "note": null,
+            "op": "add",
+            "path": "user3/text.txt",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+            {
+                "from": "GAME.COM",
+                "host": "user0/game.com",
+                "sidecar": false,
+                "size": 1505
+            },
+            {
+                "from": "TEXT.TXT",
+                "host": "user3/text.txt",
+                "sidecar": false,
+                "size": 12
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

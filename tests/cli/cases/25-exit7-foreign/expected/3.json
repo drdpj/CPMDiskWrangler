@@ -1,0 +1,28 @@
+{
+    "changes": [
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": {
+        "code": 7,
+        "kind": "foreign",
+        "message": "this disc belongs to Acorn Disk Wrangler (https://github.com/drdpj/AcornDiskWrangler/releases)",
+        "path": null
+    },
+    "exit": 7,
+    "image": "img.ssd",
+    "ok": false,
+    "result": {
+        "owner": {
+            "id": "acorndiskwrangler",
+            "name": "Acorn Disk Wrangler",
+            "releases": "https://github.com/drdpj/AcornDiskWrangler/releases"
+        }
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

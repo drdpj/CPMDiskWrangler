@@ -1,0 +1,86 @@
+{
+    "changes": [
+        {
+            "from": "A.TXT",
+            "note": null,
+            "op": "add",
+            "path": "A.TXT",
+            "vol": "CP/M"
+        },
+        {
+            "from": "A.TXT",
+            "note": null,
+            "op": "add",
+            "path": "a.txt",
+            "vol": "CP/M"
+        },
+        {
+            "from": "B.COM",
+            "note": null,
+            "op": "add",
+            "path": "b.com",
+            "vol": "CP/M"
+        },
+        {
+            "from": "C.TXT",
+            "note": null,
+            "op": "add",
+            "path": "c.txt",
+            "vol": "CP/M"
+        },
+        {
+            "from": "D.TXT",
+            "note": null,
+            "op": "add",
+            "path": "d.txt",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+            {
+                "from": "A.TXT",
+                "host": "A.TXT",
+                "sidecar": false,
+                "size": 306
+            },
+            {
+                "from": "A.TXT",
+                "host": "a.txt",
+                "sidecar": false,
+                "size": 12
+            },
+            {
+                "from": "B.COM",
+                "host": "b.com",
+                "sidecar": false,
+                "size": 1505
+            },
+            {
+                "from": "C.TXT",
+                "host": "c.txt",
+                "sidecar": false,
+                "size": 12
+            },
+            {
+                "from": "D.TXT",
+                "host": "d.txt",
+                "sidecar": false,
+                "size": 12
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

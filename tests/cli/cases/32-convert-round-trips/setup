@@ -1,0 +1,5 @@
+#!/bin/bash
+for f in ibm-3740 pcw cpcdata kpiv osborne1 microbee-ds40; do
+  $TOOL new img_$f.raw --format=$f --container=raw --quiet
+  $TOOL put img_$f.raw host/GAME.COM host/TEXT.TXT / --format=$f --quiet
+done

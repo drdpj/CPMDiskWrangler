@@ -1,0 +1,3 @@
+#!/bin/bash
+$TOOL new img.img --format=ibm-3740 --quiet
+$TOOL put img.img host/GAME.COM host/TEXT.TXT / --format=ibm-3740 --quiet

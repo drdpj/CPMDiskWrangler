@@ -1,0 +1,6 @@
+$TOOL boot img.img --format=ibm-3740 --json
+$TOOL title img.img NEWTITLE --format=ibm-3740 --json
+$TOOL convert img.img x.dsk --container=zip --format=ibm-3740 --json
+$TOOL convert img.img x.imd --container=imd --to-sides=sequential --format=ibm-3740 --json
+$TOOL put img.img host/GAME.COM --vol=2 / --format=ibm-3740 --json
+$TOOL mkdir img.img A/B --format=ibm-3740 --json

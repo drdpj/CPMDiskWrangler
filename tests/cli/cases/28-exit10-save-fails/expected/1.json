@@ -1,0 +1,36 @@
+{
+    "changes": [
+        {
+            "from": "host/GAME.COM",
+            "note": null,
+            "op": "add",
+            "path": "0:GAME.COM",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": {
+        "code": 10,
+        "kind": "save",
+        "message": "cannot create a new file beside the image: Permission denied",
+        "path": null
+    },
+    "exit": 10,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+        "added": 1,
+        "dirs": 0,
+        "renamed": [
+        ],
+        "replaced": 0,
+        "skipped": 0
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

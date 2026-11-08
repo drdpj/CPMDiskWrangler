@@ -1,0 +1,34 @@
+{
+    "changes": [
+        {
+            "from": "BOOT.Z80",
+            "note": null,
+            "op": "add",
+            "path": "boot.z80",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_c.dsk",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+            {
+                "from": "BOOT.Z80",
+                "host": "boot.z80",
+                "sidecar": false,
+                "size": 2054
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

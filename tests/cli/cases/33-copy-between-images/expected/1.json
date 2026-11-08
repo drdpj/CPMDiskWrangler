@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "copy",
+    "dryRun": false,
+    "error": {
+        "code": 1,
+        "kind": "failed",
+        "message": "--format ibm-3740: this disc's tracks hold 9 x 512-byte sectors",
+        "path": null
+    },
+    "exit": 1,
+    "image": "dst.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

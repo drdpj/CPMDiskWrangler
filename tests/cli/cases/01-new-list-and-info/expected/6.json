@@ -1,0 +1,197 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "b.img",
+    "ok": true,
+    "result": {
+        "app": {
+            "charset": "ascii",
+            "confidence": "high",
+            "format": {
+                "description": "Amstrad PCW 180K (3-inch CF2, single-sided)",
+                "name": "pcw",
+                "origin": "built-in",
+                "summary": "9 x 512 bytes/track, 40 tracks (1 side), no skew, 1 boot track, 1K blocks, 64 directory entries, CP/M 3, 175K"
+            },
+            "kind": "cpm",
+            "lowerCaseNames": false,
+            "os": "3",
+            "physical": "ImageDisk (.IMD)",
+            "safeToWrite": true,
+            "separateSides": false,
+            "why": "the format was named on the command line"
+        },
+        "candidates": [
+            {
+                "description": "CP/M disc (pcw)",
+                "evidence": [
+                    "signature:d41d8cd98f00b204e9800998ecf8427e",
+                    "0 files in 0 directory entries",
+                    "has a CP/M 3 disc label",
+                    "has CP/M 3 / P2DOS time stamp entries",
+                    "the format was named with --format"
+                ],
+                "fsId": "cpm",
+                "name": "CP/M",
+                "notes": [
+                    "the format was named on the command line"
+                ],
+                "probe": "cpm",
+                "safeToWrite": true,
+                "supported": true,
+                "tier": "certain"
+            }
+        ],
+        "chosen": {
+            "description": "CP/M disc (pcw)",
+            "evidence": [
+                "signature:d41d8cd98f00b204e9800998ecf8427e",
+                "0 files in 0 directory entries",
+                "has a CP/M 3 disc label",
+                "has CP/M 3 / P2DOS time stamp entries",
+                "the format was named with --format"
+            ],
+            "fsId": "cpm",
+            "name": "CP/M",
+            "notes": [
+                "the format was named on the command line"
+            ],
+            "probe": "cpm",
+            "safeToWrite": true,
+            "supported": true,
+            "tier": "certain"
+        },
+        "container": {
+            "kind": "imd",
+            "name": "ImageDisk (.IMD)",
+            "readOnly": false,
+            "size": 3396
+        },
+        "owner": null,
+        "verdict": "open",
+        "volumes": [
+            {
+                "caps": {
+                    "contiguousOnly": false,
+                    "dates": true,
+                    "dirs": false,
+                    "maxEntriesPerDir": 64,
+                    "namespaces": true,
+                    "rename": true,
+                    "renameAcrossDirs": true,
+                    "settableDates": false,
+                    "title": true
+                },
+                "fileAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "readonly",
+                        "label": "R/O",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "system",
+                        "label": "SYS",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "archive",
+                        "label": "ARC",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f1",
+                        "label": "F1",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f2",
+                        "label": "F2",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f3",
+                        "label": "F3",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f4",
+                        "label": "F4",
+                        "type": "bool"
+                    }
+                ],
+                "fsId": "cpm",
+                "info": {
+                    "entriesFree": 47,
+                    "free": 177152,
+                    "largestFree": -1,
+                    "title": "HELLO",
+                    "total": 179200
+                },
+                "label": "CP/M",
+                "readOnly": false,
+                "readOnlyWhy": null,
+                "vol": "cpm",
+                "volumeAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "label",
+                        "label": "Label",
+                        "type": "text"
+                    }
+                ],
+                "volumeAttrs": {
+                    "label": "HELLO"
+                }
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

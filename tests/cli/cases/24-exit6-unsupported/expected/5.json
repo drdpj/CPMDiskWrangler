@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "no volume called '2' on this disc; it has: cpm",
+        "path": null
+    },
+    "exit": 2,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

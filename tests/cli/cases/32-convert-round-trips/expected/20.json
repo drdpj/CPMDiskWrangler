@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_osborne1.dsk",
+            "note": "raw",
+            "op": "convert",
+            "path": "r_osborne1.raw",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_osborne1.dsk",
+    "ok": true,
+    "result": {
+        "container": "raw sector image",
+        "out": "r_osborne1.raw",
+        "size": 204800
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

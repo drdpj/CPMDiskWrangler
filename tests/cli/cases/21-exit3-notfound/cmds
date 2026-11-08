@@ -1,0 +1,6 @@
+$TOOL ls nosuch.img --json
+$TOOL ls img.img NOSUCH.COM --format=ibm-3740 --json
+$TOOL get img.img NOSUCH.COM out --format=ibm-3740 --json
+$TOOL put img.img host/NOSUCH / --format=ibm-3740 --json
+$TOOL rm img.img NOSUCH.COM --format=ibm-3740 --json
+$TOOL mv img.img NOSUCH.COM X.COM --format=ibm-3740 --json

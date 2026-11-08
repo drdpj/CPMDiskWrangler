@@ -1,0 +1,2 @@
+$TOOL script img.img host/five.txt --format=ibm-3740 --json
+$TOOL script img.img - --format=ibm-3740 --json < host/stdin.txt

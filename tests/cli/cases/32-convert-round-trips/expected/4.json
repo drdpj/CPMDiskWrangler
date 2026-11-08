@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_ibm-3740.dsk",
+            "note": "raw",
+            "op": "convert",
+            "path": "r_ibm-3740.raw",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_ibm-3740.dsk",
+    "ok": true,
+    "result": {
+        "container": "raw sector image",
+        "out": "r_ibm-3740.raw",
+        "size": 256256
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

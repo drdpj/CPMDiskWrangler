@@ -1,0 +1,740 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_b.td0",
+    "ok": true,
+    "result": {
+        "entries": [
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:ASM.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "ASM.COM",
+                "path": [
+                    "user 0",
+                    "ASM.COM"
+                ],
+                "problem": null,
+                "size": 8192,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:BASICLIB.REL",
+                "kind": "file",
+                "modified": null,
+                "name": "BASICLIB.REL",
+                "path": [
+                    "user 0",
+                    "BASICLIB.REL"
+                ],
+                "problem": null,
+                "size": 41472,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:CONFIG.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "CONFIG.COM",
+                "path": [
+                    "user 0",
+                    "CONFIG.COM"
+                ],
+                "problem": null,
+                "size": 31744,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:COPY.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "COPY.COM",
+                "path": [
+                    "user 0",
+                    "COPY.COM"
+                ],
+                "problem": null,
+                "size": 7936,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:D.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "D.COM",
+                "path": [
+                    "user 0",
+                    "D.COM"
+                ],
+                "problem": null,
+                "size": 3072,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DDT.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "DDT.COM",
+                "path": [
+                    "user 0",
+                    "DDT.COM"
+                ],
+                "problem": null,
+                "size": 4864,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DPLAY.BAS",
+                "kind": "file",
+                "modified": null,
+                "name": "DPLAY.BAS",
+                "path": [
+                    "user 0",
+                    "DPLAY.BAS"
+                ],
+                "problem": null,
+                "size": 512,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DUMP.ASM",
+                "kind": "file",
+                "modified": null,
+                "name": "DUMP.ASM",
+                "path": [
+                    "user 0",
+                    "DUMP.ASM"
+                ],
+                "problem": null,
+                "size": 4224,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:DUMP.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "DUMP.COM",
+                "path": [
+                    "user 0",
+                    "DUMP.COM"
+                ],
+                "problem": null,
+                "size": 512,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:ED.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "ED.COM",
+                "path": [
+                    "user 0",
+                    "ED.COM"
+                ],
+                "problem": null,
+                "size": 6656,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:FAC.BAS",
+                "kind": "file",
+                "modified": null,
+                "name": "FAC.BAS",
+                "path": [
+                    "user 0",
+                    "FAC.BAS"
+                ],
+                "problem": null,
+                "size": 256,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:LOAD.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "LOAD.COM",
+                "path": [
+                    "user 0",
+                    "LOAD.COM"
+                ],
+                "problem": null,
+                "size": 1792,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:MFDISK.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "MFDISK.COM",
+                "path": [
+                    "user 0",
+                    "MFDISK.COM"
+                ],
+                "problem": null,
+                "size": 22016,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:MOVCPM.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "MOVCPM.COM",
+                "path": [
+                    "user 0",
+                    "MOVCPM.COM"
+                ],
+                "problem": null,
+                "size": 9728,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:MSDOS.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "MSDOS.COM",
+                "path": [
+                    "user 0",
+                    "MSDOS.COM"
+                ],
+                "problem": null,
+                "size": 45824,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:OVERLAYB.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "OVERLAYB.COM",
+                "path": [
+                    "user 0",
+                    "OVERLAYB.COM"
+                ],
+                "problem": null,
+                "size": 6912,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:PIP.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "PIP.COM",
+                "path": [
+                    "user 0",
+                    "PIP.COM"
+                ],
+                "problem": null,
+                "size": 7424,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:RAMDISK.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "RAMDISK.COM",
+                "path": [
+                    "user 0",
+                    "RAMDISK.COM"
+                ],
+                "problem": null,
+                "size": 8448,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:RAMDISK.DOC",
+                "kind": "file",
+                "modified": null,
+                "name": "RAMDISK.DOC",
+                "path": [
+                    "user 0",
+                    "RAMDISK.DOC"
+                ],
+                "problem": null,
+                "size": 13824,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SBASIC.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "SBASIC.COM",
+                "path": [
+                    "user 0",
+                    "SBASIC.COM"
+                ],
+                "problem": null,
+                "size": 26112,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SSCOPY.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "SSCOPY.COM",
+                "path": [
+                    "user 0",
+                    "SSCOPY.COM"
+                ],
+                "problem": null,
+                "size": 7936,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:STAT.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "STAT.COM",
+                "path": [
+                    "user 0",
+                    "STAT.COM"
+                ],
+                "problem": null,
+                "size": 5248,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SUBMIT.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "SUBMIT.COM",
+                "path": [
+                    "user 0",
+                    "SUBMIT.COM"
+                ],
+                "problem": null,
+                "size": 1280,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:SYSGEN.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "SYSGEN.COM",
+                "path": [
+                    "user 0",
+                    "SYSGEN.COM"
+                ],
+                "problem": null,
+                "size": 1024,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:USERLIB.REL",
+                "kind": "file",
+                "modified": null,
+                "name": "USERLIB.REL",
+                "path": [
+                    "user 0",
+                    "USERLIB.REL"
+                ],
+                "problem": null,
+                "size": 768,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:XAMN.BAS",
+                "kind": "file",
+                "modified": null,
+                "name": "XAMN.BAS",
+                "path": [
+                    "user 0",
+                    "XAMN.BAS"
+                ],
+                "problem": null,
+                "size": 19712,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:XSUB.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "XSUB.COM",
+                "path": [
+                    "user 0",
+                    "XSUB.COM"
+                ],
+                "problem": null,
+                "size": 768,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "5:PARTDEFS.BAS",
+                "kind": "file",
+                "modified": null,
+                "name": "PARTDEFS.BAS",
+                "path": [
+                    "user 5",
+                    "PARTDEFS.BAS"
+                ],
+                "problem": null,
+                "size": 1152,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "5:PARTLIST.BAS",
+                "kind": "file",
+                "modified": null,
+                "name": "PARTLIST.BAS",
+                "path": [
+                    "user 5",
+                    "PARTLIST.BAS"
+                ],
+                "problem": null,
+                "size": 4864,
+                "sizeExact": false
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "5:PCREATE.BAS",
+                "kind": "file",
+                "modified": null,
+                "name": "PCREATE.BAS",
+                "path": [
+                    "user 5",
+                    "PCREATE.BAS"
+                ],
+                "problem": null,
+                "size": 640,
+                "sizeExact": false
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

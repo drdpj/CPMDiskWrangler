@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "img_ibm-3740.raw",
+            "note": "imd",
+            "op": "convert",
+            "path": "c_ibm-3740.imd",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_ibm-3740.raw",
+    "ok": true,
+    "result": {
+        "container": "ImageDisk (.IMD)",
+        "out": "c_ibm-3740.imd",
+        "size": 8201
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

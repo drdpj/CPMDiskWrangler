@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "usage: cpmdw put IMAGE HOST... DIR",
+        "path": null
+    },
+    "exit": 2,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

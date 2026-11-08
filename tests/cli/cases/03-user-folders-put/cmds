@@ -1,0 +1,6 @@
+$TOOL put img.img host/user0 host/user5 host/Docs / --format=ibm-3740 --json
+$TOOL ls img.img '*:' -R --format=ibm-3740 --json
+$TOOL get img.img '*:*' outA --user-folders=off --format=ibm-3740 --json
+$TOOL get img.img '*:*' outB --user-folders=on --format=ibm-3740 --json
+$TOOL get img.img '*:*' outC --format=ibm-3740 --json
+$TOOL get img.img 5: outD --format=ibm-3740 --json

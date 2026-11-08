@@ -1,0 +1,26 @@
+{
+    "changes": [
+        {
+            "from": null,
+            "note": null,
+            "op": "remove",
+            "path": "2:GAME.COM",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "rm",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "removed": 1
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

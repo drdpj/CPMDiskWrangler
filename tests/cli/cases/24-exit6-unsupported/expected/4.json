@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "unknown option --to-sides",
+        "path": null
+    },
+    "exit": 2,
+    "image": null,
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

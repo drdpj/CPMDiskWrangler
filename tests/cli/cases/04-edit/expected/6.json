@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "rm",
+    "dryRun": false,
+    "error": {
+        "code": 6,
+        "kind": "unsupported",
+        "message": "2:GAME.COM is locked or read-only: use --force",
+        "path": "2:GAME.COM"
+    },
+    "exit": 6,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

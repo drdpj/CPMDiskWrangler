@@ -1,0 +1,6 @@
+#!/bin/bash
+# needs-real
+O="$REAL/Myrcurial_o1next/research"
+cp "$O/shipped-software/OS1DBASE.IMD" img_a.imd
+cp "$O/copower88/kaypro/copwrcpm.td0" img_b.td0
+cp "$REAL/udo-munk_z80pack/cpmsim/disks/library/cpm22-2.dsk" img_c.dsk

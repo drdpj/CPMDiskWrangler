@@ -1,0 +1,3 @@
+$TOOL check img.img --format=ibm-3740 --json
+$TOOL check img.img --format=ibm-3740 --strict --json
+$TOOL ls img.img --format=ibm-3740 --json

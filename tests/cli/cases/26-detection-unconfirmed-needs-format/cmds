@@ -1,0 +1,4 @@
+$TOOL info img.img --json
+$TOOL ls img.img --json
+$TOOL ls img.img --format=ibm-3740 --json
+$TOOL info img.img --format=ibm-3740 --fs=cpm --json

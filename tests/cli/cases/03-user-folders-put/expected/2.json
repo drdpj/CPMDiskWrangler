@@ -1,0 +1,140 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "entries": [
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:A.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "A.TXT",
+                "path": [
+                    "user 0",
+                    "A.TXT"
+                ],
+                "problem": null,
+                "size": 12,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:B.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "B.COM",
+                "path": [
+                    "user 0",
+                    "B.COM"
+                ],
+                "problem": null,
+                "size": 1505,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:D.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "D.TXT",
+                "path": [
+                    "user 0",
+                    "D.TXT"
+                ],
+                "problem": null,
+                "size": 12,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "5:A.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "A.TXT",
+                "path": [
+                    "user 5",
+                    "A.TXT"
+                ],
+                "problem": null,
+                "size": 306,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "5:C.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "C.TXT",
+                "path": [
+                    "user 5",
+                    "C.TXT"
+                ],
+                "problem": null,
+                "size": 12,
+                "sizeExact": true
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

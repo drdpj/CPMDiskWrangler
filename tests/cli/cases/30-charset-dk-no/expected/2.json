@@ -1,0 +1,68 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "entries": [
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:PLAIN.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "PLAIN.TXT",
+                "path": [
+                    "user 0",
+                    "PLAIN.TXT"
+                ],
+                "problem": null,
+                "size": 12,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "0:ÆØÅ.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "[\\].TXT",
+                "path": [
+                    "user 0",
+                    "[\\].TXT"
+                ],
+                "problem": null,
+                "size": 12,
+                "sizeExact": true
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

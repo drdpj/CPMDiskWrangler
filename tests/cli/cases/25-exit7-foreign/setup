@@ -1,0 +1,8 @@
+#!/bin/bash
+python3 -I - <<'PY'
+# an Acorn DFS catalogue: 2 sectors of 256, title, one file; not CP/M
+d = bytearray(10 * 256 * 40)
+d[0:8] = b"FOREIGN "; d[8:15] = b"GAME   "; d[15] = ord("$")
+d[256 + 4] = 1; d[256 + 5] = 8; d[256 + 6] = 0x01; d[256 + 7] = 0x90; d[256 + 12] = 10; d[256 + 15] = 2
+open("img.ssd", "wb").write(d)
+PY

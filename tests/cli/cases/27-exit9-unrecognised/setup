@@ -1,0 +1,3 @@
+#!/bin/bash
+head -c 123456 /dev/zero > img.bin
+head -c 5000 /dev/urandom | tr -c 'a-z' 'q' > noise.txt

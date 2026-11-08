@@ -1,0 +1,31 @@
+{
+    "changes": [
+        {
+            "from": "4:TEXT.TXT",
+            "note": null,
+            "op": "add",
+            "path": "4:TEXT.TXT",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "copy",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "same.img",
+    "ok": true,
+    "result": {
+        "added": 1,
+        "dirs": 0,
+        "renamed": [
+        ],
+        "replaced": 0,
+        "skipped": 0
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

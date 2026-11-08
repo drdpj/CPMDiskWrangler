@@ -1,0 +1,1 @@
+$TOOL ls img.img '*:' --format=ibm-3740 --json

@@ -1,0 +1,1 @@
+cmp host/BIG.DAT out/big.dat; test ! -e out/game.com.inf

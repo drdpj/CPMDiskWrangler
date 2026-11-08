@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "--container is raw, imd, dsk or edsk",
+        "path": null
+    },
+    "exit": 2,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

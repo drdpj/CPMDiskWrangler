@@ -1,0 +1,2 @@
+$TOOL convert conv_a.edsk conv_a2.raw --container=raw --quiet
+cmp conv_a.raw conv_a2.raw

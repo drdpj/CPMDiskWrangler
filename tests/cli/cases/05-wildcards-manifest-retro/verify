@@ -1,0 +1,2 @@
+norm() { $TOOL ls "$1" '*:' --format=ibm-3740 --json | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(sorted(json.dumps(e,sort_keys=True) for e in d["result"]["entries"]),indent=1))'; }
+diff <(norm img.img) <(norm img2.img)

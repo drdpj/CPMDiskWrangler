@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": {
+        "code": 3,
+        "kind": "not-found",
+        "message": "0:NOSUCH.COM: not found",
+        "path": "0:NOSUCH.COM"
+    },
+    "exit": 3,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

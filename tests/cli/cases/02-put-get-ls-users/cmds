@@ -1,0 +1,11 @@
+$TOOL put img.img host/GAME.COM host/DATA.DAT / --format=ibm-3740 --json
+$TOOL put img.img host/GAME.COM host/TEXT.TXT 3: --format=ibm-3740 --json
+$TOOL ls img.img --format=ibm-3740 --json
+$TOOL ls img.img 3: --format=ibm-3740 --json
+$TOOL ls img.img '*:' -R --format=ibm-3740 --json
+$TOOL ls img.img '*:*.COM' --format=ibm-3740 --json
+$TOOL ls img.img 3:GAME.COM --format=ibm-3740 --json
+$TOOL ls img.img / -d --format=ibm-3740 --json
+$TOOL get img.img GAME.COM 3:TEXT.TXT out --format=ibm-3740 --json
+$TOOL get img.img '*:*.COM' out2 --user-folders=on --format=ibm-3740 --json
+$TOOL check img.img --format=ibm-3740 --json

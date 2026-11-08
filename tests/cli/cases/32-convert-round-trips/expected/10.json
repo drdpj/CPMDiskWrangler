@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_cpcdata.imd",
+            "note": "edsk",
+            "op": "convert",
+            "path": "c_cpcdata.edsk",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_cpcdata.imd",
+    "ok": true,
+    "result": {
+        "container": "extended DSK image",
+        "out": "c_cpcdata.edsk",
+        "size": 194816
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

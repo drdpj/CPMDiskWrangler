@@ -1,0 +1,27 @@
+{
+    "changes": [
+        {
+            "from": "0:GAME.COM",
+            "note": null,
+            "op": "rename",
+            "path": "0:G.COM",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "mv",
+    "dryRun": true,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "from": "0:GAME.COM",
+        "to": "0:G.COM"
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

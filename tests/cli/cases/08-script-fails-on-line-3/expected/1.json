@@ -1,0 +1,104 @@
+{
+    "changes": [
+        {
+            "from": "host/GAME.COM",
+            "note": null,
+            "op": "add",
+            "path": "2:GAME.COM",
+            "vol": "CP/M"
+        },
+        {
+            "from": null,
+            "note": "readonly=1",
+            "op": "attr",
+            "path": "2:GAME.COM",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "script",
+    "dryRun": false,
+    "error": {
+        "code": 3,
+        "kind": "not-found",
+        "message": "script line 3: 0:NOSUCH.COM: not found",
+        "path": "0:NOSUCH.COM"
+    },
+    "exit": 3,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+        "lines": [
+            {
+                "changes": [
+                    {
+                        "from": "host/GAME.COM",
+                        "note": null,
+                        "op": "add",
+                        "path": "2:GAME.COM",
+                        "vol": "CP/M"
+                    }
+                ],
+                "command": "put",
+                "error": null,
+                "exit": 0,
+                "line": 1,
+                "result": {
+                    "added": 1,
+                    "dirs": 0,
+                    "renamed": [
+                    ],
+                    "replaced": 0,
+                    "skipped": 0
+                },
+                "text": "put host/GAME.COM 2:",
+                "warnings": [
+                ]
+            },
+            {
+                "changes": [
+                    {
+                        "from": null,
+                        "note": "readonly=1",
+                        "op": "attr",
+                        "path": "2:GAME.COM",
+                        "vol": "CP/M"
+                    }
+                ],
+                "command": "attr",
+                "error": null,
+                "exit": 0,
+                "line": 2,
+                "result": {
+                    "changed": 1
+                },
+                "text": "attr 2:GAME.COM --set readonly=1",
+                "warnings": [
+                ]
+            },
+            {
+                "changes": [
+                ],
+                "command": "rm",
+                "error": {
+                    "code": 3,
+                    "kind": "not-found",
+                    "message": "0:NOSUCH.COM: not found",
+                    "path": "0:NOSUCH.COM"
+                },
+                "exit": 3,
+                "line": 3,
+                "result": {
+                },
+                "text": "rm NOSUCH.COM",
+                "warnings": [
+                ]
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

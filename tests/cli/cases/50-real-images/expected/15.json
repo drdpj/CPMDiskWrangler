@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "img_a.imd",
+            "note": "edsk",
+            "op": "convert",
+            "path": "conv_a.edsk",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_a.imd",
+    "ok": true,
+    "result": {
+        "container": "extended DSK image",
+        "out": "conv_a.edsk",
+        "size": 112896
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

@@ -1,0 +1,4 @@
+put host/GAME.COM 2:
+attr 2:GAME.COM --set readonly=1
+rm NOSUCH.COM
+mv 2:GAME.COM 2:X.COM

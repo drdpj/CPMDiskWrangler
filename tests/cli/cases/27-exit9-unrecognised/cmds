@@ -1,0 +1,3 @@
+$TOOL info img.bin --json
+$TOOL ls img.bin --json
+$TOOL ls noise.txt --json

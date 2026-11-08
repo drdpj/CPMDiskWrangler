@@ -1,0 +1,38 @@
+{
+    "changes": [
+        {
+            "from": "host/GAME.COM",
+            "note": null,
+            "op": "add",
+            "path": "3:GAME.COM",
+            "vol": "CP/M"
+        },
+        {
+            "from": "host/TEXT.TXT",
+            "note": null,
+            "op": "add",
+            "path": "3:TEXT.TXT",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "added": 2,
+        "dirs": 0,
+        "renamed": [
+        ],
+        "replaced": 0,
+        "skipped": 0
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

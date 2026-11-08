@@ -1,0 +1,68 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "entries": [
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "3:GAME.COM",
+                "kind": "file",
+                "modified": null,
+                "name": "GAME.COM",
+                "path": [
+                    "user 3",
+                    "GAME.COM"
+                ],
+                "problem": null,
+                "size": 1505,
+                "sizeExact": true
+            },
+            {
+                "accessed": null,
+                "attrs": {
+                    "archive": false,
+                    "f1": false,
+                    "f2": false,
+                    "f3": false,
+                    "f4": false,
+                    "readonly": false,
+                    "system": false
+                },
+                "created": null,
+                "display": "3:TEXT.TXT",
+                "kind": "file",
+                "modified": null,
+                "name": "TEXT.TXT",
+                "path": [
+                    "user 3",
+                    "TEXT.TXT"
+                ],
+                "problem": null,
+                "size": 12,
+                "sizeExact": true
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

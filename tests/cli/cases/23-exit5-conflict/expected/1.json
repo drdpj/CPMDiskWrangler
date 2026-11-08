@@ -1,0 +1,29 @@
+{
+    "changes": [
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": {
+        "code": 5,
+        "kind": "conflict",
+        "message": "0:GAME.COM exists: use --replace or --skip",
+        "path": "0:GAME.COM"
+    },
+    "exit": 5,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+        "added": 0,
+        "dirs": 0,
+        "renamed": [
+        ],
+        "replaced": 0,
+        "skipped": 0
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

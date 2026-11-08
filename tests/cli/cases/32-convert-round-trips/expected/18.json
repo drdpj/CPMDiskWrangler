@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_osborne1.imd",
+            "note": "edsk",
+            "op": "convert",
+            "path": "c_osborne1.edsk",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_osborne1.imd",
+    "ok": true,
+    "result": {
+        "container": "extended DSK image",
+        "out": "c_osborne1.edsk",
+        "size": 215296
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

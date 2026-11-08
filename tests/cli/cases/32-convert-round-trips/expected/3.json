@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_ibm-3740.edsk",
+            "note": "dsk",
+            "op": "convert",
+            "path": "c_ibm-3740.dsk",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_ibm-3740.edsk",
+    "ok": true,
+    "result": {
+        "container": "standard DSK image",
+        "out": "c_ibm-3740.dsk",
+        "size": 276224
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

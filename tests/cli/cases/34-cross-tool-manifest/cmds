@@ -1,0 +1,2 @@
+$TOOL get img.img '*:*' out --manifest=out/manifest.json --user-folders=on --format=ibm-3740 --json
+$TOOL put img2.img / --retro=out/manifest.json --format=ibm-3740 --json

@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "img_osborne1.raw",
+            "note": "imd",
+            "op": "convert",
+            "path": "c_osborne1.imd",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_osborne1.raw",
+    "ok": true,
+    "result": {
+        "container": "ImageDisk (.IMD)",
+        "out": "c_osborne1.imd",
+        "size": 4924
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

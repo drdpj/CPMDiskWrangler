@@ -1,0 +1,6 @@
+$TOOL put img.img host/GAME.COM / --format=ibm-3740 --json
+$TOOL put img.img host/GAME.COM / --skip --format=ibm-3740 --json
+$TOOL put img.img host/GAME.COM / --replace --format=ibm-3740 --json
+$TOOL mv img.img GAME.COM GAME.COM --format=ibm-3740 --json
+$TOOL put img.img host/GAME.COM 2: --format=ibm-3740 --quiet
+$TOOL mv img.img 2:GAME.COM GAME.COM --format=ibm-3740 --json

@@ -1,0 +1,11 @@
+$TOOL mv img.img GAME.COM 2:GAME.COM --format=ibm-3740 --json
+$TOOL mv img.img TEXT.TXT TEXT.BAK --format=ibm-3740 --json
+$TOOL attr img.img 2:GAME.COM --format=ibm-3740 --json
+$TOOL attr img.img 2:GAME.COM --set readonly=1 --set system=1 --format=ibm-3740 --json
+$TOOL attr img.img 2:GAME.COM --format=ibm-3740 --json
+$TOOL rm img.img 2:GAME.COM --format=ibm-3740 --json
+$TOOL rm img.img 2:GAME.COM --force --format=ibm-3740 --json
+$TOOL rm img.img TEXT.BAK --format=ibm-3740 --json
+$TOOL ls img.img '*:' --format=ibm-3740 --json
+$TOOL mkdir img.img 4: --format=ibm-3740 --json
+$TOOL title img.img --format=ibm-3740 --json

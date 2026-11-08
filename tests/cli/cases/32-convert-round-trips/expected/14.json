@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_kpiv.imd",
+            "note": "edsk",
+            "op": "convert",
+            "path": "c_kpiv.edsk",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_kpiv.imd",
+    "ok": true,
+    "result": {
+        "container": "extended DSK image",
+        "out": "c_kpiv.edsk",
+        "size": 430336
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

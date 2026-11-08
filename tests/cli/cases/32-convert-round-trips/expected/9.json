@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "img_cpcdata.raw",
+            "note": "imd",
+            "op": "convert",
+            "path": "c_cpcdata.imd",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_cpcdata.raw",
+    "ok": true,
+    "result": {
+        "container": "ImageDisk (.IMD)",
+        "out": "c_cpcdata.imd",
+        "size": 3867
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

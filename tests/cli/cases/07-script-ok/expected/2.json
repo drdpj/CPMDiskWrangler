@@ -1,0 +1,43 @@
+{
+    "changes": [
+    ],
+    "command": "script",
+    "dryRun": false,
+    "error": {
+        "code": 6,
+        "kind": "unsupported",
+        "message": "script line 1: CPM has no title or label",
+        "path": null
+    },
+    "exit": 6,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+        "lines": [
+            {
+                "changes": [
+                ],
+                "command": "title",
+                "error": {
+                    "code": 6,
+                    "kind": "unsupported",
+                    "message": "CPM has no title or label",
+                    "path": null
+                },
+                "exit": 6,
+                "line": 1,
+                "result": {
+                },
+                "text": "title",
+                "warnings": [
+                ]
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

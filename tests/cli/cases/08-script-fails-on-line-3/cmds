@@ -1,0 +1,2 @@
+$TOOL script img.img host/fails.txt --format=ibm-3740 --json
+$TOOL ls img.img '*:' --format=ibm-3740 --json

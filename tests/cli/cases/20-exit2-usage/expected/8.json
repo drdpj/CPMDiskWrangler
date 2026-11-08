@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "--charset: unknown set 'klingon' (ascii, dk-no, se-fi, de, fr, it, es, pt)",
+        "path": null
+    },
+    "exit": 2,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

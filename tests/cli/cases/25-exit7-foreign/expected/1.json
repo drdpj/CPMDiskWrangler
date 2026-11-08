@@ -1,0 +1,68 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": {
+        "code": 7,
+        "kind": "foreign",
+        "message": "this disc belongs to Acorn Disk Wrangler (https://github.com/drdpj/AcornDiskWrangler/releases)",
+        "path": null
+    },
+    "exit": 7,
+    "image": "img.ssd",
+    "ok": false,
+    "result": {
+        "app": null,
+        "candidates": [
+            {
+                "description": "an Acorn DFS disc (a DFS catalogue fills its first two sectors)",
+                "evidence": [
+                    "an Acorn DFS disc (a DFS catalogue fills its first two sectors)"
+                ],
+                "fsId": "acorn",
+                "name": "Acorn",
+                "notes": [
+                ],
+                "probe": "acorn",
+                "safeToWrite": true,
+                "supported": true,
+                "tier": "likely"
+            }
+        ],
+        "chosen": {
+            "description": "an Acorn DFS disc (a DFS catalogue fills its first two sectors)",
+            "evidence": [
+                "an Acorn DFS disc (a DFS catalogue fills its first two sectors)"
+            ],
+            "fsId": "acorn",
+            "name": "Acorn",
+            "notes": [
+            ],
+            "probe": "acorn",
+            "safeToWrite": true,
+            "supported": true,
+            "tier": "likely"
+        },
+        "container": {
+            "kind": "raw",
+            "name": "raw sector image",
+            "readOnly": false,
+            "size": 102400
+        },
+        "owner": {
+            "id": "acorndiskwrangler",
+            "name": "Acorn Disk Wrangler",
+            "releases": "https://github.com/drdpj/AcornDiskWrangler/releases"
+        },
+        "verdict": "handoff",
+        "volumes": [
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

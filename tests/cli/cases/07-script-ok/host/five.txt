@@ -1,0 +1,5 @@
+# five lines
+put host/GAME.COM 2:
+attr 2:GAME.COM --set readonly=1
+mv 2:GAME.COM 2:G.COM
+ls *:

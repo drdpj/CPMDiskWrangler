@@ -1,0 +1,28 @@
+{
+    "changes": [
+        {
+            "from": "c_pcw.edsk",
+            "note": "dsk",
+            "op": "convert",
+            "path": "c_pcw.dsk",
+            "vol": ""
+        }
+    ],
+    "command": "convert",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "c_pcw.edsk",
+    "ok": true,
+    "result": {
+        "container": "standard DSK image",
+        "out": "c_pcw.dsk",
+        "size": 194816
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

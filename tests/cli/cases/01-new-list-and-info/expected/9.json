@@ -1,0 +1,30 @@
+{
+    "changes": [
+        {
+            "from": null,
+            "note": "rm-dd",
+            "op": "new",
+            "path": "d.img",
+            "vol": ""
+        }
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "d.img",
+    "ok": true,
+    "result": {
+        "file": "d.img",
+        "format": "rm-dd",
+        "volumes": [
+            "cpm"
+        ]
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

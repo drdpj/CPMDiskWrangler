@@ -1,0 +1,6 @@
+#!/bin/bash
+$TOOL new src.img --format=ibm-3740 --quiet
+$TOOL put src.img host/GAME.COM host/DATA.DAT / --format=ibm-3740 --quiet
+$TOOL put src.img host/TEXT.TXT 4: --format=ibm-3740 --quiet
+$TOOL new dst.img --format=pcw --quiet
+$TOOL new same.img --format=ibm-3740 --quiet

@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "ls",
+    "dryRun": false,
+    "error": {
+        "code": 3,
+        "kind": "not-found",
+        "message": "*:: nothing matches",
+        "path": "*:"
+    },
+    "exit": 3,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

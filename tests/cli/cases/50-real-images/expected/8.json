@@ -1,0 +1,192 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_c.dsk",
+    "ok": true,
+    "result": {
+        "app": {
+            "charset": "ascii",
+            "confidence": "high",
+            "format": {
+                "description": "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
+                "name": "ibm-3740",
+                "origin": "cpmtools",
+                "summary": "26 x 128 bytes/track, 77 tracks (1 side), skew 6, 2 boot tracks, 1K blocks, 64 directory entries, CP/M 2.2, 243K"
+            },
+            "kind": "cpm",
+            "lowerCaseNames": false,
+            "os": "2.2",
+            "physical": "raw sector image: 77 cylinders, 1 side, 26 x 128-byte sectors per track (raw: 256256 bytes)",
+            "safeToWrite": true,
+            "separateSides": false,
+            "why": "No other layout comes close."
+        },
+        "candidates": [
+            {
+                "description": "CP/M disc (ibm-3740)",
+                "evidence": [
+                    "signature:3da8acfa67abec1f74a7a1bf17a3c47a",
+                    "20 files in 20 directory entries",
+                    "block counts match record counts in 20 of 20 entries",
+                    "the first file block follows the directory",
+                    "text files read as text: 12 of 12",
+                    ".COM files starting with a likely instruction: 5 of 7",
+                    "a known format (cpmtools)",
+                    "the same layout is also defined as zen9"
+                ],
+                "fsId": "cpm",
+                "name": "CP/M",
+                "notes": [
+                    "No other layout comes close."
+                ],
+                "probe": "cpm",
+                "safeToWrite": true,
+                "supported": true,
+                "tier": "certain"
+            }
+        ],
+        "chosen": {
+            "description": "CP/M disc (ibm-3740)",
+            "evidence": [
+                "signature:3da8acfa67abec1f74a7a1bf17a3c47a",
+                "20 files in 20 directory entries",
+                "block counts match record counts in 20 of 20 entries",
+                "the first file block follows the directory",
+                "text files read as text: 12 of 12",
+                ".COM files starting with a likely instruction: 5 of 7",
+                "a known format (cpmtools)",
+                "the same layout is also defined as zen9"
+            ],
+            "fsId": "cpm",
+            "name": "CP/M",
+            "notes": [
+                "No other layout comes close."
+            ],
+            "probe": "cpm",
+            "safeToWrite": true,
+            "supported": true,
+            "tier": "certain"
+        },
+        "container": {
+            "kind": "raw",
+            "name": "raw sector image",
+            "readOnly": false,
+            "size": 256256
+        },
+        "owner": null,
+        "verdict": "open",
+        "volumes": [
+            {
+                "caps": {
+                    "contiguousOnly": false,
+                    "dates": false,
+                    "dirs": false,
+                    "maxEntriesPerDir": 64,
+                    "namespaces": true,
+                    "rename": true,
+                    "renameAcrossDirs": true,
+                    "settableDates": false,
+                    "title": false
+                },
+                "fileAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "readonly",
+                        "label": "R/O",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "system",
+                        "label": "SYS",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "archive",
+                        "label": "ARC",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f1",
+                        "label": "F1",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f2",
+                        "label": "F2",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f3",
+                        "label": "F3",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f4",
+                        "label": "F4",
+                        "type": "bool"
+                    }
+                ],
+                "fsId": "cpm",
+                "info": {
+                    "entriesFree": 44,
+                    "free": 172032,
+                    "largestFree": -1,
+                    "title": "",
+                    "total": 248832
+                },
+                "label": "CP/M",
+                "readOnly": false,
+                "readOnlyWhy": null,
+                "vol": "cpm",
+                "volumeAttrSpecs": [
+                ],
+                "volumeAttrs": {
+                }
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

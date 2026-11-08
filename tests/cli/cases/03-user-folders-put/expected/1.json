@@ -1,0 +1,60 @@
+{
+    "changes": [
+        {
+            "from": "host/user0",
+            "note": null,
+            "op": "add",
+            "path": "0:A.TXT",
+            "vol": "CP/M"
+        },
+        {
+            "from": "host/user5",
+            "note": null,
+            "op": "add",
+            "path": "0:B.COM",
+            "vol": "CP/M"
+        },
+        {
+            "from": "host/Docs",
+            "note": null,
+            "op": "add",
+            "path": "5:A.TXT",
+            "vol": "CP/M"
+        },
+        {
+            "from": "C.TXT",
+            "note": null,
+            "op": "add",
+            "path": "5:C.TXT",
+            "vol": "CP/M"
+        },
+        {
+            "from": "Docs/D.TXT",
+            "note": null,
+            "op": "add",
+            "path": "0:D.TXT",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "put",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "added": 5,
+        "dirs": 0,
+        "renamed": [
+        ],
+        "replaced": 0,
+        "skipped": 0
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+        "CP/M has no directories: the files of 'Docs' were put in /"
+    ]
+}

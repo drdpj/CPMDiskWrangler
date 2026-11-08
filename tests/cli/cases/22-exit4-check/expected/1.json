@@ -1,0 +1,31 @@
+{
+    "changes": [
+    ],
+    "command": "check",
+    "dryRun": false,
+    "error": {
+        "code": 4,
+        "kind": "check",
+        "message": "1 error(s) found",
+        "path": null
+    },
+    "exit": 4,
+    "image": "img.img",
+    "ok": false,
+    "result": {
+        "errors": [
+            "entry 0 (0:GAME.COM): block 255 is beyond the end of the disc (243 blocks)"
+        ],
+        "info": [
+        ],
+        "warnings": [
+            "entry 0 (0:GAME.COM): 3 blocks allocated for 12 records"
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

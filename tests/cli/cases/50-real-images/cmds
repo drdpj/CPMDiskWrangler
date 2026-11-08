@@ -1,0 +1,15 @@
+$TOOL info img_a.imd --json
+$TOOL ls img_a.imd -R --json
+$TOOL check img_a.imd --json
+$TOOL info img_b.td0 --json
+$TOOL ls img_b.td0 -R --json
+$TOOL check img_b.td0 --json
+$TOOL put img_b.td0 host/GAME.COM / --json
+$TOOL info img_c.dsk --json
+$TOOL ls img_c.dsk --json
+$TOOL check img_c.dsk --json
+$TOOL get img_c.dsk BOOT.Z80 out --json
+$TOOL put img_c.dsk host/GAME.COM / --json
+$TOOL rm img_c.dsk GAME.COM --json
+$TOOL convert img_a.imd conv_a.raw --container=raw --json
+$TOOL convert img_a.imd conv_a.edsk --container=edsk --json

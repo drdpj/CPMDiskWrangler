@@ -16,9 +16,12 @@ build settingstest "$src/core/tests/settingstest.pro"      # in DiskWranglerCore
 build xfertest "$src/core/tests/xfertest.pro"
 build uitest "$src/core/tests/uitest.pro"
 build devicetest "$src/core/tests/devicetest.pro"
+build clitest "$src/core/tests/clitest.pro"                 # the command-line layer (DiskWranglerCore v0.5.0 on)
+build cpmdw "$src/cpmdw.pro"                                # the console program
+[ -n "$adw" ] && build acorndw "$adw/acorndw.pro"           # for the cross-tool test
 [ -n "$adw" ] && build interop "$src/tests/interop_adw/interop_adw.pro" "ADW=$adw"
 export QT_QPA_PLATFORM=offscreen
-W=$(mktemp -d)
+W=$(mktemp -d); chmod 755 "$W"      # mktemp makes it private; the console tests run one case as an unprivileged user, who must reach it
 step "fstest: every format in every container, then independent checks"
 for k in raw imd edsk dsk; do
   for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd vector-26x256 microbee-ss80 microbee-ds40 microbee-ds80 microbee-ds84 rm-dd rm-qd torch-cpn; do
@@ -50,6 +53,12 @@ step "settings: installed vs AppImage (portable mode)"
 "$b/settingstest/settingstest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "settings: ok" || { "$b/settingstest/settingstest"; fail=1; }
 step "core: transfer layer (xfertest), UI helpers and viewers (uitest), containers and saving (devicetest)"
 for t in xfertest uitest devicetest; do "$b/$t/$t" 2>/dev/null | tail -1 | grep -q "all ok" && echo "$t: ok" || { "$b/$t/$t"; fail=1; }; done
+step "console program: the command-line layer (clitest), golden-image cases, no Qt GUI libraries, and a hand-over to acorndw"
+"$b/clitest/clitest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "clitest: ok" || { "$b/clitest/clitest"; fail=1; }
+"$src/tests/cli/run_cli.sh" "$b/cpmdw/cpmdw" "$W/cli" $real > "$W/cli.log" 2>&1
+tail -1 "$W/cli.log" | grep -q "^ALL PASSED" && echo "cpmdw golden: $(grep -c '^pass' "$W/cli.log") cases passed, $(grep -c '^skip' "$W/cli.log") skipped" || { grep -v '^pass' "$W/cli.log" | head -30; fail=1; }
+ldd "$b/cpmdw/cpmdw" | grep -qiE "QtGui|QtWidgets" && { echo "FAIL: cpmdw links QtGui or QtWidgets"; fail=1; } || echo "cpmdw links neither QtGui nor QtWidgets"
+if [ -n "$adw" ]; then "$src/tests/cli/cross_tool.sh" "$b/cpmdw/cpmdw" "$b/acorndw/acorndw" "$W/cross" > "$W/cross.log" 2>&1 && echo "cross_tool: ok" || { cat "$W/cross.log"; fail=1; }; fi
 step "not CP/M: Acorn DFS discs, and DFS discs with the catalogue wiped"
 mkdir -p "$W/foreign" && python3 "$src/tests/make_foreign.py" "$W/foreign"
 "$b/detecttest/detecttest" "$W"/foreign/* > "$W/foreign.log" 2>&1

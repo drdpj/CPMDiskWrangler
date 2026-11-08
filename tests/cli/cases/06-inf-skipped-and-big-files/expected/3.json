@@ -1,0 +1,34 @@
+{
+    "changes": [
+        {
+            "from": "BIG.DAT",
+            "note": null,
+            "op": "add",
+            "path": "big.dat",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+            {
+                "from": "BIG.DAT",
+                "host": "big.dat",
+                "sidecar": false,
+                "size": 20000
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

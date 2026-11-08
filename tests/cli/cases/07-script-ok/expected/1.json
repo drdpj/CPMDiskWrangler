@@ -1,0 +1,149 @@
+{
+    "changes": [
+        {
+            "from": "host/GAME.COM",
+            "note": null,
+            "op": "add",
+            "path": "2:GAME.COM",
+            "vol": "CP/M"
+        },
+        {
+            "from": null,
+            "note": "readonly=1",
+            "op": "attr",
+            "path": "2:GAME.COM",
+            "vol": "CP/M"
+        },
+        {
+            "from": "2:GAME.COM",
+            "note": null,
+            "op": "rename",
+            "path": "2:G.COM",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "script",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "lines": [
+            {
+                "changes": [
+                    {
+                        "from": "host/GAME.COM",
+                        "note": null,
+                        "op": "add",
+                        "path": "2:GAME.COM",
+                        "vol": "CP/M"
+                    }
+                ],
+                "command": "put",
+                "error": null,
+                "exit": 0,
+                "line": 2,
+                "result": {
+                    "added": 1,
+                    "dirs": 0,
+                    "renamed": [
+                    ],
+                    "replaced": 0,
+                    "skipped": 0
+                },
+                "text": "put host/GAME.COM 2:",
+                "warnings": [
+                ]
+            },
+            {
+                "changes": [
+                    {
+                        "from": null,
+                        "note": "readonly=1",
+                        "op": "attr",
+                        "path": "2:GAME.COM",
+                        "vol": "CP/M"
+                    }
+                ],
+                "command": "attr",
+                "error": null,
+                "exit": 0,
+                "line": 3,
+                "result": {
+                    "changed": 1
+                },
+                "text": "attr 2:GAME.COM --set readonly=1",
+                "warnings": [
+                ]
+            },
+            {
+                "changes": [
+                    {
+                        "from": "2:GAME.COM",
+                        "note": null,
+                        "op": "rename",
+                        "path": "2:G.COM",
+                        "vol": "CP/M"
+                    }
+                ],
+                "command": "mv",
+                "error": null,
+                "exit": 0,
+                "line": 4,
+                "result": {
+                    "from": "2:GAME.COM",
+                    "to": "2:G.COM"
+                },
+                "text": "mv 2:GAME.COM 2:G.COM",
+                "warnings": [
+                ]
+            },
+            {
+                "changes": [
+                ],
+                "command": "ls",
+                "error": null,
+                "exit": 0,
+                "line": 5,
+                "result": {
+                    "entries": [
+                        {
+                            "accessed": null,
+                            "attrs": {
+                                "archive": false,
+                                "f1": false,
+                                "f2": false,
+                                "f3": false,
+                                "f4": false,
+                                "readonly": true,
+                                "system": false
+                            },
+                            "created": null,
+                            "display": "2:G.COM",
+                            "kind": "file",
+                            "modified": null,
+                            "name": "G.COM",
+                            "path": [
+                                "user 2",
+                                "G.COM"
+                            ],
+                            "problem": null,
+                            "size": 1505,
+                            "sizeExact": true
+                        }
+                    ]
+                },
+                "text": "ls *:",
+                "warnings": [
+                ]
+            }
+        ]
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}

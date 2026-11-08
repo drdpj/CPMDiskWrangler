@@ -1,0 +1,4 @@
+$TOOL put img.img host/ÆØÅ.TXT host/PLAIN.TXT / --charset=dk-no --format=ibm-3740 --json
+$TOOL ls img.img --charset=dk-no --format=ibm-3740 --json
+$TOOL ls img.img --format=ibm-3740 --json
+$TOOL get img.img ÆØÅ.TXT out --charset=dk-no --format=ibm-3740 --json

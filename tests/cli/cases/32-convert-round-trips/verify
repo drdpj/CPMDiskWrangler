@@ -1,0 +1,1 @@
+for f in ibm-3740 pcw cpcdata kpiv osborne1 microbee-ds40; do cmp img_$f.raw r_$f.raw; done

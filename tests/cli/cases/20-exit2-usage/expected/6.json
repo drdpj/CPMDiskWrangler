@@ -1,0 +1,23 @@
+{
+    "changes": [
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": {
+        "code": 2,
+        "kind": "usage",
+        "message": "new needs --format (see new --list)",
+        "path": null
+    },
+    "exit": 2,
+    "image": "x.img",
+    "ok": false,
+    "result": {
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

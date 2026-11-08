@@ -1,0 +1,47 @@
+{
+    "changes": [
+        {
+            "from": "A.TXT",
+            "note": null,
+            "op": "add",
+            "path": "user5/A.TXT",
+            "vol": "CP/M"
+        },
+        {
+            "from": "C.TXT",
+            "note": null,
+            "op": "add",
+            "path": "user5/C.TXT",
+            "vol": "CP/M"
+        }
+    ],
+    "command": "get",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img.img",
+    "ok": true,
+    "result": {
+        "manifest": null,
+        "written": [
+            {
+                "from": "A.TXT",
+                "host": "user5/A.TXT",
+                "sidecar": false,
+                "size": 306
+            },
+            {
+                "from": "C.TXT",
+                "host": "user5/C.TXT",
+                "sidecar": false,
+                "size": 12
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": "CP/M",
+    "warnings": [
+    ]
+}
