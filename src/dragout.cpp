@@ -113,6 +113,16 @@ int cleanStale(qint64 maxAgeSecs) { return dw::xfer::cleanStale(dragDirPrefix(),
 
 // ------------------------------------------------------------------------------ the drag data
 
+dw::DragSpec dragSpec(bool trimText, const QString &imageName) {
+    dw::DragSpec s;
+    s.policy = std::make_shared<CpmPolicy>(false, trimText);
+    s.filesystem = "cpm";
+    s.generator = Generator;
+    s.imageName = imageName;
+    s.tempPrefix = dragDirPrefix();
+    return s;
+}
+
 DragOutMime::DragOutMime(Exporter exporter, bool trimText, const QString &imageName)
     : dw::DragOutMime(
           [exporter](QVector<dw::TransferItem> *out, QString *err) {
@@ -121,14 +131,6 @@ DragOutMime::DragOutMime(Exporter exporter, bool trimText, const QString &imageN
               for (const XItem &x : items) out->append(toTransfer(x));
               return true;
           },
-          [&] {
-              dw::DragSpec s;
-              s.policy = std::make_shared<CpmPolicy>(false, trimText);
-              s.filesystem = "cpm";
-              s.generator = Generator;
-              s.imageName = imageName;
-              s.tempPrefix = dragDirPrefix();
-              return s;
-          }()) {}
+          dragSpec(trimText, imageName)) {}
 
 } // namespace RetroFiles
