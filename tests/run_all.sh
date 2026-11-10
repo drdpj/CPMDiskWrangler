@@ -16,6 +16,7 @@ build settingstest "$src/core/tests/settingstest.pro"      # in DiskWranglerCore
 build xfertest "$src/core/tests/xfertest.pro"
 build uitest "$src/core/tests/uitest.pro"
 build devicetest "$src/core/tests/devicetest.pro"
+build importtest "$src/core/tests/importtest.pro"           # the Importer (DiskWranglerCore v0.6.0 on)
 build clitest "$src/core/tests/clitest.pro"                 # the command-line layer (DiskWranglerCore v0.5.0 on)
 build cpmdw "$src/cpmdw.pro"                                # the console program
 [ -n "$adw" ] && build acorndw "$adw/acorndw.pro"           # for the cross-tool test
@@ -51,8 +52,8 @@ else args=(); fi
 "$b/chartest/chartest" "${args[@]}" 2>&1 | grep -E "FAIL|all ok|FAILED" ; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "settings: installed vs AppImage (portable mode)"
 "$b/settingstest/settingstest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "settings: ok" || { "$b/settingstest/settingstest"; fail=1; }
-step "core: transfer layer (xfertest), UI helpers and viewers (uitest), containers and saving (devicetest)"
-for t in xfertest uitest devicetest; do "$b/$t/$t" 2>/dev/null | tail -1 | grep -q "all ok" && echo "$t: ok" || { "$b/$t/$t"; fail=1; }; done
+step "core: transfer layer (xfertest), UI helpers and viewers (uitest), containers and saving (devicetest), the Importer (importtest)"
+for t in xfertest uitest devicetest importtest; do "$b/$t/$t" 2>/dev/null | tail -1 | grep -q "all ok" && echo "$t: ok" || { "$b/$t/$t"; fail=1; }; done
 step "console program: the command-line layer (clitest), golden-image cases, no Qt GUI libraries, and a hand-over to acorndw"
 "$b/clitest/clitest" 2>/dev/null | tail -1 | grep -q "all ok" && echo "clitest: ok" || { "$b/clitest/clitest"; fail=1; }
 "$src/tests/cli/run_cli.sh" "$b/cpmdw/cpmdw" "$W/cli" $real > "$W/cli.log" 2>&1
