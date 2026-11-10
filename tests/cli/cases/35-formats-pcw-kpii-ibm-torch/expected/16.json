@@ -13,10 +13,12 @@
             "confidence": "high",
             "format": {
                 "description": "Torch Z80 second processor, CP/N, 400K (80 track double-sided, FM)",
+                "diskdef": "diskdef torch-cpn\n  seclen 256\n  tracks 160\n  sides alt\n  sectrk 10\n  blocksize 2048\n  maxdir 256\n  skew 0\n  torchcpn yes\n  boottrk 0\n  os 2.2\nend",
                 "name": "torch-cpn",
                 "origin": "built-in",
                 "summary": "Torch CP/N: 10 x 256 bytes/track, 160 tracks (2 sides, alt), 256 directory entries, 395K"
             },
+            "fromLibrary": true,
             "kind": "torch",
             "lowerCaseNames": false,
             "os": "2.2",

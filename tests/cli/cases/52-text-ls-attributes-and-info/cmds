@@ -1,0 +1,4 @@
+$TOOL ls img.img --format=ibm-3740
+$TOOL ls img.img -d GAME.COM --format=ibm-3740
+$TOOL info img.img --format=ibm-3740
+$TOOL info img.img

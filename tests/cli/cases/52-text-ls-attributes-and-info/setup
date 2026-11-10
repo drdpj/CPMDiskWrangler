@@ -1,0 +1,6 @@
+#!/bin/bash
+# the plain-text output: attribute letters, the ls table, and the info sections (--json is the other cases')
+$TOOL new img.img --format=ibm-3740 --quiet
+$TOOL put img.img host/GAME.COM host/NOTES.TXT host/DATA.DAT / --format=ibm-3740 --quiet
+$TOOL attr img.img GAME.COM --set readonly=1 --set system=1 --format=ibm-3740 --quiet
+$TOOL attr img.img NOTES.TXT --set archive=1 --format=ibm-3740 --quiet

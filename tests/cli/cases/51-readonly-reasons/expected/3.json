@@ -1,0 +1,190 @@
+{
+    "changes": [
+    ],
+    "command": "info",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img-odd.img",
+    "ok": true,
+    "result": {
+        "app": {
+            "charset": "ascii",
+            "confidence": "high",
+            "format": {
+                "description": "",
+                "diskdef": "diskdef detected\n  seclen 256\n  tracks 36\n  sectrk 9\n  blocksize 2048\n  maxdir 128\n  skew 1\n  boottrk 0\n  os 2.2\nend",
+                "name": "detected",
+                "origin": "detected",
+                "summary": "9 x 256 bytes/track, 36 tracks (1 side), no skew, 0 boot tracks, 2K blocks, 128 directory entries, CP/M 2.2, 80K"
+            },
+            "fromLibrary": false,
+            "kind": "cpm",
+            "lowerCaseNames": false,
+            "os": "2.2",
+            "physical": "ImageDisk (.IMD): 36 cylinders, 1 side, 9 x 256-byte sectors per track, sector IDs from 1",
+            "safeToWrite": false,
+            "separateSides": false,
+            "why": "No other layout comes close."
+        },
+        "candidates": [
+            {
+                "description": "CP/M disc (detected)",
+                "evidence": [
+                    "signature:ffbba019265ea6150f4b0520046d549e",
+                    "1 files in 1 directory entries",
+                    "block counts match record counts in 1 of 1 entries",
+                    "the first file block follows the directory",
+                    ".COM files starting with a likely instruction: 1 of 1",
+                    "found by searching (not a known format)"
+                ],
+                "fsId": "cpm",
+                "name": "CP/M",
+                "notes": [
+                    "No other layout comes close."
+                ],
+                "probe": "cpm",
+                "safeToWrite": false,
+                "supported": true,
+                "tier": "certain"
+            }
+        ],
+        "chosen": {
+            "description": "CP/M disc (detected)",
+            "evidence": [
+                "signature:ffbba019265ea6150f4b0520046d549e",
+                "1 files in 1 directory entries",
+                "block counts match record counts in 1 of 1 entries",
+                "the first file block follows the directory",
+                ".COM files starting with a likely instruction: 1 of 1",
+                "found by searching (not a known format)"
+            ],
+            "fsId": "cpm",
+            "name": "CP/M",
+            "notes": [
+                "No other layout comes close."
+            ],
+            "probe": "cpm",
+            "safeToWrite": false,
+            "supported": true,
+            "tier": "certain"
+        },
+        "container": {
+            "kind": "imd",
+            "name": "ImageDisk (.IMD)",
+            "readOnly": false,
+            "size": 1738
+        },
+        "owner": null,
+        "verdict": "open",
+        "volumes": [
+            {
+                "caps": {
+                    "contiguousOnly": false,
+                    "dates": false,
+                    "dirs": false,
+                    "maxEntriesPerDir": 128,
+                    "namespaces": true,
+                    "rename": true,
+                    "renameAcrossDirs": true,
+                    "settableDates": false,
+                    "title": false
+                },
+                "fileAttrSpecs": [
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "readonly",
+                        "label": "R/O",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "system",
+                        "label": "SYS",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "archive",
+                        "label": "ARC",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f1",
+                        "label": "F1",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f2",
+                        "label": "F2",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f3",
+                        "label": "F3",
+                        "type": "bool"
+                    },
+                    {
+                        "bits": 32,
+                        "choices": [
+                        ],
+                        "dirs": false,
+                        "editable": true,
+                        "key": "f4",
+                        "label": "F4",
+                        "type": "bool"
+                    }
+                ],
+                "fsId": "cpm",
+                "info": {
+                    "entriesFree": 127,
+                    "free": 75776,
+                    "largestFree": -1,
+                    "title": "",
+                    "total": 81920
+                },
+                "label": "CP/M",
+                "readOnly": true,
+                "readOnlyWhy": "the format is not in the library; see the definition under info",
+                "vol": "cpm",
+                "volumeAttrSpecs": [
+                ],
+                "volumeAttrs": {
+                }
+            }
+        ]
+    },
+    "saved": false,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

@@ -778,7 +778,7 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         if (layouts.isEmpty()) {
             res.physical = QString("raw image of %1 bytes, a size no known format or common geometry has").arg(size);
             res.confidence = "none";
-            res.why = "Choose a format by hand (Tools > Disc format).";
+            res.next << Next::ChooseFormat;
             return res;
         }
     } else {
@@ -1040,8 +1040,7 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
 
     // (a Torch CP/N reading has its own structures to go by; its directory could pass for something else's)
     const QString foreign = !res.ranked.isEmpty() && res.ranked.first().fmt.torch ? QString() : foreignFilesystem(img);
-    const QString foreignWhy = "This looks like " + foreign + ", not a CP/M disc. (Acorn Disk Wrangler can open it.) "
-                               "If it really is CP/M, choose the format by hand (Tools > Disc format).";
+    const QString foreignWhy = "This looks like " + foreign + ", not a CP/M disc. (Acorn Disk Wrangler can open it.)";
     if (res.ranked.isEmpty()) {
         res.confidence = "none";
         if (!foreign.isEmpty())
@@ -1049,9 +1048,10 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         else if (emptyButUsedCount)
             res.why = "No CP/M files were found: the layouts that fit read an empty directory, but the disc holds data "
                       "no directory entry accounts for, so it is probably not a CP/M disc (or its directory has been "
-                      "wiped). Choose a format by hand (Tools > Disc format) if it is.";
+                      "wiped).";
         else
-            res.why = "No layout gives a readable CP/M directory. Choose a format by hand (Tools > Disc format).";
+            res.why = "No layout gives a readable CP/M directory.";
+        res.next << Next::ChooseFormat;
         return res;
     }
     const Candidate &best = res.ranked.first();
@@ -1061,6 +1061,7 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         res.ranked.clear();
         res.confidence = "none";
         res.why = foreignWhy;
+        res.next << Next::ChooseFormat;
         return res;
     }
     QString bestSig = best.evidence.first();
@@ -1083,7 +1084,8 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         res.ranked.clear();
         res.confidence = "none";
         res.why = "No CP/M files were found with any layout, and no known CP/M format has this shape: it may not be a "
-                  "CP/M disc. Choose a format by hand (Tools > Disc format) if it is.";
+                  "CP/M disc.";
+        res.next << Next::ChooseFormat;
         return res;
     }
     if (best.files == 0) {
@@ -1092,7 +1094,7 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
                   QString(best.fromLibrary ? "the known format " + best.fmt.name + " was chosen from the disc's shape."
                                            : "no known format has this shape.");
         res.safeToWrite = best.remembered || (best.fromLibrary && !rival && !sameReading && sh.badSectors == 0);
-        if (!res.safeToWrite) res.why += " Confirm the format (Tools > Disc format) before changing the disc.";
+        if (!res.safeToWrite) res.next << Next::ConfirmFormat;
         return res;
     }
     if (rival) {
@@ -1107,11 +1109,13 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
     }
     if (!clean) {
         if (res.confidence == "high") res.confidence = "medium";
-        res.why += " The best reading still has inconsistencies (see Tools > Check disc).";
+        res.why += " The best reading still has inconsistencies.";
+        res.next << Next::SeeCheck;
     }
-    if (widePointers)
-        res.why += " The directory's block pointers look two bytes wide: tick \"Two-byte block pointers\" in Tools > Disc format "
-                   "and try again.";
+    if (widePointers) {
+        res.why += " The directory's block pointers look two bytes wide.";
+        res.next << Next::TwoBytePointers;
+    }
     // Writing needs a known (or confirmed) format that nothing else with a different layout competes with: a layout
     // that lists the same files but would place new files differently (another directory size, say) is a risk too,
     // unless it is only a search result and the known format is the sensible reading.
@@ -1122,7 +1126,7 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         if (res.confidence == "high") res.confidence = "medium";
         res.why += " The disc also looks like " + foreign + ".";
     }
-    if (!res.safeToWrite) res.why += " Changes are off until the format is confirmed (Tools > Disc format).";
+    if (!res.safeToWrite) res.next << Next::ConfirmFormat;
     return res;
 }
 

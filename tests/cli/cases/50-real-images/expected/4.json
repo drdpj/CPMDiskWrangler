@@ -13,10 +13,12 @@
             "confidence": "high",
             "format": {
                 "description": "Kaypro 4 / 10 floppy, double-sided 390K",
+                "diskdef": "diskdef kpiv\n  seclen 512\n  tracks 80\n  sides alt\n  sectrk 10\n  blocksize 2048\n  maxdir 64\n  dirblks 2\n  skew 0\n  boottrk 1\n  os 2.2\nend",
                 "name": "kpiv",
                 "origin": "built-in",
                 "summary": "10 x 512 bytes/track, 80 tracks (2 sides, alt), no skew, 1 boot track, 2K blocks, 64 directory entries, CP/M 2.2, 394K"
             },
+            "fromLibrary": true,
             "kind": "cpm",
             "lowerCaseNames": false,
             "os": "2.2",

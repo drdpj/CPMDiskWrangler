@@ -1,0 +1,25 @@
+diskdef oddball
+  seclen 256
+  tracks 36
+  sectrk 9
+  blocksize 1024
+  maxdir 64
+  skew 0
+  boottrk 1
+  os 2.2
+  dsm 0
+  offset 0
+end
+
+diskdef oddball2
+  seclen 256
+  tracks 36
+  sectrk 9
+  blocksize 1024
+  maxdir 128
+  skew 0
+  boottrk 1
+  os 2.2
+  dsm 0
+  offset 0
+end

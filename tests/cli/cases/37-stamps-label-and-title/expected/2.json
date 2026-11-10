@@ -13,10 +13,12 @@
             "confidence": "high",
             "format": {
                 "description": "Amstrad PCW 180K (3-inch CF2, single-sided)",
+                "diskdef": "diskdef pcw\n  seclen 512\n  tracks 40\n  sectrk 9\n  blocksize 1024\n  maxdir 64\n  skew 1\n  boottrk 1\n  os 3\nend",
                 "name": "pcw",
                 "origin": "built-in",
                 "summary": "9 x 512 bytes/track, 40 tracks (1 side), no skew, 1 boot track, 1K blocks, 64 directory entries, CP/M 3, 175K"
             },
+            "fromLibrary": true,
             "kind": "cpm",
             "lowerCaseNames": false,
             "os": "3",

@@ -22,6 +22,9 @@
 #include <QDialog>
 #include "detect.h"
 
+// The detection finding with the GUI's own instructions worked in (the menu to go to): Detect::Result::why names no menu.
+QString detectionText(const Detect::Result &r);
+
 class QCheckBox;
 class QComboBox;
 class QLabel;

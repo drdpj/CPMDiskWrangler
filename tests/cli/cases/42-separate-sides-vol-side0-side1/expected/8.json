@@ -6,7 +6,7 @@
     "error": {
         "code": 6,
         "kind": "unsupported",
-        "message": "side 0 is read-only: the format isn't confirmed: name it with --format",
+        "message": "read-only: the format is not confirmed; use --format=rm-qd",
         "path": null
     },
     "exit": 6,

@@ -13,17 +13,19 @@
             "confidence": "low",
             "format": {
                 "description": "Research Machines 480Z quad density (MQ), 80 track: track 0 FM 16 x 128",
+                "diskdef": "diskdef rm-qd\n  seclen 512\n  tracks 80\n  separatesides yes\n  sectrk 9\n  blocksize 2048\n  maxdir 128\n  skew 5\n  track0 16 128 fm\n  boottrk 3\n  os 2.2\nend",
                 "name": "rm-qd",
                 "origin": "built-in",
                 "summary": "9 x 512 bytes/track, 80 tracks (per side; 2 sides, a disc on each), skew 5, 3 boot tracks (track 0: 16 x 128 FM), 2K blocks, 128 directory entries, CP/M 2.2, 346K"
             },
+            "fromLibrary": true,
             "kind": "cpm",
             "lowerCaseNames": false,
             "os": "2.2",
             "physical": "ImageDisk (.IMD): 80 cylinders, 2 sides, 9 x 512-byte sectors per track, sector IDs from 1, 2 tracks of another shape",
             "safeToWrite": false,
             "separateSides": true,
-            "why": "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape. Confirm the format (Tools > Disc format) before changing the disc."
+            "why": "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape."
         },
         "candidates": [
             {
@@ -38,7 +40,7 @@
                 "fsId": "cpm",
                 "name": "CP/M",
                 "notes": [
-                    "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape. Confirm the format (Tools > Disc format) before changing the disc."
+                    "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape."
                 ],
                 "probe": "cpm",
                 "safeToWrite": false,
@@ -58,7 +60,7 @@
             "fsId": "cpm",
             "name": "CP/M",
             "notes": [
-                "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape. Confirm the format (Tools > Disc format) before changing the disc."
+                "The directory is empty, so the contents can't tell formats apart: the known format rm-qd was chosen from the disc's shape."
             ],
             "probe": "cpm",
             "safeToWrite": false,
@@ -168,7 +170,7 @@
                 },
                 "label": "side 0",
                 "readOnly": true,
-                "readOnlyWhy": "the format isn't confirmed: name it with --format",
+                "readOnlyWhy": "the format is not confirmed; use --format=rm-qd",
                 "vol": "side0",
                 "volumeAttrSpecs": [
                 ],
@@ -269,7 +271,7 @@
                 },
                 "label": "side 1",
                 "readOnly": true,
-                "readOnlyWhy": "the format isn't confirmed: name it with --format",
+                "readOnlyWhy": "the format is not confirmed; use --format=rm-qd",
                 "vol": "side1",
                 "volumeAttrSpecs": [
                 ],

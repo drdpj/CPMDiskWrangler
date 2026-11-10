@@ -112,6 +112,7 @@ QVector<AttrSpec> CpmVolume::fileAttrs() const {
         a.type = AttrSpec::Bool;
         a.sample = "R/O";
         a.column = a.key.size() > 2;      // F1-F4 only in Properties
+        if (a.column) a.letter = b.first == "readonly" ? "R" : b.first == "system" ? "S" : "A";   // the CLI's attribute letters
         a.retroFamily = "cpm";
         a.retroKey = b.first;
         v << a;

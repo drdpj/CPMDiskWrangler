@@ -13,10 +13,12 @@
             "confidence": "high",
             "format": {
                 "description": "Research Machines 480Z double density (MD), 40 track: track 0 FM 16 x 128",
+                "diskdef": "diskdef rm-dd\n  seclen 512\n  tracks 40\n  sectrk 9\n  blocksize 1024\n  maxdir 64\n  skew 5\n  track0 16 128 fm\n  boottrk 3\n  os 2.2\nend",
                 "name": "rm-dd",
                 "origin": "built-in",
                 "summary": "9 x 512 bytes/track, 40 tracks (1 side), skew 5, 3 boot tracks (track 0: 16 x 128 FM), 1K blocks, 64 directory entries, CP/M 2.2, 166K"
             },
+            "fromLibrary": true,
             "kind": "cpm",
             "lowerCaseNames": false,
             "os": "2.2",

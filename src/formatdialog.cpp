@@ -123,12 +123,37 @@ static void showScoringHelp(QWidget *parent) {
     d.exec();
 }
 
+QString detectionText(const Detect::Result &r) {
+    QString t = r.why;
+    auto add = [&t](const QString &sentence) { t += (t.isEmpty() ? "" : " ") + sentence; };
+    for (Detect::Next n : r.next) {
+        switch (n) {
+        case Detect::Next::SeeCheck:
+            t.replace("inconsistencies.", "inconsistencies (see Tools > Check disc).");
+            break;
+        case Detect::Next::TwoBytePointers:
+            t.replace("look two bytes wide.", "look two bytes wide: tick \"Two-byte block pointers\" in Tools > Disc format and try again.");
+            break;
+        case Detect::Next::ConfirmFormat:
+            if (r.why.startsWith("The directory is empty")) add("Confirm the format (Tools > Disc format) before changing the disc.");
+            else add("Changes are off until the format is confirmed (Tools > Disc format).");
+            break;
+        case Detect::Next::ChooseFormat:
+            if (r.why.startsWith("This looks like")) add("If it really is CP/M, choose the format by hand (Tools > Disc format).");
+            else if (r.why.isEmpty() || r.why.startsWith("No layout gives")) add("Choose a format by hand (Tools > Disc format).");
+            else add("Choose a format by hand (Tools > Disc format) if it is.");
+            break;
+        }
+    }
+    return t;
+}
+
 FormatDialog::FormatDialog(dw::device::Container *img, const Detect::Result &det, int currentIndex, bool writable, QWidget *parent)
     : QDialog(parent), m_img(img) {
     setWindowTitle("Disc format");
     resize(1120, 680);
     auto *phys = new QLabel("<b>Physical:</b> " + det.physical.toHtmlEscaped() + "<br><b>Detection:</b> " +
-                            QString("confidence %1. ").arg(det.confidence) + det.why.toHtmlEscaped());
+                            QString("confidence %1. ").arg(det.confidence) + detectionText(det).toHtmlEscaped());
     phys->setWordWrap(true);
     m_list = new QTreeWidget;
     m_list->setHeaderLabels({"Score", "Format", "Files", "Layout"});

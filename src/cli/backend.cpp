@@ -42,6 +42,18 @@ static QString tempBeside(const QString &file) {
     return fi.absoluteDir().filePath(QString(".dwconv-%1-%2").arg(QUuid::createUuid().toString(QUuid::Id128).left(8), fi.fileName()));
 }
 
+// Why a disc whose format isn't confirmed opens read-only, and what to do about it: the CLI's own words for the
+// detection's "confirm the format" (the GUI's are the menu's).
+static QString unconfirmedReason(const Detect::Result &r) {
+    if (r.ranked.isEmpty()) return QString();
+    const Detect::Candidate &c = r.ranked.first();
+    if (!c.fromLibrary) return "the format is not in the library; see the definition under info";
+    const QString &origin = c.fmt.origin;
+    if (origin == "built-in" || origin == "cpmtools" || origin.isEmpty())
+        return QString("the format is not confirmed; use --format=%1").arg(c.fmt.name);
+    return QString("the format is not confirmed; use --diskdefs=%1 --format=%2").arg(origin, c.fmt.name);
+}
+
 class Image : public OpenedImage {
 public:
     Cpm::OpenedDisc od;
@@ -50,6 +62,7 @@ public:
 
     dw::fs::Disc &disc() override { return od.disc(); }
     bool save(bool backup, QString *err) override { return od.save(err, backup); }
+    QString readOnlyWhy() const override { return det.safeToWrite ? QString() : unconfirmedReason(det); }
 
     QString volName(int mount) const override {
         const auto &m = const_cast<Image *>(this)->od.disc().mounts();
@@ -66,7 +79,9 @@ public:
         fmt["description"] = f.desc;
         fmt["origin"] = f.origin;
         fmt["summary"] = f.summary();
+        fmt["diskdef"] = f.toDiskdef();
         o["format"] = fmt;
+        o["fromLibrary"] = !det.ranked.isEmpty() && det.ranked.first().fromLibrary;
         o["kind"] = f.torch ? "torch" : "cpm";
         o["os"] = Cpm::osName(f.os);
         o["separateSides"] = f.separateSides;
@@ -184,6 +199,7 @@ OpenOutcome Backend::open(const QString &path, const OpenOptions &o) {
         Detect::Candidate cand = Detect::evaluate(c, f, true);
         if (cand.score < -1e8) { out.status = OpenOutcome::Failed; out.message = QString("--format %1: %2").arg(o.format, cand.evidence.join("; ")); return out; }
         cand.fmt = f;
+        cand.fromLibrary = true;
         cand.raw = c.rawLayout();
         cand.evidence << "the format was named with --format";
         r.ranked << cand;
@@ -200,7 +216,7 @@ OpenOutcome Backend::open(const QString &path, const OpenOptions &o) {
     if (r.ranked.isEmpty()) { out.status = OpenOutcome::Unrecognised; out.message = "no CP/M reading of this disc"; return out; }
     std::unique_ptr<Image> img(new Image);
     img->det = r;
-    if (!r.safeToWrite) img->od.setReadOnly("the format isn't confirmed: name it with --format");
+    if (!r.safeToWrite) img->od.setReadOnly(unconfirmedReason(r));
     if (!img->od.open(path, r.ranked.first(), &err)) { out.status = OpenOutcome::Failed; out.message = err; return out; }
     img->setCharset(o.charset.isEmpty() ? QString("ascii") : o.charset);
     out.image = std::move(img);

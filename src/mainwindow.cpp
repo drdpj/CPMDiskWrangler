@@ -512,7 +512,7 @@ bool MainWindow::openImage(const QString &path) {
         // started in Acorn Disk Wrangler (it says so), or the message as before, with where to get it
         if (handOff && dw::ui::handOff(this, *pick, path, QString(), QString(), !autoAnswer, !autoAnswer)) return false;
         if (!autoAnswer) {
-            QMessageBox box(QMessageBox::Warning, "Open", QString("%1\n\n%2\n%3").arg(QFileInfo(path).fileName(), m_det.physical, m_det.why),
+            QMessageBox box(QMessageBox::Warning, "Open", QString("%1\n\n%2\n%3").arg(QFileInfo(path).fileName(), m_det.physical, detectionText(m_det)),
                             QMessageBox::Ok, this);
             if (handOff) box.setInformativeText(dw::ui::releasesLink(pick->owner));
             QPushButton *fmt = box.addButton("Choose a format...", QMessageBox::ActionRole);
@@ -815,7 +815,7 @@ void MainWindow::updateUi() {
     refreshNamesButton();
     if (!have) {
         if (m_img.isOpen())
-            m_status->setVariants({"Not read as CP/M: " + m_det.why + " Drop another image here to open it.", "Not read as CP/M: " + m_det.why, "Not read as CP/M"});
+            m_status->setVariants({"Not read as CP/M: " + detectionText(m_det) + " Drop another image here to open it.", "Not read as CP/M: " + detectionText(m_det), "Not read as CP/M"});
         else
             m_status->setVariants({"Open a disc image (File > Open), or drop one here.", "Open or drop a disc image."});
         return;
@@ -1435,7 +1435,7 @@ void MainWindow::discInfo() {
                          "for up to 128 data sectors, an L2 sector above more), two 128-byte records to a sector");
             l << QString("<b>Directory:</b> %1 of %2 entries used; %3 of %4 sectors free")
                      .arg(v.usedEntries()).arg(Torch::Entries).arg(v.freeBlocks()).arg(Torch::Sectors - Torch::Reserved);
-            l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, m_det.why.toHtmlEscaped());
+            l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, detectionText(m_det).toHtmlEscaped());
             l << "<b>As a definition:</b><pre>" + f.toDiskdef().toHtmlEscaped() + "</pre>";
         } else {
             int bsh = 0;
@@ -1455,7 +1455,7 @@ void MainWindow::discInfo() {
                          .arg(v.label().present ? "'" + v.label().name.toHtmlEscaped() + "'" : QString("none"))
                          .arg(m_nvols > 1 ? QString(" (side %1)").arg(side) : QString());
             }
-            l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, m_det.why.toHtmlEscaped());
+            l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, detectionText(m_det).toHtmlEscaped());
             l << "<b>As a cpmtools definition:</b><pre>" + f.toDiskdef().toHtmlEscaped() + "</pre>";
         }
     }

@@ -49,12 +49,22 @@ struct Candidate {
     QString key() const;             // identifies the layout (for removing duplicates)
 };
 
+// What the user should do next about a detection result, as a kind: each front end turns it into its own words (the
+// GUI names the menu, the CLI the --format option), so `why` is the finding only and names no menu.
+enum class Next {
+    ChooseFormat,       // nothing was read: choose a format by hand
+    ConfirmFormat,      // a reading was found but changes are off until the format is confirmed
+    TwoBytePointers,    // the directory's block pointers look two bytes wide: say so in the format
+    SeeCheck            // the best reading has inconsistencies: look at the check
+};
+
 struct Result {
     QVector<Candidate> ranked;       // best first, one per distinct layout
     QString physical;                // the physical shape, in words
     QString confidence;              // "high", "medium", "low", "none"
     bool safeToWrite = false;        // the best reading is unambiguous enough to allow changes
-    QString why;                     // why it is or isn't safe
+    QString why;                     // why it is or isn't safe (the finding only, no menu names)
+    QVector<Next> next;              // what to do about it, in the order the sentences come
 };
 
 // Scores one format against an image (raw images must already have their layout set). Used by detect() and by

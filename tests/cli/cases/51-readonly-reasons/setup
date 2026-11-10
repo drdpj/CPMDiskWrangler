@@ -1,0 +1,10 @@
+#!/bin/bash
+# a disc whose format is not confirmed, in each way it can be: a library format, a format from a --diskdefs file,
+# a layout in no library, and an image file that can't be written
+$TOOL new img-lib.img --format=ibm-3740 --quiet
+$TOOL --diskdefs=host/odd.diskdefs new img-odd.img --format=oddball --quiet
+$TOOL --diskdefs=host/odd.diskdefs new img-defs.img --format=oddball --quiet
+$TOOL --diskdefs=host/odd.diskdefs put img-odd.img host/GAME.COM / --format=oddball --quiet
+$TOOL new img-ro.img --format=ibm-3740 --quiet
+$TOOL put img-ro.img host/GAME.COM / --format=ibm-3740 --quiet
+chmod -R a+rX . ; chmod 444 img-ro.img

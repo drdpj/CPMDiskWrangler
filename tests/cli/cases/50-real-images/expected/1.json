@@ -13,10 +13,12 @@
             "confidence": "high",
             "format": {
                 "description": "Osborne 1 single density, 92K",
+                "diskdef": "diskdef osb1sssd\n  seclen 256\n  tracks 40\n  sectrk 10\n  blocksize 2048\n  maxdir 64\n  skew 2\n  boottrk 3\n  os 2.2\nend",
                 "name": "osb1sssd",
                 "origin": "cpmtools",
                 "summary": "10 x 256 bytes/track, 40 tracks (1 side), skew 2, 3 boot tracks, 2K blocks, 64 directory entries, CP/M 2.2, 92K"
             },
+            "fromLibrary": true,
             "kind": "cpm",
             "lowerCaseNames": false,
             "os": "2.2",

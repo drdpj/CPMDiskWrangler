@@ -6,7 +6,7 @@
     "error": {
         "code": 6,
         "kind": "unsupported",
-        "message": "this container (TeleDisk) is read-only: use convert to make a writable copy",
+        "message": "read-only: TeleDisk files can't be written; use convert to make a writable copy",
         "path": null
     },
     "exit": 6,

@@ -1,0 +1,8 @@
+container: imd, 6976 bytes
+detection: open: CP/M disc (ibm-3740) (certain)
+  the format was named on the command line
+format: ibm-3740 (cpmtools)
+  26 x 128 bytes/track, 77 tracks (1 side), skew 6, 2 boot tracks, 1K blocks, 64 directory entries, CP/M 2.2, 243K
+reading: high, safe to write
+volume cpm: CP/M (cpm)
+  5120 used, 243712 free, 248832 bytes

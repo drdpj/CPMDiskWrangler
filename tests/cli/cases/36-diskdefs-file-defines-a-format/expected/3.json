@@ -13,10 +13,12 @@
             "confidence": "high",
             "format": {
                 "description": "",
+                "diskdef": "diskdef mytest\n  seclen 512\n  tracks 40\n  sectrk 10\n  blocksize 1024\n  maxdir 64\n  skew 0\n  boottrk 1\n  os 2.2\nend",
                 "name": "mytest",
                 "origin": "host/my.diskdefs",
                 "summary": "10 x 512 bytes/track, 40 tracks (1 side), no skew, 1 boot track, 1K blocks, 64 directory entries, CP/M 2.2, 195K"
             },
+            "fromLibrary": true,
             "kind": "cpm",
             "lowerCaseNames": false,
             "os": "2.2",
