@@ -85,7 +85,8 @@ public:
         fmt["diskdef"] = f.toDiskdef();
         o["format"] = fmt;
         o["fromLibrary"] = !det.ranked.isEmpty() && det.ranked.first().fromLibrary;
-        o["kind"] = f.torch ? "torch" : "cpm";
+        const auto &mounts = const_cast<Image *>(this)->od.disc().mounts();
+        o["kind"] = !mounts.isEmpty() && mounts[0].vol ? mounts[0].vol->fsId() : QString("cpm");   // "torch" or "cpm"
         o["os"] = Cpm::osName(f.os);
         o["separateSides"] = f.separateSides;
         o["confidence"] = det.confidence;
@@ -126,9 +127,9 @@ public:
         auto verify = [fmts](dw::device::Container &written, QString *e) {
             for (Cpm::Format f : fmts) {
                 f.derived = false;
-                Cpm::Volume v;
-                if (!v.attach(&written, f, e)) { *e = "the copy can't be read back: " + *e; return false; }
-                const Cpm::Report r = v.check();
+                const std::unique_ptr<Cpm::Store> v = Cpm::openStore(&written, f, e);
+                if (!v) { *e = "the copy can't be read back: " + *e; return false; }
+                const Cpm::Report r = v->check();
                 if (!r.ok()) { *e = "the copy fails its check: " + r.errors.join("; "); return false; }
             }
             return true;

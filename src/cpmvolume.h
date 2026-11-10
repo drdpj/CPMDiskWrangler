@@ -19,7 +19,8 @@
 // a CP/M (or Torch CP/N) volume as a dw::fs::Volume, the opened disc as a dw::fs::Disc (one volume, or one per side),
 // and detection by tiers: CP/M's own scored detection as one probe, and a recogniser for the discs that are Acorn
 // Disk Wrangler's. The main window uses the detection; the adapters are for the tests and the command-line program
-// (step 4b) until the main window becomes the core's (step 5).
+// (step 4b) until the main window becomes the core's (step 5). A Torch CP/N disc is a TorchVolume over a Torch::Fs
+// (step 5b): the same CP/M names, users and attributes as CpmVolume, its own filesystem underneath.
 #pragma once
 
 #include <memory>
@@ -45,12 +46,13 @@ private:
 
 // User areas are namespace levels: a file's path is {"user 0", "NAME.EXT"}; the root lists the users in use as
 // Namespace entries ("user 0" ... "user 15"). Attributes: readonly, system, archive, f1-f4 (retro-files "cpm",
-// with the user number). Volume attribute: the label (where the format allows one).
+// with the user number). Volume attribute: the label (where the format allows one). Over any Cpm::Store; a CP/M
+// directory's is a Cpm::Volume (TorchVolume, below, is the one for Torch CP/N).
 class CpmVolume : public dw::fs::Volume {
 public:
-    explicit CpmVolume(Cpm::Volume *v, QString extraNameChars = QString())
+    explicit CpmVolume(Cpm::Store *v, QString extraNameChars = QString())
         : m_v(v), m_extra(std::move(extraNameChars)), m_names(&m_extra) {}
-    Cpm::Volume *cpm() const { return m_v; }
+    Cpm::Store *cpm() const { return m_v; }
     static QString userName(int user) { return QString("user %1").arg(user); }
     static int userOf(const QString &level);      // "user 3" -> 3, -1 if not a user level
 
@@ -61,7 +63,7 @@ public:
     const Nat::Set &charset() const { return m_set; }
     bool lowerNames() const { return m_lower; }
 
-    QString fsId() const override { return m_v->format().torch ? "torch" : "cpm"; }
+    QString fsId() const override { return "cpm"; }
     dw::fs::Caps caps() const override;
     QVector<dw::fs::AttrSpec> fileAttrs() const override;
     bool marksInexactSizes() const override { return false; }     // as in the program's own list: the plain size
@@ -99,14 +101,32 @@ private:
     bool userOfDir(const dw::fs::Path &dir, int *user, QString *err) const;
     bool find(const dw::fs::Path &p, int *idx, QString *err) const;
     void applyRules();
-    Cpm::Volume *m_v;
+    Cpm::Store *m_v;
     QString m_extra;
     CpmNameRules m_names;
     Nat::Set m_set = Nat::find("ascii");
     bool m_lower = false;
 };
 
-// The opened disc: the container and its volumes, attached as detection's candidate says.
+// Torch CP/N (a Torch::Fs): CP/M files with CpmVolume's names, user areas, attributes, character set and placement,
+// in Torch's own filesystem. Up to 256 files in all, no label (and no other volume attribute), sizes in 256-byte
+// sectors.
+class TorchVolume : public CpmVolume {
+public:
+    explicit TorchVolume(Torch::Fs *t, QString extraNameChars = QString()) : CpmVolume(t, std::move(extraNameChars)), m_t(t) {}
+    Torch::Fs *torch() const { return m_t; }
+    QString fsId() const override { return "torch"; }
+    dw::fs::Caps caps() const override;
+    QVector<dw::fs::AttrSpec> volumeAttrs() const override { return {}; }
+    dw::fs::AttrValues volumeValues() const override { return {}; }
+    bool setVolumeAttrs(const dw::fs::AttrValues &a, QString *err) override;   // refused: no label
+    dw::fs::VolumeInfo info() const override;
+private:
+    Torch::Fs *m_t;
+};
+
+// The opened disc: the container and its volumes, attached as detection's candidate says (a TorchVolume for a Torch
+// CP/N candidate, else a CpmVolume per side).
 class OpenedDisc {
 public:
     OpenedDisc() = default;
@@ -124,7 +144,7 @@ private:
     bool attach(const Detect::Candidate &c, QString *err);
     dw::device::Container m_img;
     Detect::Result m_det;
-    Volume m_vols[2];
+    std::unique_ptr<Store> m_stores[2];               // the filesystem on each side (openStore); outlive the mounts
     QString m_roWhy;
     dw::fs::Disc m_disc;
 };

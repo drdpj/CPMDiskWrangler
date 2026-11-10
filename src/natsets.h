@@ -27,7 +27,7 @@
 #include <QStringList>
 #include <QVector>
 
-namespace Cpm { class Volume; }
+namespace Cpm { class Store; class Volume; }
 
 namespace Nat {
 
@@ -50,6 +50,7 @@ QString extraNameChars(const Set &set);
 // Some discs (COMAL's, for one) hold lower-case names. CP/M tools upper-case what you type, so a disc with any lower-case
 // name is offered "Allow lower-case file names" (ticked), and names then go back exactly as they came out.
 QString lowerLetters();                                          // "a".."z": allowed in names on such a disc
+bool usesLowerCase(const QVector<const Cpm::Store *> &vols);
 bool usesLowerCase(const QVector<const Cpm::Volume *> &vols);
 
 } // namespace Nat

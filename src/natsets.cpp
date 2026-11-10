@@ -80,8 +80,14 @@ QString fromHost(const QString &s, const Set &set, bool upper) {
 QString lowerLetters() { return QStringLiteral("abcdefghijklmnopqrstuvwxyz"); }
 
 bool usesLowerCase(const QVector<const Cpm::Volume *> &vols) {
+    QVector<const Cpm::Store *> s;
+    for (const Cpm::Volume *v : vols) s << v;
+    return usesLowerCase(s);
+}
+
+bool usesLowerCase(const QVector<const Cpm::Store *> &vols) {
     int total = 0, lower = 0;
-    for (const Cpm::Volume *v : vols) {
+    for (const Cpm::Store *v : vols) {
         if (!v) continue;
         for (const Cpm::File &f : v->files()) {
             ++total;

@@ -131,6 +131,27 @@ AttrValues CpmVolume::volumeValues() const {
     return m_v->labelAllowed() ? AttrValues{{"label", m_v->label().name}} : AttrValues();
 }
 
+dw::fs::Caps TorchVolume::caps() const {
+    dw::fs::Caps c;
+    c.namespaces = true;
+    c.renameAcrossDirs = true;           // to another user
+    c.maxEntriesPerDir = Torch::Entries;
+    return c;
+}
+
+bool TorchVolume::setVolumeAttrs(const AttrValues &, QString *err) {
+    *err = "Torch CP/N discs have no label";
+    return false;
+}
+
+dw::fs::VolumeInfo TorchVolume::info() const {
+    dw::fs::VolumeInfo i;
+    i.total = qint64(Torch::Sectors) * Torch::SecLen;
+    i.free = m_t->freeBytes();
+    i.entriesFree = m_t->freeEntries();
+    return i;
+}
+
 dw::fs::VolumeInfo CpmVolume::info() const {
     dw::fs::VolumeInfo i;
     i.title = m_v->label().name;
@@ -328,9 +349,11 @@ bool OpenedDisc::attach(const Detect::Candidate &c, QString *err) {
         Format f = c.fmt;
         f.fixedHead = side;
         f.derived = false;
-        if (!m_vols[side].attach(&m_img, f, err)) { if (n > 1) *err = QString("side %1: %2").arg(side).arg(*err); return false; }
-        m_disc.addMount({n > 1 ? QString("side %1").arg(side) : QString("CP/M"), std::make_shared<CpmVolume>(&m_vols[side]),
-                         !m_roWhy.isEmpty(), m_roWhy, "cpm"});
+        m_stores[side] = openStore(&m_img, f, err);
+        if (!m_stores[side]) { if (n > 1) *err = QString("side %1: %2").arg(side).arg(*err); return false; }
+        auto *t = dynamic_cast<Torch::Fs *>(m_stores[side].get());
+        std::shared_ptr<CpmVolume> vol = t ? std::make_shared<TorchVolume>(t) : std::make_shared<CpmVolume>(m_stores[side].get());
+        m_disc.addMount({n > 1 ? QString("side %1").arg(side) : QString("CP/M"), vol, !m_roWhy.isEmpty(), m_roWhy, "cpm"});
     }
     return true;
 }
@@ -341,9 +364,9 @@ bool OpenedDisc::save(QString *err, bool backup) {
     // the copy as written: each side's volume attached to it and checked (MainWindow::checkWritten does the same)
     o.verify = [this](dw::device::Container &written, QString *e) {
         for (int side = 0; side < m_disc.mounts().size(); ++side) {
-            Volume v;
-            if (!v.attach(&written, m_vols[side].format(), e)) return false;
-            const Report r = v.check();
+            const std::unique_ptr<Store> v = openStore(&written, m_stores[side]->format(), e);
+            if (!v) return false;
+            const Report r = v->check();
             if (!r.ok()) { *e = "the written copy fails its check: " + r.errors.join("; "); return false; }
         }
         return true;
