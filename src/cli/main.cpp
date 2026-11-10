@@ -19,6 +19,7 @@
 #include <QCoreApplication>
 
 #include "backend.h"
+#include "../cpmvolume.h"
 
 #ifndef APP_VERSION
 #define APP_VERSION "unknown"
@@ -29,8 +30,7 @@ int main(int argc, char **argv) {
     CpmCli::Backend backend;
     dw::cli::AppInfo info;
     info.tool = "cpmdw";
-    info.appName = "CP/M Disk Wrangler";
-    info.appVersion = APP_VERSION;
+    info.program = Cpm::appInfo(APP_VERSION);
     info.backend = &backend;
     info.options = QStringList{"diskdefs", "charset", "user-folders", "trim", "stamps", "label", "separate-sides", "format-open"};
     return dw::runCli(argc, argv, info);

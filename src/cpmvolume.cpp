@@ -331,18 +331,33 @@ dw::fs::Placement CpmVolume::placeIncoming(const dw::TransferItem &item, const P
 
 bool OpenedDisc::open(const QString &path, QString *err) {
     if (!m_img.open(path, err)) return false;
+    noteFileState();
     m_det = Detect::detect(m_img);
     if (m_det.ranked.isEmpty()) { *err = m_det.why; return false; }
     return attach(m_det.ranked.first(), err);
 }
 
 bool OpenedDisc::open(const QString &path, const Detect::Candidate &c, QString *err) {
-    return m_img.open(path, err) && attach(c, err);
+    if (!m_img.open(path, err)) return false;
+    noteFileState();
+    return attach(c, err);
+}
+
+void OpenedDisc::noteFileState() {
+    const QFileInfo fi(m_img.path());
+    m_fileTime = fi.lastModified();
+    m_fileSize = fi.exists() ? fi.size() : -1;
+}
+
+void OpenedDisc::detach() {
+    m_disc.clearMounts();
+    for (int side = 0; side < 2; ++side) { m_facades[side].detach(); m_stores[side].reset(); }
+    m_checkOk = true;
 }
 
 bool OpenedDisc::attach(const Detect::Candidate &c, QString *err) {
     if (m_img.kind() == dw::device::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, err)) return false;
-    m_disc.clearMounts();
+    detach();
     m_disc.setContainer(&m_img);
     const int n = c.fmt.separateSides ? 2 : 1;
     for (int side = 0; side < n; ++side) {
@@ -350,28 +365,94 @@ bool OpenedDisc::attach(const Detect::Candidate &c, QString *err) {
         f.fixedHead = side;
         f.derived = false;
         m_stores[side] = openStore(&m_img, f, err);
-        if (!m_stores[side]) { if (n > 1) *err = QString("side %1: %2").arg(side).arg(*err); return false; }
+        if (!m_stores[side]) { if (n > 1) *err = QString("side %1: %2").arg(side).arg(*err); detach(); return false; }
         auto *t = dynamic_cast<Torch::Fs *>(m_stores[side].get());
+        if (t) m_facades[side].wrap(t);
         std::shared_ptr<CpmVolume> vol = t ? std::make_shared<TorchVolume>(t) : std::make_shared<CpmVolume>(m_stores[side].get());
         m_disc.addMount({n > 1 ? QString("side %1").arg(side) : QString("CP/M"), vol, !m_roWhy.isEmpty(), m_roWhy, "cpm"});
+    }
+    for (int side = 0; side < n; ++side) m_checkOk = m_checkOk && m_stores[side]->check().ok();
+    return true;
+}
+
+Volume &OpenedDisc::legacy(int side) {
+    side = qBound(0, side, 1);
+    if (auto *v = dynamic_cast<Volume *>(m_stores[side].get())) return *v;
+    return m_facades[side];
+}
+
+QString OpenedDisc::readOnlyWhy(int mount) const {
+    if (m_disc.mounts().isEmpty()) return "no disc";
+    if (m_img.readOnlyContainer()) return "TeleDisk images are read-only here: use Save As to make an ImageDisk or DSK copy";
+    if (!m_checkOk) return "the directory has errors (Tools > Check disc)";
+    if (!m_safe) return "the format isn't confirmed (Tools > Disc format)";
+    const dw::fs::Disc::Mount m = m_disc.mounts().value(mount);
+    return m.readOnly ? m.readOnlyWhy : QString();
+}
+
+// The saved copy, before it replaces anything: each side's directory is read from it again and checked, and holds as
+// many files as the disc.
+bool OpenedDisc::checkWritten(dw::device::Container &written, QString *err) const {
+    const int n = sides();
+    for (int side = 0; side < n; ++side) {
+        Format f = m_stores[side]->format();
+        f.derived = false;
+        QString e;
+        const std::unique_ptr<Store> v = openStore(&written, f, &e);
+        if (!v) { *err = "the saved copy can't be read back: " + e; return false; }
+        const Report r = v->check();
+        if (!r.ok()) {
+            *err = QString("the saved copy's directory%1 is not consistent:\n\n").arg(n > 1 ? QString(" on side %1").arg(side) : QString()) +
+                   r.errors.mid(0, 10).join("\n");
+            return false;
+        }
+        if (v->files().size() != m_stores[side]->files().size()) { *err = "the saved copy does not hold the same files"; return false; }
     }
     return true;
 }
 
-bool OpenedDisc::save(QString *err, bool backup) {
+bool OpenedDisc::save(bool backup, QString *err) {
+    const int n = sides();
+    for (int side = 0; side < n; ++side) {
+        const Report r = m_stores[side]->check();
+        if (!r.ok()) {
+            *err = QString("the directory%1 would not be consistent.\n\n").arg(n > 1 ? QString(" on side %1").arg(side) : QString()) +
+                   r.errors.mid(0, 10).join("\n");
+            return false;
+        }
+    }
+    const QFileInfo fi(m_img.path());
+    if (m_fileSize >= 0 && fi.exists() && (fi.lastModified() != m_fileTime || fi.size() != m_fileSize)) {
+        *err = "the image file has been changed by something else since it was opened. Use Save As, or Revert.";
+        return false;
+    }
     dw::device::Container::SaveOptions o;
     o.backup = backup;
-    // the copy as written: each side's volume attached to it and checked (MainWindow::checkWritten does the same)
-    o.verify = [this](dw::device::Container &written, QString *e) {
-        for (int side = 0; side < m_disc.mounts().size(); ++side) {
-            const std::unique_ptr<Store> v = openStore(&written, m_stores[side]->format(), e);
-            if (!v) return false;
-            const Report r = v->check();
-            if (!r.ok()) { *e = "the written copy fails its check: " + r.errors.join("; "); return false; }
-        }
-        return true;
-    };
-    return m_disc.commit(o, err);
+    o.verify = [this](dw::device::Container &written, QString *e) { return checkWritten(written, e); };
+    if (!m_disc.commit(o, err)) return false;
+    noteFileState();
+    return true;
+}
+
+bool OpenedDisc::saveAs(const QString &path, dw::device::Kind kind, QString *err) {
+    bool ok = true;
+    for (int side = 0; side < sides(); ++side) ok = ok && m_stores[side]->check().ok();
+    if (!ok && !m_img.readOnlyContainer()) { *err = "the directory has errors (Tools > Check disc)."; return false; }
+    auto verify = [this, ok](dw::device::Container &written, QString *e) { return !ok || checkWritten(written, e); };
+    if (!m_img.saveAs(path, kind, err, verify)) return false;
+    noteFileState();
+    return true;
+}
+
+dw::app::AppInfo appInfo(const QString &version) {
+    dw::app::AppInfo a;
+    a.name = "CP/M Disk Wrangler";
+    a.id = "cpmdiskwrangler";
+    a.version = version;
+    a.organisation = "cpmdiskwrangler";
+    a.releases = dw::fs::cpmDiskWrangler().releases;
+    a.handsTo = {dw::fs::acornDiskWrangler()};
+    return a;
 }
 
 // ------------------------------------------------------------------ detection by tiers

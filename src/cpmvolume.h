@@ -25,6 +25,8 @@
 
 #include <memory>
 
+#include <diskwrangler/app/appinfo.h>
+#include <diskwrangler/app/document.h>
 #include <diskwrangler/fs/detection.h>
 #include <diskwrangler/fs/disc.h>
 #include <diskwrangler/fs/volume.h>
@@ -126,28 +128,69 @@ private:
 };
 
 // The opened disc: the container and its volumes, attached as detection's candidate says (a TorchVolume for a Torch
-// CP/N candidate, else a CpmVolume per side).
-class OpenedDisc {
+// CP/N candidate, else a CpmVolume per side). It is the window's Document (step 5c) and the console program's opened
+// image alike, so both save through the same checks: every side's directory consistent, the file not changed by
+// something else since it was opened, and the copy as written read back with the same number of files.
+class OpenedDisc : public dw::app::Document {
 public:
     OpenedDisc() = default;
     OpenedDisc(const OpenedDisc &) = delete;
     OpenedDisc &operator=(const OpenedDisc &) = delete;
     bool open(const QString &path, QString *err);                   // detection's best reading
     bool open(const QString &path, const Detect::Candidate &c, QString *err);
-    dw::fs::Disc &disc() { return m_disc; }
+    // The window opens the container and runs detection itself (Tools > Disc format re-reads it): attach a reading of
+    // the container as it is, or detach every volume (the container stays open). attach's err names the side ("side
+    // 1: ...") when the format has a filesystem on each side.
+    bool attach(const Detect::Candidate &c, QString *err);
+    void detach();
+    // The file's date and size now: a save refuses to write over the file if either has changed since (open() and a
+    // save note them; the window notes them after opening or making a container itself).
+    void noteFileState();
+    dw::fs::Disc &disc() override { return m_disc; }
+    const dw::fs::Disc &disc() const override { return m_disc; }
     dw::device::Container &container() { return m_img; }
+    const dw::device::Container &container() const { return m_img; }
     const Detect::Result &detection() const { return m_det; }
-    bool save(QString *err, bool backup = false);      // every mount checked, then the copy checked as written
+    int sides() const { return m_disc.mounts().size(); }
+    Store *store(int side) const { return side >= 0 && side < 2 ? m_stores[side].get() : nullptr; }
+    // The side as a Cpm::Volume: the store itself for a CP/M directory, the facade over it for a Torch CP/N disc (for
+    // the window's code that still takes a Cpm::Volume, and its tests; removed with the facade in step 6). A detached
+    // Volume when there is no such side.
+    Volume &legacy(int side);
+    bool save(QString *err, bool backup = false) { return save(backup, err); }
     // Call before open(path, candidate): the mounts are read-only, for this reason (the format isn't confirmed).
     void setReadOnly(const QString &why) { m_roWhy = why; }
+
+    // ----- the window's Document
+    bool isOpen() const override { return m_img.isOpen(); }
+    QString path() const override { return m_img.path(); }
+    bool dirty() const override { return m_img.hasPending(); }
+    bool save(bool backup, QString *err) override;
+    // Save As: the copy is checked as save() checks it, unless the directory already has errors (a TeleDisk image
+    // that fails its check can still be copied to a writable kind, as it is).
+    bool saveAs(const QString &path, dw::device::Kind kind, QString *err) override;
+    // The window's reasons, the same for every side: a TeleDisk image, a directory with errors, a format not
+    // confirmed (setSafe(false)); then the mount's own (setReadOnly).
+    QString readOnlyWhy(int mount) const override;
+    void setSafe(bool on) { m_safe = on; }        // detection (or the user) says the format can be written with
+    bool safe() const { return m_safe; }
+    bool checkOk() const { return m_checkOk; }    // every side's directory passed check() when it was attached
+
 private:
-    bool attach(const Detect::Candidate &c, QString *err);
+    bool checkWritten(dw::device::Container &written, QString *err) const;
     dw::device::Container m_img;
     Detect::Result m_det;
     std::unique_ptr<Store> m_stores[2];               // the filesystem on each side (openStore); outlive the mounts
+    Volume m_facades[2];                              // legacy(): a Torch::Fs side's facade
     QString m_roWhy;
+    bool m_safe = true, m_checkOk = true;
+    QDateTime m_fileTime;
+    qint64 m_fileSize = -1;
     dw::fs::Disc m_disc;
 };
+
+// CP/M Disk Wrangler, for the window and the console program (version: the caller's).
+dw::app::AppInfo appInfo(const QString &version);
 
 // ----- detection by tiers
 // CP/M's scored detection as a probe: one candidate ("cpm" or "torch") for the best reading, Certain when detection

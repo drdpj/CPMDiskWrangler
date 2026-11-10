@@ -172,11 +172,19 @@ bool Volume::writeBytes(qint64 off, const QByteArray &data, QString *err) { retu
 bool Volume::attach(dw::device::Container *img, const Format &f, QString *err) {
     m_img = img;
     m_fmt = f;
-    m_torch.reset();
+    m_ownTorch.reset();
+    m_torch = nullptr;
     if (!m_fmt.derived && !m_fmt.derive(err)) { m_img = nullptr; return false; }
-    if (m_fmt.torch) m_torch.reset(new Torch::Fs);             // the facade: every call goes to Torch's filesystem
-    if (!parse(err)) { m_img = nullptr; m_torch.reset(); return false; }
+    if (m_fmt.torch) { m_ownTorch.reset(new Torch::Fs); m_torch = m_ownTorch.get(); }   // the facade: every call goes to Torch's filesystem
+    if (!parse(err)) { m_img = nullptr; m_ownTorch.reset(); m_torch = nullptr; return false; }
     return true;
+}
+
+void Volume::wrap(Torch::Fs *t) {
+    detach();
+    m_torch = t;
+    m_img = t->container();
+    m_fmt = t->format();
 }
 
 std::unique_ptr<Store> openStore(dw::device::Container *img, const Format &f, QString *err) {

@@ -98,6 +98,7 @@ public:
     bool attach(dw::device::Container *img, const Cpm::Format &f, QString *err);
     void detach() { m_img = nullptr; m_files.clear(); m_dir.clear(); }
     bool attached() const { return m_img != nullptr; }
+    dw::device::Container *container() const { return m_img; }
     const Cpm::Format &format() const override { return m_fmt; }
     bool reload(QString *err = nullptr) override;
 

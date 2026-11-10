@@ -38,7 +38,11 @@ public:
     Volume() = default;
     // Reads the directory. A disc whose directory fails check() can still be browsed; the caller makes it read-only.
     bool attach(dw::device::Container *img, const Format &f, QString *err);
-    void detach() { m_img = nullptr; m_files.clear(); m_dir.clear(); m_torch.reset(); }
+    // The facade over a Torch::Fs that is already attached and owned elsewhere (Cpm::OpenedDisc's): every call goes to
+    // it, so the two never disagree. For CP/M Disk Wrangler's window, whose tests still reach the disc through a
+    // Cpm::Volume (MainWindow::volume); removed with the facade.
+    void wrap(Torch::Fs *t);
+    void detach() { m_img = nullptr; m_files.clear(); m_dir.clear(); m_label = Label(); m_ownTorch.reset(); m_torch = nullptr; }
     bool attached() const { return m_img != nullptr; }
     const Format &format() const override { return m_fmt; }
     bool reload(QString *err = nullptr) override;             // after anything changed the staged image
@@ -104,7 +108,8 @@ private:
     Label m_label;
     QString m_extraNameChars;          // national letters allowed in names (natchars.h)
     bool m_stamps = false;
-    std::unique_ptr<Torch::Fs> m_torch;   // the facade's Torch CP/N filesystem (Format::torch), else none
+    Torch::Fs *m_torch = nullptr;         // the facade's Torch CP/N filesystem (Format::torch, or wrap()), else none
+    std::unique_ptr<Torch::Fs> m_ownTorch;   // ... when attach() made it
 };
 
 // The filesystem a format says the disc holds, attached to the container: a Torch::Fs for a Torch CP/N format, else
