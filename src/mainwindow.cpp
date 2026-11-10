@@ -115,11 +115,13 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
     ds << quint64(m_owner) << qint32(unique.size());
     for (const FileRef &r : unique) ds << qint32(r.side) << qint32(r.user) << r.name;
     QPointer<MainWindow> pw = win;
-    RetroFiles::DragOutMime::Exporter exporter = [pw, unique](QVector<XItem> *out, QString *err) {
+    dw::DragOutMime::Exporter exporter = [pw, unique](QVector<dw::TransferItem> *out, QString *err) {
         if (!pw) { *err = "the disc's window was closed during the drag"; return false; }
-        return pw->exportFiles(unique, out, err);
+        QVector<MainWindow::Item> items;
+        for (const FileRef &r : unique) items << MainWindow::itemOf(r);
+        return pw->exportForCopy(items, out, err);
     };
-    auto *m = new RetroFiles::DragOutMime(exporter, win->trimTextOnExtract(), QFileInfo(win->image().path()).fileName());
+    auto *m = new dw::DragOutMime(exporter, RetroFiles::dragSpec(win->trimTextOnExtract(), QFileInfo(win->image().path()).fileName()));
     m->setData(DW_MIME_ITEMS, payload);
     m->setData(DW_MIME_SOURCE, sourceTag(m_owner));
     m_lastDrag = m->state();
@@ -781,7 +783,7 @@ QStringList MainWindow::statusVariants() const {
 
 QVector<FileRef> MainWindow::selectedRefs() const {
     QVector<FileRef> refs;
-    for (const Item &i : selectedFiles()) refs << FileRef(i.mount, Cpm::CpmVolume::userOf(i.path.parts.value(0)), i.path.name());
+    for (const Item &i : selectedFiles()) refs << refOf(i);
     return refs;
 }
 
@@ -796,26 +798,22 @@ int MainWindow::targetSide(QTreeWidgetItem *it) const {
 
 // ------------------------------------------------------------------------------------------- copying out
 
-bool MainWindow::exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, QString *err) const {
+// What View, Copy, a drag and a drop on another window take from the disc: the kit's exportItems (the items `cpmdw get`
+// makes), with two things of CP/M Disk Wrangler's. A file that has gone since it was chosen is reported in this window's
+// words. And a Torch CP/N file is a "cpm" file for everything that leaves the disc (the retro-files document says
+// "cpm", as this window has always sent it), which the kit, being filesystem-blind, doesn't know.
+bool MainWindow::exportForCopy(const QVector<Item> &items, QVector<dw::TransferItem> *out, QString *err) const {
     out->clear();
-    for (const FileRef &r : refs) {
-        const Cpm::Volume &v = vol(qBound(0, r.side, 1));
-        int i = v.indexOf(r.user, r.name);
-        if (i < 0) { *err = QString("%1:%2 is no longer on the disc").arg(r.user).arg(r.name); return false; }
-        const Cpm::File &f = v.files()[i];
-        XItem x;
-        x.name = f.name;                        // retro-files: the name as the disc holds it, never converted
-        x.hostName = toHostName(f.name);        // only the file written to the host is shown in the national set
-        x.srcFs = "cpm";
-        x.user = f.user;
-        x.readOnly = f.attrs & Cpm::AttrRO;
-        x.system = f.attrs & Cpm::AttrSYS;
-        x.archive = f.attrs & Cpm::AttrARC;
-        x.interfaceAttrs = quint8((f.attrs >> 4) & 0x0F);
-        x.when = f.updated.isValid() ? f.updated : f.created;
-        if (!v.readFile(f, &x.data, err)) return false;
-        out->append(x);
+    for (const Item &i : items) {
+        const FileRef r = refOf(i);
+        if (vol(qBound(0, r.side, 1)).indexOf(r.user, r.name) < 0) {
+            *err = QString("%1:%2 is no longer on the disc").arg(r.user).arg(r.name);
+            return false;
+        }
     }
+    if (!exportItems(items, out, err)) return false;
+    for (dw::TransferItem &t : *out)
+        if (t.sourceFs == "torch") t.sourceFs = "cpm";
     return true;
 }
 
@@ -826,14 +824,15 @@ std::shared_ptr<dw::xfer::HostPolicy> MainWindow::hostPolicy(const QVector<dw::T
 }
 
 void MainWindow::viewSelected() {
-    QVector<FileRef> refs = selectedRefs();
-    if (refs.size() != 1) return;
-    QVector<XItem> items;
+    const QVector<Item> items = selectedFiles();
+    if (items.size() != 1) return;
+    QVector<dw::TransferItem> files;
     QString err;
-    if (!exportFiles(refs, &items, &err)) { message("View", err); return; }
-    QString t = QString("%1:%2").arg(refs[0].user).arg(toHostName(refs[0].name));
-    if (sides() > 1) t = QString("side %1 ").arg(refs[0].side) + t;
-    auto *v = new ViewerDialog(t, items[0].data, this, m_natId);
+    if (!exportForCopy(items, &files, &err)) { message("View", err); return; }
+    const FileRef r = refOf(items[0]);
+    QString t = QString("%1:%2").arg(r.user).arg(toHostName(r.name));
+    if (sides() > 1) t = QString("side %1 ").arg(r.side) + t;
+    auto *v = new ViewerDialog(t, files[0].data, this, m_natId);
     v->show();
 }
 
@@ -880,9 +879,13 @@ void MainWindow::onInternalDrop(const QByteArray &payload, QTreeWidgetItem *targ
         }
         MainWindow *w = byId(src);
         if (!w || refs.isEmpty()) return;
-        QVector<XItem> items;
+        QVector<Item> chosen;
+        for (const FileRef &r : refs) chosen << itemOf(r);
+        QVector<dw::TransferItem> files;
         QString err;
-        if (!w->exportFiles(refs, &items, &err)) { message("Copy", err); return; }
+        if (!w->exportForCopy(chosen, &files, &err)) { message("Copy", err); return; }
+        QVector<XItem> items;                                // the import code (until step 5e) takes XItems
+        for (const dw::TransferItem &t : files) items << RetroFiles::fromTransfer(t);
         ImportCtx c;
         importItems(items, u, side, c);
         importSummary(c);
@@ -1091,16 +1094,17 @@ static QVector<XItem> &clipItems() { static QVector<XItem> v; return v; }
 static QByteArray &clipToken() { static QByteArray t; return t; }
 
 void MainWindow::copySelected() {
-    QVector<FileRef> refs = selectedRefs();
-    if (refs.isEmpty()) { m_status->setText("Select the files to copy."); return; }
-    QVector<XItem> items;
+    const QVector<Item> chosen = selectedFiles();
+    if (chosen.isEmpty()) { m_status->setText("Select the files to copy."); return; }
+    QVector<dw::TransferItem> items;
     QString err;
-    if (!exportFiles(refs, &items, &err)) { message("Copy", err); return; }
+    if (!exportForCopy(chosen, &items, &err)) { message("Copy", err); return; }
     static int serial = 0;
-    clipItems() = items;
+    clipItems().clear();                                   // Paste (until step 5e) imports XItems
+    for (const dw::TransferItem &t : items) clipItems() << RetroFiles::fromTransfer(t);
     clipToken() = QByteArray::number(qint64(QCoreApplication::applicationPid())) + ":" + QByteArray::number(++serial);
-    auto *m = new RetroFiles::DragOutMime([items](QVector<XItem> *out, QString *) { *out = items; return true; },
-                                          trimTextOnExtract(), QFileInfo(image().path()).fileName());
+    auto *m = new dw::DragOutMime([items](QVector<dw::TransferItem> *out, QString *) { *out = items; return true; },
+                                  RetroFiles::dragSpec(trimTextOnExtract(), QFileInfo(image().path()).fileName()));
     m->setForClipboard(true);
     m->setData(DW_MIME_CLIP, clipToken());
     QApplication::clipboard()->setMimeData(m);
@@ -1187,16 +1191,26 @@ bool MainWindow::canRemove(const Item &item, QString *err) const {        // a r
     return true;
 }
 
+// Rename follows Delete: one change inside one Disc::transact, put back if it fails (the window keeps no snapshot).
 void MainWindow::renameSelected() {
-    QVector<FileRef> refs = selectedRefs();
-    if (refs.size() != 1) return;
+    const QVector<Item> items = selectedFiles();
+    if (items.size() != 1) return;
+    const Item &item = items[0];
+    const FileRef r = refOf(item);
     bool ok;
-    QString n = QInputDialog::getText(this, "Rename", QString("New name for %1 (8.3):").arg(toHostName(refs[0].name)), QLineEdit::Normal,
-                                      toHostName(refs[0].name), &ok);
+    QString n = QInputDialog::getText(this, "Rename", QString("New name for %1 (8.3):").arg(toHostName(r.name)), QLineEdit::Normal,
+                                      toHostName(r.name), &ok);
     if (!ok || n.trimmed().isEmpty()) return;
+    const QString newName = m_natId != "ascii" ? toDiscName(n.trimmed()) : n.trimmed();
     QString err;
-    if (!vol(refs[0].side).rename(refs[0].user, refs[0].name, refs[0].user, (m_natId != "ascii" ? toDiscName(n.trimmed()) : n.trimmed()), &err))
-        message("Rename", err);
+    bool done = false;
+    if (!writable(item.mount)) err = "read-only: " + readOnlyReason(item.mount);
+    else done = m_doc.disc().transact([&](QString *e) {
+        dw::fs::Volume *v = m_doc.disc().volume(item.mount);
+        if (!v) { *e = "no such volume"; return false; }
+        return v->rename(item.path, item.path.parent().child(newName), e);
+    }, &err);
+    if (!done) message("Rename", err);
     refresh();
 }
 

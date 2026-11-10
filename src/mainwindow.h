@@ -52,7 +52,7 @@ struct FileRef {
 
 // The file tree: the window kit's pane, which also accepts files and folders from the desktop, items from other
 // windows of this program and retro-files drags from other programs, and drags its selection out the same three ways
-// (until steps 5d and 5e move that into the kit).
+// (the drags out are made from the kit's exportItems since step 5d; the drops move onto the kit's import in step 5e).
 class DropTree : public dw::ui::VolumePane {
     Q_OBJECT
 public:
@@ -111,8 +111,11 @@ public:
     void importPaths(const QStringList &paths, int user, int side = 0);
     void importItems(const QVector<XItem> &items, int user, int side, ImportCtx &c);
     bool importRetroFiles(const QByteArray &json, int user, int side = 0);
-    bool exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, QString *err) const;
+    // Copying out (View, Copy, a drag, a drop on another window): the kit's exportItems, as CP/M's copy-out wants it.
+    bool exportForCopy(const QVector<Item> &items, QVector<dw::TransferItem> *out, QString *err) const;
     QVector<FileRef> selectedRefs() const;
+    static Item itemOf(const FileRef &r) { return Item(r.side, dw::fs::Path({Cpm::CpmVolume::userName(r.user), r.name})); }
+    static FileRef refOf(const Item &i) { return FileRef(i.mount, Cpm::CpmVolume::userOf(i.path.parts.value(0)), i.path.name()); }
     bool deleteFiles(const QVector<FileRef> &refs, QString *err);     // the kit's deleteFiles, by FileRef
     using DiscWindow::deleteFiles;
 
@@ -178,7 +181,6 @@ private slots:
     void onRetroFilesDropped(const QByteArray &json, QTreeWidgetItem *target);
 
 private:
-    static Item itemOf(const FileRef &r) { return Item(r.side, dw::fs::Path({Cpm::CpmVolume::userName(r.user), r.name})); }
     const Cpm::File *fileOf(int side, int user, const QString &name) const;   // the side's file of that user and name
     bool attachFormat(const Detect::Candidate &c, QString *err);
     // The disc's national character set (natchars.h): how names and text are shown, extracted, added and viewed.

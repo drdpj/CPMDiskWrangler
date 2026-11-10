@@ -96,9 +96,11 @@ starts on the filter for the kind the image already is, and the kind saved is th
   files, and disc-level items at the end of Edit. `guitest` here and `guitest2` there assert the order: change
   both programs together. Window title `<file> * - CP/M Disk Wrangler`; the status bar's label says what the disc
   is, then `  -  `-separated extras such as `read-only: <reason>`.
-- **Copy and Paste** (the same design in Acorn Disk Wrangler): Copy exports the selection at once (`exportFiles`)
-  and keeps the `XItem`s, so a paste gets what was selected then even if the disc has changed or the window has
-  closed. The clipboard gets a `RetroFiles::DragOutMime` whose exporter returns that copy (files are written to a
+- **Copy and Paste** (the same design in Acorn Disk Wrangler): Copy exports the selection at once
+  (`exportForCopy`, the kit's `exportItems` with a Torch file sent as `cpm`; View, drags and drops on another window
+  use it too) and keeps it as `XItem`s (until step 5e moves Paste onto the kit's import), so a paste gets what was
+  selected then even if the disc has changed or the window has closed. The clipboard gets a `dw::DragOutMime`
+  (`RetroFiles::dragSpec` says how) whose exporter returns that copy (files are written to a
   drag folder only when another program asks: text/uri-list, the retro-files JSON and, `setForClipboard`, GNOME's
   `x-special/gnome-copied-files`), plus `CPMDW_MIME_CLIP` = `pid:n`. Paste (`pasteItems`): our own token ->
   `importItems` from the kept copy (nothing written); else retro-files JSON -> `importRetroFiles` (another copy of
