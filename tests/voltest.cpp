@@ -134,6 +134,69 @@ int main(int argc, char **argv) {
                   d.startsWith("hello"), "detected and read back: " + err);
     }
 
+    printf("Torch CP/N: TorchVolume over Torch::Fs, and the Cpm::Volume facade gives the same bytes\n");
+    {
+        const QString pa = W + "/torch-facade.imd", pb = W + "/torch-volume.imd";
+        err.clear();
+        CHECK(blank(pa, "torch-cpn", dw::device::Kind::Imd, &err) && blank(pb, "torch-cpn", dw::device::Kind::Imd, &err),
+              "two blank Torch discs: " + err);
+        QByteArray big;
+        for (int i = 0; i < 70 * 1024; ++i) big += char(i * 7 + i / 251);          // over 128 sectors: an L2 index
+        const QByteArray one("one\r\n\x1a"), two(300, 't'), reuse("again\x1a");
+        // through the facade (as fstest, guitest and detection use it)
+        {
+            dw::device::Container img;
+            Cpm::Format f = *Cpm::findFormat("torch-cpn");
+            Cpm::Volume v;
+            const bool attached = img.open(pa, &err) && f.derive(&err) && v.attach(&img, f, &err);
+            CHECK(attached, "facade attached: " + err);
+            CHECK(attached && v.addFile(0, "ONE.TXT", one, 0, QDateTime(), false, &err) && v.addFile(3, "BIG.DAT", big, 0, QDateTime(), false, &err) &&
+                      v.addFile(0, "TWO.COM", two, 0, QDateTime(), false, &err) && v.deleteFile(0, "ONE.TXT", &err) &&
+                      v.addFile(0, "REUSE.TXT", reuse, 0, QDateTime(), false, &err) &&
+                      v.rename(3, "BIG.DAT", 5, "MOVED.DAT", &err) &&
+                      v.setAttrs(0, "TWO.COM", Cpm::AttrRO | Cpm::AttrSYS | Cpm::AttrF2, &err) &&
+                      v.addFile(0, "TWO.COM", "x", 0, QDateTime(), true, &err) == false && img.commit(&err, false),
+                  "facade: add, delete, add (reusing the entry), rename to another user, attributes, a read-only file not replaced: " + err);
+        }
+        // through the adapter
+        Cpm::OpenedDisc o;
+        CHECK(o.open(pb, &err) && o.disc().mounts().size() == 1, "opened by detection: " + err);
+        if (o.disc().mounts().isEmpty()) { printf("\n%d FAILED\n", ++fails); return 1; }
+        dw::fs::Volume *v = o.disc().volume(0);
+        auto *tv = dynamic_cast<Cpm::TorchVolume *>(v);
+        CHECK(tv && tv->fsId() == "torch" && dynamic_cast<Torch::Fs *>(tv->cpm()) == tv->torch(), "a TorchVolume over a Torch::Fs, fsId torch");
+        CHECK(v->caps().maxEntriesPerDir == 256 && !v->caps().title && !v->caps().dates && v->caps().namespaces,
+              "caps: 256 entries, no title, no dates, user areas");
+        CHECK(v->volumeAttrs().isEmpty() && v->volumeValues().isEmpty(), "no volume attributes");
+        err.clear();
+        CHECK(!v->setVolumeAttrs({{"label", "NAME"}}, &err) && err == "Torch CP/N discs have no label", "setVolumeAttrs refused: " + err);
+        const dw::fs::VolumeInfo in = v->info();
+        CHECK(in.total == 1600 * 256 && in.free == qint64(1600 - 20) * 256 && in.entriesFree == 256,
+              QString("info in 256-byte sectors: total %1, free %2, %3 entries free").arg(in.total).arg(in.free).arg(in.entriesFree));
+        err.clear();
+        CHECK(v->write(Path({"user 0"}), "ONE.TXT", one, {}, QDateTime(), false, &err) &&
+                  v->write(Path({"user 3"}), "BIG.DAT", big, {}, QDateTime(), false, &err) &&
+                  v->write(Path({"user 0"}), "TWO.COM", two, {}, QDateTime(), false, &err) &&
+                  v->remove(Path({"user 0", "ONE.TXT"}), &err) &&
+                  v->write(Path({"user 0"}), "REUSE.TXT", reuse, {}, QDateTime(), false, &err) &&
+                  v->rename(Path({"user 3", "BIG.DAT"}), Path({"user 5", "MOVED.DAT"}), &err) &&
+                  v->setAttrs(Path({"user 0", "TWO.COM"}), {{"readonly", true}, {"system", true}, {"f2", true}}, &err) &&
+                  !v->write(Path({"user 0"}), "TWO.COM", "x", {}, QDateTime(), true, &err) && o.disc().validateAll().ok() && o.save(&err),
+              "TorchVolume: the same sequence, then a checked save: " + err);
+        QFile a(pa), b(pb);
+        CHECK(a.open(QIODevice::ReadOnly) && b.open(QIODevice::ReadOnly) && a.size() > 0 && a.readAll() == b.readAll(),
+              QString("the two images are byte-identical (%1 bytes)").arg(a.size()));
+        Cpm::OpenedDisc o2;
+        QByteArray d;
+        dw::fs::Entry e;
+        CHECK(o2.open(pb, &err) && o2.disc().volume(0)->read(Path({"user 5", "MOVED.DAT"}), &d, &err) && d.left(big.size()) == big &&
+                  o2.disc().volume(0)->stat(Path({"user 0", "TWO.COM"}), &e, &err) && e.attrs["readonly"].toBool() &&
+                  e.attrs["system"].toBool() && e.attrs["f2"].toBool() && !e.attrs["archive"].toBool(),
+              "reopened: the L2 file reads back, the attributes are kept: " + err);
+        const Cpm::Report r = static_cast<Cpm::CpmVolume *>(o2.disc().volume(0))->cpm()->check();
+        CHECK(r.ok() && r.warnings.isEmpty(), "Torch::Fs check: clean, map and directory agree");
+    }
+
     printf("Acorn Disk Wrangler's discs are handed to it\n");
     {
         QByteArray dfs(800 * 256, char(0xE5));             // a DFS disc with one file
