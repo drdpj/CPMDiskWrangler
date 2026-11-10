@@ -29,7 +29,7 @@
         },
         "candidates": [
             {
-                "description": "CP/M disc (detected)",
+                "description": "CP/M disc, layout not in the library",
                 "evidence": [
                     "signature:ffbba019265ea6150f4b0520046d549e",
                     "1 files in 1 directory entries",
@@ -50,7 +50,7 @@
             }
         ],
         "chosen": {
-            "description": "CP/M disc (detected)",
+            "description": "CP/M disc, layout not in the library",
             "evidence": [
                 "signature:ffbba019265ea6150f4b0520046d549e",
                 "1 files in 1 directory entries",

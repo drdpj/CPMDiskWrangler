@@ -3,3 +3,5 @@ $TOOL --diskdefs=host/odd.diskdefs put img-defs.img host/HELLO.COM / --json
 $TOOL info img-odd.img --json
 $TOOL put img-odd.img host/HELLO.COM / --json
 $AS_USER $TOOL put img-ro.img host/GAME.COM / --format=ibm-3740 --json
+$TOOL ls img-odd.img
+$TOOL info img-odd.img

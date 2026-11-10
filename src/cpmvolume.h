@@ -64,6 +64,7 @@ public:
     QString fsId() const override { return m_v->format().torch ? "torch" : "cpm"; }
     dw::fs::Caps caps() const override;
     QVector<dw::fs::AttrSpec> fileAttrs() const override;
+    bool marksInexactSizes() const override { return false; }     // as in the program's own list: the plain size
     QVector<dw::fs::AttrSpec> volumeAttrs() const override;
     dw::fs::AttrValues volumeValues() const override;
     const dw::fs::NameRules &names() const override { return m_names; }

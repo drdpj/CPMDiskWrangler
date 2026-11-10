@@ -1,0 +1,22 @@
+container: imd, 1738 bytes
+detection: open: CP/M disc, layout not in the library (certain)
+  No other layout comes close.
+format: custom, not in the library
+  9 x 256 bytes/track, 36 tracks (1 side), no skew, 0 boot tracks, 2K blocks, 128 directory entries, CP/M 2.2, 80K
+reading: high, read-only
+  the format is not in the library; see the definition under info
+definition:
+  diskdef detected
+    seclen 256
+    tracks 36
+    sectrk 9
+    blocksize 2048
+    maxdir 128
+    skew 1
+    boottrk 0
+    os 2.2
+  end
+  To change this disc, save the definition to a file, give it a name,
+  and pass --diskdefs=FILE --format=NAME with each command.
+volume cpm: CP/M (cpm), read-only
+  6144 used, 75776 free, 81920 bytes

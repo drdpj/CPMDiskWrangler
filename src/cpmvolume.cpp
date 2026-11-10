@@ -359,7 +359,8 @@ QVector<dw::fs::Candidate> CpmProbe::probe(const dw::fs::ProbeContext &) const {
     dw::fs::Candidate c;
     c.fsId = best.fmt.torch ? "torch" : "cpm";
     c.name = best.fmt.torch ? "Torch CP/N" : "CP/M";
-    c.description = QString("CP/M disc (%1)").arg(best.fmt.name);
+    c.description = best.fmt.name == "detected" || best.fmt.name == "by-hand" ? QString("CP/M disc, layout not in the library")
+                                                                              : QString("CP/M disc (%1)").arg(best.fmt.name);
     c.tier = m_r.confidence == "high" || best.remembered ? dw::fs::Tier::Certain
              : best.files > 0 ? dw::fs::Tier::Likely : dw::fs::Tier::Possible;
     c.score = best.score;

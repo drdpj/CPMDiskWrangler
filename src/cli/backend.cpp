@@ -62,6 +62,9 @@ public:
 
     dw::fs::Disc &disc() override { return od.disc(); }
     bool save(bool backup, QString *err) override { return od.save(err, backup); }
+    QString volumeNote(int) const override {
+        return !det.ranked.isEmpty() && !det.ranked.first().fromLibrary ? QString("detected - see info") : QString();
+    }
     QString readOnlyWhy() const override { return det.safeToWrite ? QString() : unconfirmedReason(det); }
 
     QString volName(int mount) const override {
