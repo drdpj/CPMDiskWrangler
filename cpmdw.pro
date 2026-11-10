@@ -20,7 +20,7 @@ unix:!macx {
 RESOURCES += src/resources.qrc                      # the built-in and cpmtools diskdefs
 SOURCES += src/cli/main.cpp src/cli/backend.cpp src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp src/cpmvolume.cpp \
            src/natsets.cpp src/hostpolicy.cpp
-HEADERS += src/cli/backend.h src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h src/natsets.h src/hostpolicy.h src/diskimage.h
+HEADERS += src/cli/backend.h src/cpmformat.h src/cpmstore.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h src/natsets.h src/hostpolicy.h src/diskimage.h
 !exists(core/diskwrangler/cli/commands.cpp): error("core/ is empty or too old: run 'git submodule update --init'")
 INCLUDEPATH += core
 include(core/diskwrangler-dfs.pri)                # the DFS module: Acorn Z80 CP/M's DFS catalogue

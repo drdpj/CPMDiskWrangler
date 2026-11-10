@@ -34,7 +34,7 @@ add_executable(cpmdiskwrangler MACOSX_BUNDLE ${CPMDW_RC} ${CPMDW_ICNS} src/resou
     src/main.cpp src/mainwindow.cpp src/formatdialog.cpp src/newdisc.cpp src/natchars.cpp src/natsets.cpp src/viewer.cpp src/viewtext.cpp src/icon.cpp src/dragout.cpp src/hostpolicy.cpp
     src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp src/cpmvolume.cpp
     src/mainwindow.h src/mainwindow_p.h src/formatdialog.h src/newdisc.h src/natchars.h src/natsets.h src/viewer.h src/viewtext.h src/icon.h src/dragout.h src/hostpolicy.h
-    src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h)
+    src/cpmformat.h src/cpmstore.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/licences-bundled.qrc)   # a release build's library licences (ci/)
     target_sources(cpmdiskwrangler PRIVATE licences-bundled.qrc)
 endif()
@@ -52,7 +52,7 @@ install(TARGETS cpmdiskwrangler RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUND
 # cpmdw: the command-line program (QtCore only; no window, no display). Built beside the GUI program.
 add_executable(cpmdw src/resources.qrc src/cli/main.cpp src/cli/backend.cpp src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp
     src/cpmvolume.cpp src/natsets.cpp src/hostpolicy.cpp
-    src/cli/backend.h src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h src/natsets.h src/hostpolicy.h)
+    src/cli/backend.h src/cpmformat.h src/cpmstore.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h src/natsets.h src/hostpolicy.h)
 target_compile_definitions(cpmdw PRIVATE APP_VERSION="${APP_VERSION}")
 target_link_libraries(cpmdw DiskWrangler::Cli DiskWrangler::Dfs Qt${QT_VERSION_MAJOR}::Core)
 if(WIN32)

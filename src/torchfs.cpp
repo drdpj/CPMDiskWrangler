@@ -15,13 +15,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-// torchfs.cpp - Torch CP/N's filesystem (see torchfs.h), and the Cpm::Volume methods that use it when the format
-// says "torchcpn yes". The rest of the program sees the same Volume either way.
+// torchfs.cpp - Torch CP/N's filesystem (see torchfs.h): the directory scan detection uses, and Torch::Fs, the
+// Cpm::Store for a disc whose format says "torchcpn yes".
 #include "torchfs.h"
 
 #include "cpmfs.h"
 
 #include <QSet>
+#include <algorithm>
 
 namespace Torch {
 
@@ -153,11 +154,20 @@ Scan scan(const SectorReader &read) {
 
 } // namespace Torch
 
-// ================================================================================================ Cpm::Volume
+// ================================================================================================ Torch::Fs
 
-namespace Cpm {
+namespace Torch {
 
-using namespace Torch;
+using Cpm::AttrRO;
+using Cpm::AttrSYS;
+using Cpm::AttrARC;
+using Cpm::AttrF1;
+using Cpm::AttrF2;
+using Cpm::AttrF3;
+using Cpm::AttrF4;
+using Cpm::File;
+using Cpm::Report;
+using Cpm::Volume;
 
 #define TXN_BEGIN auto snap__ = m_img->snapshot(); auto fail = [&](const QString &e) { *err = e; m_img->restore(snap__); reload(); return false; };
 
@@ -183,24 +193,45 @@ static void putName(QByteArray *e, const QByteArray &n11, quint16 a) {
     for (int k = 0; k < 11; ++k) (*e)[5 + k] = char((quint8(n11[k]) & 0x7F) | ((a & bit[k]) ? 0x80 : 0));
 }
 
-bool Volume::torchSector(int lsec, QByteArray *out, QString *err) const {
+bool Fs::attach(dw::device::Container *img, const Cpm::Format &f, QString *err) {
+    m_img = img;
+    m_fmt = f;
+    if (!m_fmt.derived && !m_fmt.derive(err)) { m_img = nullptr; return false; }
+    if (!parse(err)) { m_img = nullptr; return false; }
+    return true;
+}
+
+bool Fs::reload(QString *err) {
+    QString e;
+    bool ok = parse(&e);
+    if (!ok && err) *err = e;
+    return ok;
+}
+
+bool Fs::readBytes(qint64 off, int len, QByteArray *out, QString *err) const { return Cpm::readLogical(m_img, m_fmt, off, len, out, err); }
+bool Fs::writeBytes(qint64 off, const QByteArray &data, QString *err) { return Cpm::writeLogical(m_img, m_fmt, off, data, err); }
+
+bool Fs::sector(int lsec, QByteArray *out, QString *err) const {
     return readBytes(qint64(lsec) * SecLen, SecLen, out, err);
 }
 
-bool Volume::torchWriteSector(int lsec, const QByteArray &d, QString *err) {
+bool Fs::writeSector(int lsec, const QByteArray &d, QString *err) {
     QByteArray s = d.left(SecLen);
     if (s.size() < SecLen) s.append(QByteArray(SecLen - s.size(), char(0xE5)));
     return writeBytes(qint64(lsec) * SecLen, s, err);
 }
 
-SectorReader Volume::torchReader() const {
-    return [this](int n, QByteArray *out) { QString e; return torchSector(n, out, &e); };
+SectorReader Fs::reader() const {
+    return [this](int n, QByteArray *out) { QString e; return sector(n, out, &e); };
 }
 
-bool Volume::torchParse(QString *err) {
+bool Fs::parse(QString *err) {
+    m_files.clear();
+    m_dir.clear();
+    m_label = Cpm::Label();
     QByteArray dir;
     if (!readBytes(0, DirSectors * SecLen, &dir, err)) return false;
-    SectorReader read = torchReader();
+    SectorReader read = reader();
     for (int i = 0; i < Entries; ++i) {
         QByteArray e = dir.mid(i * EntrySize, EntrySize);
         m_dir << e;
@@ -208,7 +239,7 @@ bool Volume::torchParse(QString *err) {
         File f;
         f.user = quint8(e[4]);
         f.name11 = name11Of(e);
-        f.name = nameFrom11(f.name11);
+        f.name = Volume::nameFrom11(f.name11);
         f.attrs = attrsOf(e);
         f.entries << i;
         f.records = entryRecords(e);
@@ -221,13 +252,13 @@ bool Volume::torchParse(QString *err) {
     return true;
 }
 
-bool Volume::torchReadFile(const File &f, QByteArray *out, QString *err) const {
+bool Fs::readFile(const File &f, QByteArray *out, QString *err) const {
     const QByteArray &e = m_dir[f.entries.value(0)];
-    Walk w = walk(torchReader(), word(e, 0), f.records);
+    Walk w = walk(reader(), word(e, 0), f.records);
     if (!w.errors.isEmpty()) { *err = f.name + ": " + w.errors.first(); return false; }
     QByteArray d, s;
     for (int n : w.data) {
-        if (!torchSector(n, &s, err)) { *err = f.name + ": " + *err; return false; }
+        if (!sector(n, &s, err)) { *err = f.name + ": " + *err; return false; }
         d += s;
     }
     *out = d.left(int(f.size));
@@ -236,14 +267,14 @@ bool Volume::torchReadFile(const File &f, QByteArray *out, QString *err) const {
 
 // Sectors in use: the first two tracks, and every sector a directory entry reaches. *errors: what a walk found wrong,
 // and sectors reached twice.
-QVector<bool> Volume::torchInUse(QStringList *errors, QStringList *warnings) const {
+QVector<bool> Fs::inUse(QStringList *errors, QStringList *warnings) const {
     QVector<bool> used(Sectors, false);
     for (int n = 0; n < Reserved; ++n) used[n] = true;
-    SectorReader read = torchReader();
+    SectorReader read = reader();
     for (int i = 0; i < m_dir.size(); ++i) {
         const QByteArray &e = m_dir[i];
         if (entryIsFree(e) || !entryIsFile(e)) continue;
-        QString name = QString("%1:%2").arg(quint8(e[4])).arg(nameFrom11(name11Of(e)));
+        QString name = QString("%1:%2").arg(quint8(e[4])).arg(Volume::nameFrom11(name11Of(e)));
         Walk w = walk(read, word(e, 0), entryRecords(e));
         if (errors) for (const QString &x : w.errors) *errors << name + ": " + x;
         if (warnings) for (const QString &x : w.warnings) *warnings << name + ": " + x;
@@ -255,18 +286,26 @@ QVector<bool> Volume::torchInUse(QStringList *errors, QStringList *warnings) con
     return used;
 }
 
-int Volume::torchFreeSectors() const {
+int Fs::freeBlocks() const {
     int n = 0;
-    for (bool u : torchInUse()) if (!u) ++n;
+    for (bool u : inUse()) if (!u) ++n;
     return n;
 }
 
-Report Volume::torchCheck() const {
+int Fs::freeEntries() const {
+    return int(std::count_if(m_dir.begin(), m_dir.end(), [](const QByteArray &e) { return e.count('\0') == e.size(); }));
+}
+
+int Fs::usedEntries() const { return m_dir.size() - freeEntries(); }
+
+bool Fs::setLabel(const QString &, QString *err) { *err = "Torch CP/N discs have no label"; return false; }
+
+Report Fs::check() const {
     Report r;
     for (int i = 0; i < m_dir.size(); ++i)
         if (!entryIsFree(m_dir[i]) && !entryIsFile(m_dir[i]))
             r.errors << QString("directory entry %1 is not a file entry (%2)").arg(i).arg(QString(m_dir[i].toHex(' ')));
-    QVector<bool> used = torchInUse(&r.errors, &r.warnings);
+    QVector<bool> used = inUse(&r.errors, &r.warnings);
     QByteArray map;
     QString e;
     if (!readBytes(qint64(MapSector) * SecLen, 2 * SecLen, &map, &e)) { r.errors << "the allocation map can't be read: " + e; return r; }
@@ -299,9 +338,9 @@ static void markMap(QByteArray *map, const QVector<int> &sectors, bool inUse) {
     }
 }
 
-bool Volume::torchAdd(int user, const QString &nameIn, const QByteArray &data, quint16 attrs, bool replace, QString *err) {
+bool Fs::addFile(int user, const QString &nameIn, const QByteArray &data, quint16 attrs, const QDateTime &, bool replace, QString *err) {
     QString name = nameIn.toUpper(), why;
-    if (!validName(name, &why)) { *err = name + ": " + why; return false; }
+    if (!Volume::validName(name, &why)) { *err = name + ": " + why; return false; }
     if (user < 0 || user > MaxUser) { *err = QString("user number %1 is out of range (0-31)").arg(user); return false; }
     TXN_BEGIN
     QString er;
@@ -309,7 +348,7 @@ bool Volume::torchAdd(int user, const QString &nameIn, const QByteArray &data, q
     if (ix >= 0) {
         if (!replace) return fail(QString("%1 already exists in user %2").arg(name).arg(user));
         if (m_files[ix].attrs & AttrRO) return fail(QString("%1 is read-only").arg(name));
-        if (!torchDelete(user, name, &er)) return fail(er);
+        if (!deleteFile(user, name, &er)) return fail(er);
     }
     // an empty file gets one record of ^Z (address FFFF marks a deleted entry, so an entry can't be without data)
     qint64 records = qMax<qint64>(1, (data.size() + 127) / 128);
@@ -325,14 +364,14 @@ bool Volume::torchAdd(int user, const QString &nameIn, const QByteArray &data, q
     // free: reached by no file and not marked in the map (a sector the map holds is never taken, even if lost)
     QByteArray map;
     if (!readBytes(qint64(MapSector) * SecLen, 2 * SecLen, &map, &er)) return fail(er);
-    QVector<bool> used = torchInUse();
+    QVector<bool> used = inUse();
     QVector<int> got;
     for (int n = Reserved; n < Sectors && got.size() < nIndex + nData; ++n)
         if (!used[n] && !(word(map, n / SecPerTrack) & (1 << (n % SecPerTrack)))) got << n;
     if (got.size() < nIndex + nData) return fail(QString("the disc is full (%1 needs %2 sectors)").arg(name).arg(nIndex + nData));
     QVector<int> index = got.mid(0, nIndex), dataSecs = got.mid(nIndex);
     for (int k = 0; k < nData; ++k)
-        if (!torchWriteSector(dataSecs[k], padded.mid(k * SecLen, SecLen), &er)) return fail(er);
+        if (!writeSector(dataSecs[k], padded.mid(k * SecLen, SecLen), &er)) return fail(er);
     // L3 sectors (the last index sectors), then the L2 that lists them
     QVector<int> l3 = nIndex == 1 ? index : index.mid(1);
     for (int j = 0; j < l3.size(); ++j) {
@@ -343,12 +382,12 @@ bool Volume::torchAdd(int user, const QString &nameIn, const QByteArray &data, q
             bool second = qint64(k) * 2 + 1 < records;
             setWord(&s, i, quint16(addrOf(dataSecs[k]) | FirstRecord | (second ? SecondRecord : 0)));
         }
-        if (!torchWriteSector(l3[j], s, &er)) return fail(er);
+        if (!writeSector(l3[j], s, &er)) return fail(er);
     }
     if (nIndex > 1) {
         QByteArray s(SecLen, '\0');
         for (int j = 0; j < l3.size(); ++j) setWord(&s, j, addrOf(l3[j]));
-        if (!torchWriteSector(index[0], s, &er)) return fail(er);
+        if (!writeSector(index[0], s, &er)) return fail(er);
     }
     markMap(&map, got, true);
     if (!writeBytes(qint64(MapSector) * SecLen, map, &er)) return fail(er);
@@ -356,20 +395,20 @@ bool Volume::torchAdd(int user, const QString &nameIn, const QByteArray &data, q
     setWord(&e, 0, quint16(addrOf(index[0]) | (nIndex > 1 ? L2Flag : 0)));
     setWord(&e, 1, quint16(records - 1));
     e[4] = char(user);
-    putName(&e, name11(name), attrs);
+    putName(&e, Volume::name11(name), attrs);
     if (!writeBytes(qint64(slot) * EntrySize, e, &er)) return fail(er);
     if (!parse(&er)) return fail(er);
     return true;
 }
 
-bool Volume::torchDelete(int user, const QString &name, QString *err) {
+bool Fs::deleteFile(int user, const QString &name, QString *err) {
     int ix = indexOf(user, name.toUpper());
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
     TXN_BEGIN
     QString er;
     int slot = m_files[ix].entries.value(0);
     const QByteArray e = m_dir[slot];
-    Walk w = walk(torchReader(), word(e, 0), entryRecords(e));
+    Walk w = walk(reader(), word(e, 0), entryRecords(e));
     QByteArray map;
     if (!readBytes(qint64(MapSector) * SecLen, 2 * SecLen, &map, &er)) return fail(er);
     // a damaged chain frees only what it reached, and only sectors no other file reaches. The entry is marked deleted
@@ -378,7 +417,7 @@ bool Volume::torchDelete(int user, const QString &name, QString *err) {
     QByteArray dead = e;
     setWord(&dead, 0, NoData);
     m_dir[slot] = dead;
-    QVector<bool> others = torchInUse();
+    QVector<bool> others = inUse();
     QVector<int> freed;
     for (int n : mine) if (n >= Reserved && !others[n]) freed << n;
     markMap(&map, freed, false);
@@ -388,9 +427,9 @@ bool Volume::torchDelete(int user, const QString &name, QString *err) {
     return true;
 }
 
-bool Volume::torchRename(int user, const QString &name, int newUser, const QString &newNameIn, QString *err) {
+bool Fs::rename(int user, const QString &name, int newUser, const QString &newNameIn, QString *err) {
     QString newName = newNameIn.toUpper(), why;
-    if (!validName(newName, &why)) { *err = newName + ": " + why; return false; }
+    if (!Volume::validName(newName, &why)) { *err = newName + ": " + why; return false; }
     if (newUser < 0 || newUser > MaxUser) { *err = QString("user number %1 is out of range (0-31)").arg(newUser); return false; }
     int ix = indexOf(user, name.toUpper());
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
@@ -401,13 +440,13 @@ bool Volume::torchRename(int user, const QString &name, int newUser, const QStri
     int slot = m_files[ix].entries.value(0);
     QByteArray e = m_dir[slot];
     e[4] = char(newUser);
-    putName(&e, name11(newName), m_files[ix].attrs);
+    putName(&e, Volume::name11(newName), m_files[ix].attrs);
     if (!writeBytes(qint64(slot) * EntrySize, e, &er)) return fail(er);
     if (!parse(&er)) return fail(er);
     return true;
 }
 
-bool Volume::torchSetAttrs(int user, const QString &name, quint16 attrs, QString *err) {
+bool Fs::setAttrs(int user, const QString &name, quint16 attrs, QString *err) {
     int ix = indexOf(user, name.toUpper());
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
     TXN_BEGIN
@@ -421,7 +460,7 @@ bool Volume::torchSetAttrs(int user, const QString &name, quint16 attrs, QString
 }
 
 // An empty disc: a zeroed directory, the map of a disc with no files, and the formatter's two sectors.
-bool Volume::torchInit(QString *err) {
+bool Fs::initDirectory(QString *err) {
     TXN_BEGIN
     QString er;
     if (!writeBytes(0, QByteArray(DirSectors * SecLen, '\0'), &er) ||
@@ -432,4 +471,4 @@ bool Volume::torchInit(QString *err) {
     return true;
 }
 
-} // namespace Cpm
+} // namespace Torch

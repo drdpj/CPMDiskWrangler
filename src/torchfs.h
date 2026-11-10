@@ -29,6 +29,9 @@
 // 13 read-only, 14 system, 15 archived). An L3 sector lists up to 128 data sectors, each word flagged 4000 (first
 // 128-byte record in use) and 8000 (second); an L2 sector lists up to 128 L3 sectors (no flags). Files of up to
 // 128 sectors have one L3, larger ones an L2. See AGENTS.md for how each fact was checked.
+//
+// Torch::Fs is the filesystem itself: a Cpm::Store (cpmstore.h), so the adapter and the window see CP/M files on it as on
+// any CP/M disc.
 #pragma once
 
 #include <QByteArray>
@@ -36,6 +39,8 @@
 #include <QStringList>
 #include <QVector>
 #include <functional>
+
+#include "cpmstore.h"
 
 namespace Torch {
 
@@ -83,5 +88,58 @@ struct Scan {
     QStringList names;              // "USER:NAME.EXT", in directory order
 };
 Scan scan(const SectorReader &read);
+
+// Torch CP/N's filesystem on a container laid out by a "torchcpn" format: CP/M files (users 0-31, 8.3 names, the CP/M
+// attributes) in Torch's directory, index sectors and allocation map. A file's "blocks" are its sectors, index sectors
+// included; freeBlocks counts sectors. No time stamps and no label.
+class Fs : public Cpm::Store {
+public:
+    Fs() = default;
+    bool attach(dw::device::Container *img, const Cpm::Format &f, QString *err);
+    void detach() { m_img = nullptr; m_files.clear(); m_dir.clear(); }
+    bool attached() const { return m_img != nullptr; }
+    const Cpm::Format &format() const override { return m_fmt; }
+    bool reload(QString *err = nullptr) override;
+
+    const QVector<Cpm::File> &files() const override { return m_files; }
+    bool readFile(const Cpm::File &f, QByteArray *out, QString *err) const override;
+
+    int freeBlocks() const override;                    // sectors
+    int freeEntries() const override;                   // never-used entries
+    int usedEntries() const override;
+    qint64 freeBytes() const override { return qint64(freeBlocks()) * SecLen; }
+    bool hasStamps() const override { return false; }
+    const Cpm::Label &label() const override { return m_label; }   // never present
+    bool labelAllowed() const override { return false; }
+    bool setLabel(const QString &label, QString *err) override;    // refused: Torch CP/N discs have no label
+    Cpm::Report check() const override;
+
+    bool addFile(int user, const QString &name, const QByteArray &data, quint16 attrs, const QDateTime &when,
+                 bool replace, QString *err) override;          // when: ignored (no time stamps)
+    bool deleteFile(int user, const QString &name, QString *err) override;
+    bool rename(int user, const QString &name, int newUser, const QString &newName, QString *err) override;
+    bool setAttrs(int user, const QString &name, quint16 attrs, QString *err) override;
+    void setExtraNameChars(const QString &c) override { m_extraNameChars = c; }
+
+    // An empty disc: a zeroed directory, the map of a disc with no files, and the formatter's two sectors.
+    bool initDirectory(QString *err);
+    const QVector<QByteArray> &directory() const { return m_dir; }   // the 16-byte entries
+
+private:
+    bool parse(QString *err);
+    QVector<bool> inUse(QStringList *errors = nullptr, QStringList *warnings = nullptr) const;
+    bool sector(int lsec, QByteArray *out, QString *err) const;
+    bool writeSector(int lsec, const QByteArray &d, QString *err);
+    SectorReader reader() const;
+    bool readBytes(qint64 off, int len, QByteArray *out, QString *err) const;
+    bool writeBytes(qint64 off, const QByteArray &data, QString *err);
+
+    dw::device::Container *m_img = nullptr;
+    Cpm::Format m_fmt;
+    QVector<QByteArray> m_dir;
+    QVector<Cpm::File> m_files;
+    Cpm::Label m_label;
+    QString m_extraNameChars;          // kept for the Store interface; Torch names are checked without them, as before
+};
 
 } // namespace Torch

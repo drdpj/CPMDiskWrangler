@@ -27,7 +27,7 @@ QMAKE_TARGET_COPYRIGHT = Copyright (C) 2026 Daniel Jameson. Licensed under the G
 SOURCES += src/main.cpp src/mainwindow.cpp src/formatdialog.cpp src/newdisc.cpp src/natchars.cpp src/natsets.cpp src/viewer.cpp src/viewtext.cpp src/icon.cpp src/dragout.cpp src/hostpolicy.cpp \
            src/cpmformat.cpp src/cpmfs.cpp src/torchfs.cpp src/detect.cpp src/cpmvolume.cpp
 HEADERS += src/mainwindow.h src/mainwindow_p.h src/formatdialog.h src/newdisc.h src/natchars.h src/natsets.h src/viewer.h src/viewtext.h src/icon.h src/dragout.h src/hostpolicy.h \
-           src/cpmformat.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h
+           src/cpmformat.h src/cpmstore.h src/cpmfs.h src/torchfs.h src/detect.h src/cpmvolume.h
 RESOURCES += src/resources.qrc
 RESOURCES += src/licences.qrc                      # Help > Licences: LICENSE, notices, the LGPL for Qt
 exists(licences-bundled.qrc): RESOURCES += licences-bundled.qrc   # a release build's library licences (ci/)

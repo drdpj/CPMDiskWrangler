@@ -20,93 +20,54 @@
 //
 // Every change goes through the image's staging (dw::device::Container::write), so nothing reaches the file until the image
 // is committed. Each mutating call is atomic: it takes a snapshot of the staged writes and restores it on failure.
+// The file types and the Store interface are in cpmstore.h; Torch CP/N's filesystem is Torch::Fs (torchfs.h).
 #pragma once
 
-#include <QByteArray>
-#include <QDateTime>
-#include <QString>
-#include <QStringList>
-#include <QVector>
+#include <memory>
 
-#include "cpmformat.h"
+#include "cpmstore.h"
 #include "torchfs.h"
-
-#include <diskwrangler/device/container.h>
 
 namespace Cpm {
 
-// File attributes: the high bits of the name and extension characters.
-enum Attr : quint16 {
-    AttrRO = 0x01,      // T1' read-only
-    AttrSYS = 0x02,     // T2' system (hidden from DIR)
-    AttrARC = 0x04,     // T3' archived
-    AttrF1 = 0x10, AttrF2 = 0x20, AttrF3 = 0x40, AttrF4 = 0x80,   // F1'-F4' (interface attributes)
-};
-QString attrString(quint16 a);         // e.g. "R/O SYS" or "-"
-
-struct File {
-    int user = 0;
-    QByteArray name11;                 // the 8+3 name bytes with attribute bits cleared
-    QString name;                      // "NAME.EXT" ("NAME" with no extension): bytes as Latin-1 characters
-    quint16 attrs = 0;
-    QVector<int> entries;              // directory entries, by logical extent
-    qint64 records = 0;                // 128-byte records
-    qint64 size = 0;                   // bytes (records * 128, less the CP/M 3 last-record byte count)
-    bool exactSize = false;            // size came from a CP/M 3 byte count
-    int blocks = 0;
-    QDateTime created, updated, accessed;   // CP/M 3 / P2DOS stamps (invalid if none)
-    QString problem;                   // set if the extents don't fit together
-};
-
-struct Label {
-    bool present = false;
-    int index = -1;
-    QString name;
-    quint8 mode = 0;                   // bit 7 passwords, 6 access stamps, 5 update stamps, 4 create stamps
-    QDateTime created, updated;
-};
-
-struct Report {
-    QStringList errors, warnings;
-    bool ok() const { return errors.isEmpty(); }
-};
-
-class Volume {
+// The CP/M directory filesystem. Given a Torch CP/N format (Format::torch) it is also a facade over a Torch::Fs, every
+// call forwarded, so code written for one class keeps working: kept for the tests and detection; removed after the
+// tests are ported (step 6). New code opens a disc with openStore (below), which gives a Torch::Fs for a Torch disc.
+class Volume : public Store {
 public:
     Volume() = default;
     // Reads the directory. A disc whose directory fails check() can still be browsed; the caller makes it read-only.
     bool attach(dw::device::Container *img, const Format &f, QString *err);
-    void detach() { m_img = nullptr; m_files.clear(); m_dir.clear(); }
+    void detach() { m_img = nullptr; m_files.clear(); m_dir.clear(); m_torch.reset(); }
     bool attached() const { return m_img != nullptr; }
-    const Format &format() const { return m_fmt; }
-    bool reload(QString *err = nullptr);          // after anything changed the staged image
+    const Format &format() const override { return m_fmt; }
+    bool reload(QString *err = nullptr) override;             // after anything changed the staged image
 
-    const QVector<File> &files() const { return m_files; }
-    int indexOf(int user, const QString &name) const;   // into files(), -1 if none (name compared upper-case)
-    bool readFile(const File &f, QByteArray *out, QString *err) const;
-    QVector<int> usersInUse() const;
+    const QVector<File> &files() const override { return m_torch ? m_torch->files() : m_files; }
+    bool readFile(const File &f, QByteArray *out, QString *err) const override;
 
-    int freeBlocks() const;
-    int freeEntries() const;
-    qint64 freeBytes() const { return qint64(freeBlocks()) * (m_fmt.torch ? Torch::SecLen : m_fmt.blocksize); }   // Torch: sectors
-    int usedEntries() const;
-    bool hasStamps() const { return m_stamps; }        // SFCB (0x21) entries present
-    const Label &label() const { return m_label; }
-    void setExtraNameChars(const QString &c) { m_extraNameChars = c; }   // see validName
-    bool labelAllowed() const;                          // CP/M 3 / ZSDOS, or a label already exists
+    int freeBlocks() const override;
+    int freeEntries() const override;
+    qint64 freeBytes() const override { return m_torch ? m_torch->freeBytes() : qint64(freeBlocks()) * m_fmt.blocksize; }
+    int usedEntries() const override;
+    bool hasStamps() const override { return m_stamps; }        // SFCB (0x21) entries present
+    const Label &label() const override { return m_label; }
+    void setExtraNameChars(const QString &c) override { m_extraNameChars = c; if (m_torch) m_torch->setExtraNameChars(c); }   // see validName
+    bool labelAllowed() const override;                          // CP/M 3 / ZSDOS, or a label already exists
     QString stampKinds() const;                         // e.g. "create, update"
-    const QVector<QByteArray> &directory() const { return m_dir; }   // raw 32-byte entries
+    // raw 32-byte entries (Torch: its 16-byte ones)
+    const QVector<QByteArray> &directory() const { return m_torch ? m_torch->directory() : m_dir; }
 
-    Report check() const;
+    Report check() const override;
 
     // ----- changes (staged, atomic)
     // Adds (or with replace, replaces) a file. when: the date for the time stamps (current time if invalid).
     bool addFile(int user, const QString &name, const QByteArray &data, quint16 attrs, const QDateTime &when,
-                 bool replace, QString *err);
-    bool deleteFile(int user, const QString &name, QString *err);
-    bool rename(int user, const QString &name, int newUser, const QString &newName, QString *err);
-    bool setAttrs(int user, const QString &name, quint16 attrs, QString *err);
-    bool setLabel(const QString &label, QString *err);
+                 bool replace, QString *err) override;
+    bool deleteFile(int user, const QString &name, QString *err) override;
+    bool rename(int user, const QString &name, int newUser, const QString &newName, QString *err) override;
+    bool setAttrs(int user, const QString &name, quint16 attrs, QString *err) override;
+    bool setLabel(const QString &label, QString *err) override;
     // An empty directory (E5 everywhere); with stamps, CP/M 3 style SFCB entries in every fourth slot and a
     // label (name may be empty) that turns on create and update stamps.
     bool initDirectory(bool stamps, const QString &labelName, QString *err);
@@ -136,22 +97,6 @@ private:
     bool isFileEntry(quint8 st) const;
     bool inertEntry(const QByteArray &e) const;     // a user entry that holds nothing and isn't a file name
 
-    // Torch CP/N (Format::torch; torchfs.cpp): the same interface over its own filesystem. m_dir holds its 16-byte
-    // entries; a file's "blocks" are its sectors, index sectors included.
-    bool torchParse(QString *err);
-    bool torchReadFile(const File &f, QByteArray *out, QString *err) const;
-    QVector<bool> torchInUse(QStringList *errors = nullptr, QStringList *warnings = nullptr) const;
-    int torchFreeSectors() const;
-    Report torchCheck() const;
-    bool torchAdd(int user, const QString &name, const QByteArray &data, quint16 attrs, bool replace, QString *err);
-    bool torchDelete(int user, const QString &name, QString *err);
-    bool torchRename(int user, const QString &name, int newUser, const QString &newName, QString *err);
-    bool torchSetAttrs(int user, const QString &name, quint16 attrs, QString *err);
-    bool torchInit(QString *err);
-    bool torchSector(int lsec, QByteArray *out, QString *err) const;
-    bool torchWriteSector(int lsec, const QByteArray &d, QString *err);
-    Torch::SectorReader torchReader() const;
-
     dw::device::Container *m_img = nullptr;
     Format m_fmt;
     QVector<QByteArray> m_dir;
@@ -159,7 +104,12 @@ private:
     Label m_label;
     QString m_extraNameChars;          // national letters allowed in names (natchars.h)
     bool m_stamps = false;
+    std::unique_ptr<Torch::Fs> m_torch;   // the facade's Torch CP/N filesystem (Format::torch), else none
 };
+
+// The filesystem a format says the disc holds, attached to the container: a Torch::Fs for a Torch CP/N format, else
+// the CP/M directory (Volume). Null, with *err set, if its directory can't be read.
+std::unique_ptr<Store> openStore(dw::device::Container *img, const Format &f, QString *err);
 
 // A new, empty disc in the given container: every sector E5 (the format's sector IDs and ImageDisk mode), then an
 // empty directory (with CP/M 3 time stamp entries and a label when stamps is set).
