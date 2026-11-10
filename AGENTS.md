@@ -42,7 +42,7 @@ windows, the desktop and other programs via the `retro-files` format shared with
 | `cpmvolume.h/.cpp` | DiskWranglerCore's filesystem interface: `Cpm::verdict` (detection by tiers: open, ask, or hand to Acorn Disk Wrangler, used by `openImage`), `CpmVolume` (a `Cpm::Volume` as a `dw::fs::Volume`, user areas as namespace levels) and `OpenedDisc` (the disc as a `dw::fs::Disc`; `voltest` and the command-line program of step 4b) |
 | `resources/builtin-diskdefs` (in `src/`) | this program's definitions (Acorn Z80, Amstrad, Kaypro) and descriptions for cpmtools' ones |
 | `resources/cpmtools-diskdefs` (in `src/`) | cpmtools 2.23's diskdefs file, unchanged (Michael Haardt and contributors, GPL v3+; see THIRD-PARTY-NOTICES.md) |
-| `mainwindow.*`, `mainwindow_p.h` | window, `DropTree`, importing/exporting, Copy / Paste, menus; `mainwindow_p.h` has the shared tree helpers (same as Acorn Disk Wrangler's) and `XItem` |
+| `mainwindow.*`, `mainwindow_p.h` | window, on DiskWranglerCore's window kit since step 5c (`MainWindow` derives from `dw::ui::DiscWindow`, its document is a `Cpm::OpenedDisc`; the kit does the rows, selection, title, Save / Save As / Revert, Delete and Extract, the window fills its hooks), `DropTree` (the kit's `VolumePane` plus drag and drop), importing/exporting, Copy / Paste, menus; `mainwindow_p.h` has the shared tree helpers (same as Acorn Disk Wrangler's) and `XItem` |
 | `formatdialog.*` | Tools > Disc format (ranked readings, evidence, preview, try a format by hand) |
 | `newdisc.*` | File > New disc image |
 | `dragout.*` | `retro-files` JSON writer/reader, drag-out data, temporary drag folders |
@@ -65,9 +65,9 @@ starts on the filter for the kind the image already is, and the kind saved is th
    recorded order. ImageDisk/TeleDisk tracks are often rotated (Osborne single density: IDs 2,3,...,10,1);
    reading in file order gives a plausible but wrong directory. (Others have made this mistake: see the
    o1next repository's notes.)
-3. **Validate before writing.** `MainWindow::save()` runs `Volume::check()` and refuses on any error, and refuses
+3. **Validate before writing.** `Cpm::OpenedDisc::save` (the window's and `cpmdw`'s save) runs `check()` on every side and refuses on any error, and refuses
    if the file changed on disk since it was opened. Commit writes a complete new file beside the original, reads it
-   back (every staged sector, then `MainWindow::checkWritten`: each side's directory attached again and checked),
+   back (every staged sector, then `OpenedDisc::checkWritten`: each side's directory attached again, checked and its files counted),
    then makes the optional `.bak` (a hard link where possible) and atomically replaces the original, then reloads
    it (DiskWranglerCore's `Container::SaveOptions`). Any failure before the replace leaves the original untouched.
 4. **A save with nothing changed changes nothing**, and unchanged parts stay byte-identical: IMD tracks without
@@ -75,7 +75,7 @@ starts on the filter for the kind the image already is, and the kind saved is th
    patched in place. `fstest roundtrip` checks this on every image it is given.
 5. **Every mutation is atomic**: `TXN_BEGIN` in `cpmfs.cpp` snapshots the staging and restores it on failure. A
    failed add (disc full, directory full) leaves no trace (`fstest atomic`).
-6. **Changes need a safe reading** (`MainWindow::readOnlyReason`): a known format with no competing reading,
+6. **Changes need a safe reading** (`MainWindow::readOnlyReason`, from `OpenedDisc::readOnlyWhy`): a known format with no competing reading,
    a format the user confirmed (remembered per file in QSettings), or a disc made here. A reading found only by
    searching is shown but read-only until confirmed. A directory that fails `check()` is read-only. TeleDisk
    files are read-only (Save As). Don't weaken this: a wrong directory size or block size means new files are

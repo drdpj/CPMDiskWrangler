@@ -25,7 +25,10 @@
 #include <QTreeWidget>
 #include <memory>
 
+#include <diskwrangler/ui/discwindow.h>
+
 #include "cpmfs.h"
+#include "cpmvolume.h"
 #include "detect.h"
 #include "diskimage.h"          // dw::device::Container, and the Disk:: names guitest still uses
 #include "natchars.h"
@@ -37,6 +40,8 @@ class QLabel;
 class QMimeData;
 
 // A file on the disc: which side's filesystem (0 unless the disc has a separate one on each side), user, name.
+// (The window kit's DiscWindow::Item is the same as (mount = side, Path {"user N", name}); FileRef stays for the code
+// and the tests that use it.)
 struct FileRef {
     int side = 0, user = 0;
     QString name;
@@ -45,9 +50,10 @@ struct FileRef {
     bool operator==(const FileRef &o) const { return side == o.side && user == o.user && name == o.name; }
 };
 
-// The file tree: accepts files and folders from the desktop, items from other windows of this program and
-// retro-files drags from other programs; drags its selection out the same three ways.
-class DropTree : public QTreeWidget {
+// The file tree: the window kit's pane, which also accepts files and folders from the desktop, items from other
+// windows of this program and retro-files drags from other programs, and drags its selection out the same three ways
+// (until steps 5d and 5e move that into the kit).
+class DropTree : public dw::ui::VolumePane {
     Q_OBJECT
 public:
     explicit DropTree(QWidget *parent = nullptr);
@@ -77,14 +83,20 @@ private:
     quint64 m_owner = 0;
 };
 
-class MainWindow : public QMainWindow {
+// The main window: DiskWranglerCore's DiscWindow (step 5c) over a Cpm::OpenedDisc. The kit does the rows, the
+// selection, the title, Save / Save As / Revert / Close, Delete and Extract; this class fills its hooks and keeps the
+// rest of CP/M Disk Wrangler's window (opening and detection, the format, character sets, imports, copy and drag, the
+// dialogs) until the later series of step 5 move each onto the kit.
+class MainWindow : public dw::ui::DiscWindow {
     Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
-    quint64 id() const { return quint64(quintptr(this)); }
     static MainWindow *byId(quint64 id);
-    static QList<MainWindow *> &windows();
+    static QList<MainWindow *> windows();                // every main window, oldest first (the kit's DiscWindow::all())
+
+    dw::app::Document *document() const override { return const_cast<Cpm::OpenedDisc *>(&m_doc); }
+    dw::app::AppInfo appInfo() const override;
 
     // ----- for the menus, and for tests
     void setLowerNames(bool on, bool remember);       // allow lower-case file names on this disc
@@ -94,9 +106,6 @@ public:
     QString natHint() const { return m_natHint; }
     bool openImage(const QString &path);
     bool newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label);
-    bool save();
-    bool saveAs(const QString &path, dw::device::Kind kind);
-    bool checkWritten(dw::device::Container &written, QString *err) const;
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
     // user -1: each file's own user number (0 for files without one); side: which side's filesystem
     void importPaths(const QStringList &paths, int user, int side = 0);
@@ -104,51 +113,73 @@ public:
     bool importRetroFiles(const QByteArray &json, int user, int side = 0);
     bool exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, QString *err) const;
     QVector<FileRef> selectedRefs() const;
-    bool deleteFiles(const QVector<FileRef> &refs, QString *err);
-    void refresh();
+    bool deleteFiles(const QVector<FileRef> &refs, QString *err);     // the kit's deleteFiles, by FileRef
+    using DiscWindow::deleteFiles;
 
-    dw::device::Container &image() { return m_img; }
-    Cpm::Volume &volume(int side = 0) { return m_vols[side]; }
-    int sides() const { return m_nvols; }
-    bool dropOpensImage() const { return m_nvols == 0; }   // nothing read as CP/M here: a drop opens an image               // filesystems shown: 1, or 2 for a disc on each side
+    dw::device::Container &image() { return m_doc.container(); }
+    const dw::device::Container &image() const { return m_doc.container(); }
+    Cpm::Volume &volume(int side = 0) { return m_doc.legacy(side); }
+    int sides() const { return m_doc.sides(); }          // filesystems shown: 1, or 2 for a disc on each side
+    bool dropOpensImage() const { return sides() == 0; }   // nothing read as CP/M here: a drop opens an image
     const Detect::Result &detection() const { return m_det; }
     // Scores the readings again on the disc as it is now (done before Tools > Disc format shows them).
     void rescoreReadings();
-    DropTree *tree() { return m_tree; }
-    bool writable() const;
-    QString readOnlyReason() const;
+    DropTree *tree() const { return static_cast<DropTree *>(pane()); }
+    bool writable() const { return DiscWindow::writable(0); }
+    QString readOnlyReason() const { return DiscWindow::readOnlyReason(0); }
+    using DiscWindow::writable;
+    using DiscWindow::readOnlyReason;
     bool trimTextOnExtract() const;
-    static bool autoAnswer;            // tests: answer "replace all" to overwrite questions, no message boxes
+
+    // ----- the kit's slots this program fills (until later series of step 5 make them the kit's)
+    void newWindow() override;
+    void newImageDialog() override;
+    void openDialog() override;
+    void viewSelected() override;
+    void addFilesDialog() override;
+    void copySelected() override;
+    void paste() override;
+    void renameSelected() override;
+    void editProperties() override;
+    void about() override;
 
 protected:
-    void closeEvent(QCloseEvent *e) override;
+    // ----- the kit's hooks
+    ActionSpec actionSpec(Act a) const override;
+    QStringList paneGroups() const override { return {"cpm"}; }
+    dw::ui::PaneLayout paneLayout(const QString &group) const override;
+    dw::ui::VolumePane *createPane(const QString &group) override;
+    QList<QAction *> contextActions() const override;
+    QString rootLabel(int mount) const override;
+    void decorateRow(QTreeWidgetItem *row, int mount, const dw::fs::Path &path, const dw::fs::Entry *entry) const override;
+    void filesUnder(int mount, const dw::fs::Path &dir, QVector<dw::fs::Path> *out) const override;
+    QStringList statusVariants() const override;
+    void presentStatus(const QStringList &variants) override;
+    void showMessage(const QString &text) override;
+    void updateActions() override;
+    bool keepBackup() const override;
+    bool beforeSave() override;
+    void afterSave() override;
+    bool askSaveAs(QString *path, dw::device::Kind *kind) override;
+    bool afterSaveAs(const QString &path, QString *err) override;
+    void revertDocument() override;
+    QString deleteQuestion(const QVector<Item> &items) const override;
+    bool canRemove(const Item &item, QString *err) const override;
+    std::shared_ptr<dw::xfer::HostPolicy> hostPolicy(const QVector<dw::TransferItem> &items) const override;
 
 private slots:
-    void openDialog();
-    void newImageDialog();
-    void saveAsDialog();
-    void revert();
-    void addFilesDialog();
-    void deleteSelected();
-    void editProperties();
-    void renameSelected();
     void setLabelDialog();
-    void extractSelected();
-    void viewSelected();
     void checkDisc();
     void discInfo();
     void formatDialog();
     void addDiskdefsDialog();
-    void about();
-    void showContextMenu(const QPoint &pos);
     void onPathsDropped(const QStringList &paths, QTreeWidgetItem *target);
     void onInternalDrop(const QByteArray &payload, QTreeWidgetItem *target);
     void onRetroFilesDropped(const QByteArray &json, QTreeWidgetItem *target);
-    void updateUi();
-    void copySelected();
-    void paste();
 
 private:
+    static Item itemOf(const FileRef &r) { return Item(r.side, dw::fs::Path({Cpm::CpmVolume::userName(r.user), r.name})); }
+    const Cpm::File *fileOf(int side, int user, const QString &name) const;   // the side's file of that user and name
     bool attachFormat(const Detect::Candidate &c, QString *err);
     // The disc's national character set (natchars.h): how names and text are shown, extracted, added and viewed.
     Nat::Set nat() const { return Nat::find(m_natId); }
@@ -159,9 +190,9 @@ private:
     void showLower(bool on);
     void refreshNamesButton();
     void autoLower();                  // set it from what the disc holds, or from what was chosen for this disc before
-    QVector<const Cpm::Volume *> volumePtrs() const { QVector<const Cpm::Volume *> v; for (int i = 0; i < m_nvols; ++i) v << &m_vols[i]; return v; }
+    QVector<const Cpm::Volume *> volumePtrs() const;
     QString nameRules() const { return Nat::extraNameChars(nat()) + (lowerDisc() ? Nat::lowerLetters() : QString()); }
-    void applyNameRules() { const QString r = nameRules(); for (int side = 0; side < 2; ++side) m_vols[side].setExtraNameChars(r); }
+    void applyNameRules();             // the character set and case rule, to every side's volume
     bool askNatForNames(const QVector<XItem> &items);
     QString m_natId = "ascii";
     QString m_natHint;                 // shown in the status bar: this disc looks as if it uses a national character set
@@ -174,28 +205,20 @@ private:
     int currentSide() const;                            // the side of the selection (0 if none)
     int maxUser() const;
     void detachAll();
-    bool confirmDiscard();
     void importOne(const XItem &x, int user, int side, ImportCtx &c);
     void importSummary(const ImportCtx &c);
-    void message(const QString &title, const QString &text, bool warning = true);
-    QString title() const;
     bool clipboardUsable() const;                       // something Paste can add
     bool pasteItems(const QMimeData *m, int user, int side);
+    Cpm::Volume &vol(int side) const { return const_cast<Cpm::OpenedDisc &>(m_doc).legacy(side); }
 
-    dw::device::Container m_img;
-    Cpm::Volume m_vols[2];
-    int m_nvols = 0;
+    Cpm::OpenedDisc m_doc;
     Detect::Result m_det;
     int m_detIndex = 0;                // which ranked reading is in use (-1: one set by hand)
     Detect::Candidate m_current;
-    bool m_safe = false;               // detection or the user says the format can be written with
-    bool m_checkOk = true;             // the directory passed check() when it was opened
-    QDateTime m_fileTime;
-    qint64 m_fileSize = -1;
-    DropTree *m_tree;
-    StatusLabel *m_status;
-    QToolButton *m_natBtn;          // right of the status line: "Names: <character set>, <case>"; its menu has the lower-case option and the character set dialog
-    QAction *m_actSave, *m_actSaveAs, *m_actRevert, *m_actAdd, *m_actDelete, *m_actProps, *m_actRename,
-        *m_actLabel, *m_actExtract, *m_actView, *m_actCheck, *m_actInfo, *m_actFormat, *m_actCopy, *m_actPaste;
-    QAction *m_optTrim, *m_optFolders, *m_optBackup, *m_actNat, *m_actLower;
+    StatusLabel *m_status = nullptr;
+    QToolButton *m_natBtn = nullptr;   // right of the status line: "Names: <character set>, <case>"; its menu has the lower-case option and the character set dialog
+    QAction *m_actSave = nullptr, *m_actSaveAs = nullptr, *m_actRevert = nullptr, *m_actAdd = nullptr, *m_actDelete = nullptr,
+        *m_actProps = nullptr, *m_actRename = nullptr, *m_actLabel = nullptr, *m_actExtract = nullptr, *m_actView = nullptr,
+        *m_actCheck = nullptr, *m_actInfo = nullptr, *m_actFormat = nullptr, *m_actCopy = nullptr, *m_actPaste = nullptr;
+    QAction *m_optTrim = nullptr, *m_optFolders = nullptr, *m_optBackup = nullptr, *m_actNat = nullptr, *m_actLower = nullptr;
 };

@@ -58,15 +58,13 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-bool MainWindow::autoAnswer = false;
-
 // ================================================================================================ DropTree
 
 static QByteArray sourceTag(quint64 owner) {
     return QByteArray::number(qint64(QCoreApplication::applicationPid())) + ":" + QByteArray::number(owner);
 }
 
-DropTree::DropTree(QWidget *parent) : QTreeWidget(parent) {
+DropTree::DropTree(QWidget *parent) : dw::ui::VolumePane(parent) {
     setAcceptDrops(true);
     setDragEnabled(true);
     setDragDropMode(QAbstractItemView::DragDrop);
@@ -196,20 +194,71 @@ void DropTree::dropEvent(QDropEvent *e) {
 
 // ================================================================================================ the window
 
-QList<MainWindow *> &MainWindow::windows() { static QList<MainWindow *> w; return w; }
+MainWindow *MainWindow::byId(quint64 id) { return qobject_cast<MainWindow *>(DiscWindow::byId(id)); }
 
-MainWindow *MainWindow::byId(quint64 id) {
-    for (MainWindow *w : windows()) if (w->id() == id) return w;
-    return nullptr;
+QList<MainWindow *> MainWindow::windows() {
+    QList<MainWindow *> l;
+    for (DiscWindow *w : DiscWindow::all()) if (auto *m = qobject_cast<MainWindow *>(w)) l << m;
+    return l;
 }
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    windows().append(this);
-    m_tree = new DropTree;
-    m_tree->setOwner(id());
-    dw::setupTreeColumns(m_tree, {{"Name", "", false}, {"Attr", "R/O SYS ARC", false}, {"Size", "1048576", true},
-                              {"Blocks", "00000", true}, {"Date", "2026-12-31 23:59", false}});
-    setCentralWidget(m_tree);
+dw::app::AppInfo MainWindow::appInfo() const { return Cpm::appInfo(QApplication::applicationVersion()); }
+
+dw::ui::DiscWindow::ActionSpec MainWindow::actionSpec(Act a) const {
+    auto key = [](QKeySequence::StandardKey k) { return QList<QKeySequence>{QKeySequence(k)}; };
+    switch (a) {
+    case Act::NewWindow: return {"New &window", {QKeySequence("Ctrl+Shift+N")}, QString(), QString()};
+    case Act::NewImage: return {"&New disc image...", key(QKeySequence::New), QString(), QString()};
+    case Act::Open: return {"&Open...", key(QKeySequence::Open), QString(), QString()};
+    case Act::Save: return {"&Save", key(QKeySequence::Save), QString(), QString()};
+    case Act::SaveAs: return {"Save &as (ImageDisk, DSK or raw)...", {QKeySequence("Ctrl+Shift+S")}, QString(), QString()};
+    case Act::Revert: return {"&Revert", {}, QString(), QString()};
+    case Act::Close: return {"&Close", key(QKeySequence::Close), QString(), QString()};
+    case Act::Quit: return {"&Quit", key(QKeySequence::Quit), QString(), QString()};
+    case Act::View: return {"&View (text / hex)", {QKeySequence("F3")}, "View", QString()};
+    case Act::Extract: return {"E&xtract to folder...", {QKeySequence("Ctrl+E")}, "Extract", QString()};
+    case Act::AddFiles: return {"&Add files...", {QKeySequence("Ctrl+Shift+F")}, "Add files", QString()};
+    case Act::Copy: return {"&Copy", QKeySequence::keyBindings(QKeySequence::Copy), QString(), QString()};   // the platform's own keys (Ctrl+C, Ctrl+Ins / Cmd+C)
+    case Act::Paste: return {"&Paste", QKeySequence::keyBindings(QKeySequence::Paste), QString(), QString()}; // (Ctrl+V, Shift+Ins / Cmd+V)
+    case Act::Rename: return {"Re&name...", {QKeySequence("F2")}, "Rename", QString()};
+    case Act::Properties: return {"P&roperties (attributes, user)...", {QKeySequence("Alt+Return")}, "Properties", QString()};
+    case Act::Delete: return {"&Delete", dw::deleteKeys(), "Delete", QString()};
+    default: return {};                // no Add folder or New directory: CP/M has no folders
+    }
+}
+
+dw::ui::PaneLayout MainWindow::paneLayout(const QString &) const {
+    dw::ui::PaneLayout l;
+    l.columns = {{"Name", "", false}, {"Attr", "R/O SYS ARC", false}, {"Size", "1048576", true},
+                 {"Blocks", "00000", true}, {"Date", "2026-12-31 23:59", false}};
+    l.expand = dw::ui::PaneLayout::ExpandAll;           // every side and user area open
+    l.reselectFolders = false;                          // after a refresh, only the files stay selected
+    return l;
+}
+
+dw::ui::VolumePane *MainWindow::createPane(const QString &) {
+    auto *t = new DropTree;
+    t->setOwner(id());
+    return t;
+}
+
+QList<QAction *> MainWindow::contextActions() const {     // the Edit menu's order, as Acorn Disk Wrangler's
+    return {m_actView, m_actExtract, nullptr, m_actAdd, nullptr, m_actCopy, m_actPaste, nullptr, m_actRename, m_actProps, m_actDelete};
+}
+
+MainWindow::MainWindow(QWidget *parent) : DiscWindow(parent) {
+    setupKit();                                         // the pane and the standard actions
+    m_actSave = action(Act::Save);
+    m_actSaveAs = action(Act::SaveAs);
+    m_actRevert = action(Act::Revert);
+    m_actView = action(Act::View);
+    m_actExtract = action(Act::Extract);
+    m_actAdd = action(Act::AddFiles);
+    m_actCopy = action(Act::Copy);
+    m_actPaste = action(Act::Paste);
+    m_actRename = action(Act::Rename);
+    m_actProps = action(Act::Properties);
+    m_actDelete = action(Act::Delete);
     m_status = new StatusLabel;
     statusBar()->addWidget(m_status, 1);
     m_actLower = new QAction("Allow &lower-case file names", this);     // in Tools and, as a button, in the status bar
@@ -228,53 +277,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // The menus, the context menu and the button bar keep the same order as Acorn Disk Wrangler's (which has a few
     // more items: Add folder, New directory, Boot option, Side order).
     QMenu *file = menuBar()->addMenu("&File");
-    QAction *aNewWin = file->addAction("New &window", [] { auto *w = new MainWindow; w->setAttribute(Qt::WA_DeleteOnClose); w->show(); });
-    aNewWin->setShortcut(QKeySequence("Ctrl+Shift+N"));
-    QAction *aNew = file->addAction("&New disc image...", this, &MainWindow::newImageDialog);
-    aNew->setShortcut(QKeySequence::New);
-    QAction *aOpen = file->addAction("&Open...", this, &MainWindow::openDialog);
-    aOpen->setShortcut(QKeySequence::Open);
+    file->addActions({action(Act::NewWindow), action(Act::NewImage), action(Act::Open)});
     file->addSeparator();
-    m_actSave = file->addAction("&Save", this, &MainWindow::save);
-    m_actSave->setShortcut(QKeySequence::Save);
-    m_actSaveAs = file->addAction("Save &as (ImageDisk, DSK or raw)...", this, &MainWindow::saveAsDialog);
-    m_actSaveAs->setShortcut(QKeySequence("Ctrl+Shift+S"));
-    m_actRevert = file->addAction("&Revert", this, &MainWindow::revert);
+    file->addActions({m_actSave, m_actSaveAs, m_actRevert});
     file->addSeparator();
     AppSettings::addMenuItem(file, this);         // where portable settings exist (not a Linux install)
     if (AppSettings::offered()) file->addSeparator();
-    file->addAction("&Close", this, &QWidget::close)->setShortcut(QKeySequence::Close);
-    file->addAction("&Quit", qApp, &QApplication::closeAllWindows)->setShortcut(QKeySequence::Quit);
+    file->addActions({action(Act::Close), action(Act::Quit)});
 
     QMenu *edit = menuBar()->addMenu("&Edit");
-    m_actView = edit->addAction("&View (text / hex)", this, &MainWindow::viewSelected);
-    m_actView->setShortcut(QKeySequence("F3"));
-    m_actView->setIconText("View");
-    m_actExtract = edit->addAction("E&xtract to folder...", this, &MainWindow::extractSelected);
-    m_actExtract->setShortcut(QKeySequence("Ctrl+E"));
-    m_actExtract->setIconText("Extract");
+    edit->addActions({m_actView, m_actExtract});
     edit->addSeparator();
-    m_actAdd = edit->addAction("&Add files...", this, &MainWindow::addFilesDialog);
-    m_actAdd->setShortcut(QKeySequence("Ctrl+Shift+F"));
-    m_actAdd->setIconText("Add files");
+    edit->addAction(m_actAdd);
     edit->addSeparator();
-    m_actCopy = edit->addAction("&Copy", this, &MainWindow::copySelected);
-    m_actCopy->setShortcuts(QKeySequence::Copy);       // the platform's own keys (Ctrl+C, Ctrl+Ins / Cmd+C)
-    m_actPaste = edit->addAction("&Paste", this, &MainWindow::paste);
-    m_actPaste->setShortcuts(QKeySequence::Paste);     // (Ctrl+V, Shift+Ins / Cmd+V)
+    edit->addActions({m_actCopy, m_actPaste});
     edit->addSeparator();
-    m_actRename = edit->addAction("Re&name...", this, &MainWindow::renameSelected);
-    m_actRename->setShortcut(QKeySequence("F2"));
-    m_actRename->setIconText("Rename");
-    m_actProps = edit->addAction("P&roperties (attributes, user)...", this, &MainWindow::editProperties);
-    m_actProps->setShortcut(QKeySequence("Alt+Return"));
-    m_actProps->setIconText("Properties");
-    m_actDelete = edit->addAction("&Delete", this, &MainWindow::deleteSelected);
-    m_actDelete->setShortcuts(dw::deleteKeys());
-    m_actDelete->setIconText("Delete");
+    edit->addActions({m_actRename, m_actProps, m_actDelete});
     edit->addSeparator();
     m_actLabel = edit->addAction("Disc &label...", this, &MainWindow::setLabelDialog);
-
     QMenu *tools = menuBar()->addMenu("&Tools");
     m_actCheck = tools->addAction("&Check disc", this, &MainWindow::checkDisc);
     m_actCheck->setShortcut(QKeySequence("Ctrl+K"));
@@ -316,84 +336,71 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // Open / Save live in the File menu only; the button bar is for working on the disc contents.
     ButtonBar::makeButtonBar(addToolBar("Main"), {m_actView, m_actExtract, m_actAdd, m_actRename, m_actProps, m_actDelete,
                                                   nullptr, m_actFormat});
-    connect(QApplication::clipboard(), &QClipboard::dataChanged, this, &MainWindow::updateUi);
-
-    connect(m_tree, &QTreeWidget::itemSelectionChanged, this, &MainWindow::updateUi);
-    connect(m_tree, &QTreeWidget::itemDoubleClicked, this, [this](QTreeWidgetItem *it) {
-        if (it && it->data(0, RoleKind).toInt() == RowFile) viewSelected();
-    });
-    connect(m_tree, &QWidget::customContextMenuRequested, this, &MainWindow::showContextMenu);
-    connect(m_tree, &DropTree::pathsDropped, this, &MainWindow::onPathsDropped);
-    connect(m_tree, &DropTree::internalDrop, this, &MainWindow::onInternalDrop);
-    connect(m_tree, &DropTree::retroFilesDropped, this, &MainWindow::onRetroFilesDropped);
-    connect(m_tree, &DropTree::dragOutFinished, this, [this](int files, const QStringList &errors) {
+    connect(tree(), &DropTree::pathsDropped, this, &MainWindow::onPathsDropped);
+    connect(tree(), &DropTree::internalDrop, this, &MainWindow::onInternalDrop);
+    connect(tree(), &DropTree::retroFilesDropped, this, &MainWindow::onRetroFilesDropped);
+    connect(tree(), &DropTree::dragOutFinished, this, [this](int files, const QStringList &errors) {
         if (!errors.isEmpty()) message("Drag", errors.join("\n"));
         else m_status->setText(QString("Copied %1 file%2 out of the disc.").arg(files).arg(files == 1 ? "" : "s"));
     });
     refresh();
 }
 
-MainWindow::~MainWindow() { windows().removeAll(this); }
+MainWindow::~MainWindow() = default;
 
-QString MainWindow::title() const {
-    QString n = m_img.isOpen() ? (m_img.path().isEmpty() ? "untitled" : QFileInfo(m_img.path()).fileName()) : "no disc";
-    return n + (m_img.hasPending() ? " *" : "") + " - CP/M Disk Wrangler";
-}
-
-void MainWindow::message(const QString &title, const QString &text, bool warning) {
-    if (autoAnswer) { m_status->setText(title + ": " + text.section('\n', 0, 0)); return; }
-    if (warning) QMessageBox::warning(this, title, text);
-    else QMessageBox::information(this, title, text);
-}
-
-bool MainWindow::writable() const { return readOnlyReason().isEmpty(); }
-
-QString MainWindow::readOnlyReason() const {
-    if (!m_nvols) return "no disc";
-    if (m_img.readOnlyContainer()) return "TeleDisk images are read-only here: use Save As to make an ImageDisk or DSK copy";
-    if (!m_checkOk) return "the directory has errors (Tools > Check disc)";
-    if (!m_safe) return "the format isn't confirmed (Tools > Disc format)";
-    return QString();
-}
+void MainWindow::presentStatus(const QStringList &variants) { if (m_status) m_status->setVariants(variants); }
+void MainWindow::showMessage(const QString &text) { if (m_status) m_status->setText(text); }
 
 bool MainWindow::trimTextOnExtract() const { return m_optTrim->isChecked(); }
 
-int MainWindow::maxUser() const { return m_vols[0].format().os == Cpm::Os::V3 ? 15 : 31; }
+int MainWindow::maxUser() const { return vol(0).format().os == Cpm::Os::V3 ? 15 : 31; }
 
-void MainWindow::detachAll() {
-    m_vols[0].detach();
-    m_vols[1].detach();
-    m_nvols = 0;
+void MainWindow::detachAll() { m_doc.detach(); }
+
+QVector<const Cpm::Volume *> MainWindow::volumePtrs() const {
+    QVector<const Cpm::Volume *> v;
+    for (int i = 0; i < sides(); ++i) v << &vol(i);
+    return v;
+}
+
+void MainWindow::applyNameRules() {
+    for (int side = 0; side < sides(); ++side)
+        if (auto *v = dynamic_cast<Cpm::CpmVolume *>(m_doc.disc().volume(side))) v->setCharset(m_natId, lowerDisc());
+}
+
+const Cpm::File *MainWindow::fileOf(int side, int user, const QString &name) const {
+    for (const Cpm::File &f : vol(side).files()) if (f.user == user && f.name == name) return &f;
+    return nullptr;
 }
 
 int MainWindow::currentSide() const {
-    QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
-    return sel.isEmpty() ? 0 : qBound(0, sel.first()->data(0, RoleSide).toInt(), qMax(0, m_nvols - 1));
+    QList<QTreeWidgetItem *> sel = tree()->selectedItems();
+    return sel.isEmpty() ? 0 : qBound(0, sel.first()->data(0, RoleSide).toInt(), qMax(0, sides() - 1));
 }
 
 // ------------------------------------------------------------------------------------------- opening
 
 QString MainWindow::rememberedFormat() const {
     AppSettings st;
-    QString key = "formats/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
+    QString key = "formats/" + QCryptographicHash::hash(QFileInfo(image().path()).canonicalFilePath().toUtf8(),
                                                         QCryptographicHash::Sha1).toHex();
     QString v = st.value(key).toString();
     qint64 size = v.section('|', 0, 0).toLongLong();
-    return size == QFileInfo(m_img.path()).size() ? v.section('|', 1) : QString();
+    return size == QFileInfo(image().path()).size() ? v.section('|', 1) : QString();
 }
 
 void MainWindow::rememberFormat() {
-    if (m_img.path().isEmpty() || !m_nvols) return;
+    if (image().path().isEmpty() || !sides()) return;
     AppSettings st;
-    QString key = "formats/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
+    QString key = "formats/" + QCryptographicHash::hash(QFileInfo(image().path()).canonicalFilePath().toUtf8(),
                                                         QCryptographicHash::Sha1).toHex();
-    Cpm::Format f = m_vols[0].format();
-    st.setValue(key, QString::number(QFileInfo(m_img.path()).size()) + "|" + f.toDiskdef());
+    Cpm::Format f = vol(0).format();
+    st.setValue(key, QString::number(QFileInfo(image().path()).size()) + "|" + f.toDiskdef());
 }
 
 QString MainWindow::rememberedNat() const {
-    if (m_img.path().isEmpty()) return QString();
-    return AppSettings().value("charset/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
+    if (image().path().isEmpty()) return QString();
+    return AppSettings().value("charset/" + QCryptographicHash::hash(QFileInfo(image().path()).canonicalFilePath().toUtf8(),
                                                                      QCryptographicHash::Sha1).toHex()).toString();
 }
 
@@ -403,8 +410,8 @@ static QString diskKey(const QString &what, const QString &path) {
 
 void MainWindow::autoLower() {
     bool on = Nat::usesLowerCase(volumePtrs());
-    if (!m_img.path().isEmpty()) {
-        const QVariant v = AppSettings().value(diskKey("lowercase", m_img.path()));
+    if (!image().path().isEmpty()) {
+        const QVariant v = AppSettings().value(diskKey("lowercase", image().path()));
         if (v.isValid()) on = v.toBool();
     }
     m_lowerOk = on;
@@ -415,7 +422,7 @@ void MainWindow::refreshNamesButton() {      // "Names: ASCII, upper case": whic
     const Nat::Set ns = Nat::find(m_natId);
     const bool suspect = m_natId == "ascii" && !m_natHint.isEmpty();
     const QString setName = ns.id == "ascii" ? QStringLiteral("ASCII") : ns.name.section("  (", 0, 0);
-    m_natBtn->setVisible(m_nvols > 0);
+    m_natBtn->setVisible(sides() > 0);
     m_natBtn->setText(QString("Names: %1, %2%3").arg(setName, m_lowerOk ? "any case" : "upper case", suspect ? " (national letters?)" : ""));
     m_natBtn->setToolTip((suspect ? "This disc's " + m_natHint + ".\n" : QString()) +
                          QString("Names and text are shown as %1; file names are %2. Click for the character set and lower-case options.")
@@ -433,16 +440,16 @@ void MainWindow::setLowerNames(bool on, bool remember) {
     m_lowerOk = on;
     showLower(on);
     applyNameRules();
-    if (remember && !m_img.path().isEmpty()) AppSettings().setValue(diskKey("lowercase", m_img.path()), on);
+    if (remember && !image().path().isEmpty()) AppSettings().setValue(diskKey("lowercase", image().path()), on);
     refresh();
 }
 
 void MainWindow::setNat(const QString &id, bool remember) {
     m_natId = Nat::find(id).id;
     applyNameRules();
-    if (remember && !m_img.path().isEmpty()) {
+    if (remember && !image().path().isEmpty()) {
         AppSettings st;
-        const QString key = "charset/" + QCryptographicHash::hash(QFileInfo(m_img.path()).canonicalFilePath().toUtf8(),
+        const QString key = "charset/" + QCryptographicHash::hash(QFileInfo(image().path()).canonicalFilePath().toUtf8(),
                                                                   QCryptographicHash::Sha1).toHex();
         if (m_natId == "ascii") st.remove(key); else st.setValue(key, m_natId);
     }
@@ -451,54 +458,42 @@ void MainWindow::setNat(const QString &id, bool remember) {
 }
 
 void MainWindow::natDialog() {
-    if (!m_nvols) return;
+    if (!sides()) return;
     QVector<const Cpm::Volume *> vols;
-    for (int side = 0; side < m_nvols; ++side) vols << &m_vols[side];
+    for (int side = 0; side < sides(); ++side) vols << &vol(side);
     Nat::Dialog d(vols, m_natId, this);
     d.setLowerNames(m_lowerOk);
     if (d.exec() == QDialog::Accepted) setNat(d.chosen(), true);
 }
 
 bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
-    if (m_img.kind() == dw::device::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, err)) return false;
     detachAll();
-    int n = c.fmt.separateSides ? 2 : 1;
-    for (int side = 0; side < n; ++side) {
-        Cpm::Format f = c.fmt;
-        f.fixedHead = side;
-        f.derived = false;
-        if (!m_vols[side].attach(&m_img, f, err)) {
-            if (side == 0) { detachAll(); return false; }
-            *err = "side 1: " + *err;
-            detachAll();
-            return false;
-        }
+    if (!m_doc.attach(c, err)) {
+        if (err->startsWith("side 0: ")) *err = err->mid(8);     // as this window has always said it: only side 1 is named
+        detachAll();
+        return false;
     }
-    m_nvols = n;
     applyNameRules();
     m_current = c;
-    m_checkOk = true;
-    for (int side = 0; side < n; ++side) m_checkOk = m_checkOk && m_vols[side].check().ok();
     return true;
 }
 
 bool MainWindow::openImage(const QString &path) {
-    if (m_img.isOpen() && !confirmDiscard()) return false;
+    if (image().isOpen() && !confirmDiscard()) return false;
     QString err;
     dw::device::Container img;
     if (!img.open(path, &err)) { message("Open", QString("%1:\n%2").arg(path, err)); return false; }
     detachAll();
-    m_img = img;
+    image() = img;
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    m_det = Detect::detect(m_img, rememberedFormat());
+    m_det = Detect::detect(image(), rememberedFormat());
     QApplication::restoreOverrideCursor();
-    m_fileTime = QFileInfo(path).lastModified();
-    m_fileSize = QFileInfo(path).size();
-    m_safe = m_det.safeToWrite;
+    m_doc.noteFileState();
+    m_doc.setSafe(m_det.safeToWrite);
     m_detIndex = 0;
     // Detection by tiers (DiskWranglerCore): CP/M's reading against a recogniser for Acorn Disk Wrangler's discs. A disc
     // that is plainly Acorn's is opened there; one that reads as CP/M and also looks like Acorn's is asked about.
-    const dw::fs::Verdict verdict = Cpm::verdict(m_img, path, m_det);
+    const dw::fs::Verdict verdict = Cpm::verdict(image(), path, m_det);
     const dw::fs::Candidate *pick = verdict.bestCandidate();
     if (verdict.action == dw::fs::Verdict::Ask && !autoAnswer) {
         const int a = dw::ui::askWhich(this, path, *verdict.bestCandidate(), *verdict.rivalCandidate());
@@ -521,15 +516,13 @@ bool MainWindow::openImage(const QString &path) {
         }
         return false;
     }
-    if (m_img.needsPadding()) m_img.markForSave();
+    if (image().needsPadding()) image().markForSave();
     m_natId = Nat::find(rememberedNat()).id;
     autoLower();
     applyNameRules();
     m_natHint.clear();
     if (m_natId == "ascii") {
-        QVector<const Cpm::Volume *> vols;
-        for (int side = 0; side < m_nvols; ++side) vols << &m_vols[side];
-        const Nat::Evidence ev = Nat::scan(vols);
+        const Nat::Evidence ev = Nat::scan(volumePtrs());
         if (ev.any())
             m_natHint = "names or text use [ \\ ] { | } between letters, which may be national letters";
     }
@@ -545,35 +538,34 @@ bool MainWindow::newImage(const QString &path, dw::device::Kind kind, const Cpm:
         return false;
     }
     detachAll();
-    m_img = img;
+    image() = img;
     m_natId = "ascii";
     m_natHint.clear();
     m_lowerOk = false;                          // a new disc has no lower-case names; forget any choice made for an old file of this name
     AppSettings().remove(diskKey("lowercase", path));
     showLower(false);
     m_det = Detect::Result();
-    Detect::Candidate c = Detect::evaluate(m_img, f, false);
+    Detect::Candidate c = Detect::evaluate(image(), f, false);
     c.fmt = f;
     c.fmt.derive(&err);
     c.fromLibrary = true;
-    c.raw = m_img.rawLayout();
+    c.raw = image().rawLayout();
     c.evidence << "a new disc made in this format";
     m_det.ranked << c;
     m_det.confidence = "high";
     m_det.why = "A new disc made here.";
     m_det.physical = QString("%1, new").arg(dw::device::kindName(kind));
     m_detIndex = 0;
-    m_safe = true;
+    m_doc.setSafe(true);
     if (!attachFormat(c, &err)) { message("New disc image", err); return false; }
-    m_fileTime = QFileInfo(path).lastModified();
-    m_fileSize = QFileInfo(path).size();
+    m_doc.noteFileState();
     rememberFormat();
     refresh();
     return true;
 }
 
 bool MainWindow::useFormat(const Detect::Candidate &c, bool allowChanges) {
-    if (m_img.hasPending()) { message("Disc format", "Save or revert your changes before reading the disc with another format."); return false; }
+    if (image().hasPending()) { message("Disc format", "Save or revert your changes before reading the disc with another format."); return false; }
     QString err;
     if (!attachFormat(c, &err)) {
         message("Disc format", err);
@@ -583,22 +575,16 @@ bool MainWindow::useFormat(const Detect::Candidate &c, bool allowChanges) {
     }
     m_detIndex = -1;
     for (int i = 0; i < m_det.ranked.size(); ++i) if (m_det.ranked[i].key() == c.key()) m_detIndex = i;
-    m_safe = allowChanges;
+    m_doc.setSafe(allowChanges);
     if (allowChanges) rememberFormat();
     refresh();
     return true;
 }
 
-bool MainWindow::confirmDiscard() {
-    if (!m_img.hasPending()) return true;
-    if (autoAnswer) return true;
-    auto r = QMessageBox::question(this, "Unsaved changes", "Discard the changes to " + QFileInfo(m_img.path()).fileName() + "?",
-                                   QMessageBox::Discard | QMessageBox::Cancel);
-    return r == QMessageBox::Discard;
-}
-
-void MainWindow::closeEvent(QCloseEvent *e) {
-    if (confirmDiscard()) e->accept(); else e->ignore();
+void MainWindow::newWindow() {
+    auto *w = new MainWindow;
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->show();
 }
 
 void MainWindow::openDialog() {
@@ -606,7 +592,7 @@ void MainWindow::openDialog() {
                                              "Disc images (" + dw::anyCase("*.imd *.dsk *.td0 *.img *.ima *.raw *.h8d *.ssd *.dsd *.bin") + ");;All files (*)");
     if (p.isEmpty()) return;
     AppSettings().setValue("lastDir", QFileInfo(p).absolutePath());
-    if (m_img.isOpen()) {
+    if (image().isOpen()) {
         auto *w = new MainWindow;
         w->setAttribute(Qt::WA_DeleteOnClose);
         w->show();
@@ -625,7 +611,7 @@ void MainWindow::newImageDialog() {
                                              QString("Disc image (*.%1)").arg(ext));
     if (p.isEmpty()) return;
     MainWindow *w = this;
-    if (m_img.isOpen()) {
+    if (image().isOpen()) {
         w = new MainWindow;
         w->setAttribute(Qt::WA_DeleteOnClose);
         w->show();
@@ -633,85 +619,32 @@ void MainWindow::newImageDialog() {
     w->newImage(p, d.kind(), f, d.stamps(), d.label());
 }
 
-void MainWindow::revert() {
-    if (!m_img.isOpen() || m_img.path().isEmpty()) return;
-    m_img.discardPending();
-    openImage(m_img.path());
+void MainWindow::revertDocument() {
+    image().discardPending();
+    openImage(image().path());
 }
 
 // ------------------------------------------------------------------------------------------- saving
 
-bool MainWindow::save() {
-    if (!m_img.isOpen() || !m_img.hasPending()) return true;
-    if (m_img.readOnlyContainer()) { saveAsDialog(); return false; }
+bool MainWindow::keepBackup() const { return m_optBackup->isChecked(); }
+
+bool MainWindow::beforeSave() {
+    if (image().readOnlyContainer()) { saveAsDialog(); return false; }
     if (!writable()) { message("Save", "The disc is read-only: " + readOnlyReason()); return false; }
-    for (int side = 0; side < m_nvols; ++side) {
-        Cpm::Report r = m_vols[side].check();
-        if (!r.ok()) {
-            message("Save", QString("Not saved: the directory%1 would not be consistent.\n\n").arg(m_nvols > 1 ? QString(" on side %1").arg(side) : QString()) +
-                                r.errors.mid(0, 10).join("\n"));
-            return false;
-        }
-    }
-    QFileInfo fi(m_img.path());
-    if (fi.exists() && (fi.lastModified() != m_fileTime || fi.size() != m_fileSize)) {
-        message("Save", "Not saved: the image file has been changed by something else since it was opened. Use Save As, or Revert.");
-        return false;
-    }
-    QString err;
-    dw::device::Container::SaveOptions opt;
-    opt.backup = m_optBackup->isChecked();
-    opt.verify = [this](dw::device::Container &written, QString *e) { return checkWritten(written, e); };
-    if (!m_img.commit(opt, &err)) { message("Save", "Not saved: " + err); return false; }
-    for (int side = 0; side < m_nvols; ++side) m_vols[side].reload(&err);
-    m_fileTime = QFileInfo(m_img.path()).lastModified();
-    m_fileSize = QFileInfo(m_img.path()).size();
-    rememberFormat();
-    refresh();
-    m_status->setText("Saved " + QFileInfo(m_img.path()).fileName());
     return true;
 }
 
-// The saved copy, before it replaces anything: each side's directory is read from it again and checked.
-bool MainWindow::checkWritten(dw::device::Container &written, QString *err) const {
-    for (int side = 0; side < m_nvols; ++side) {
-        Cpm::Volume v;
-        Cpm::Format f = m_vols[side].format();
-        f.derived = false;
-        QString e;
-        if (!v.attach(&written, f, &e)) { *err = "the saved copy can't be read back: " + e; return false; }
-        const Cpm::Report r = v.check();
-        if (!r.ok())
-            { *err = QString("the saved copy's directory%1 is not consistent:\n\n").arg(m_nvols > 1 ? QString(" on side %1").arg(side) : QString()) +
-                     r.errors.mid(0, 10).join("\n"); return false; }
-        if (v.files().size() != m_vols[side].files().size()) { *err = "the saved copy does not hold the same files"; return false; }
-    }
+void MainWindow::afterSave() { rememberFormat(); }
+
+bool MainWindow::afterSaveAs(const QString &, QString *err) {
+    m_current.raw = image().rawLayout();
+    for (int side = 0; side < sides(); ++side)
+        if (!m_doc.store(side)->reload(err)) return false;
+    if (writable() || m_doc.safe()) rememberFormat();
     return true;
 }
 
-bool MainWindow::saveAs(const QString &path, dw::device::Kind kind) {
-    if (!m_img.isOpen()) return false;
-    bool ok = true;
-    for (int side = 0; side < m_nvols; ++side) ok = ok && m_vols[side].check().ok();
-    if (!ok && !m_img.readOnlyContainer()) {
-        message("Save As", "Not saved: the directory has errors (Tools > Check disc).");
-        return false;
-    }
-    QString err;
-    auto verify = [this, ok](dw::device::Container &written, QString *e) { return !ok || checkWritten(written, e); };
-    if (!m_img.saveAs(path, kind, &err, verify)) { message("Save As", "Not saved: " + err); return false; }
-    m_current.raw = m_img.rawLayout();
-    for (int side = 0; side < m_nvols; ++side)
-        if (!m_vols[side].reload(&err)) { message("Save As", err); return false; }
-    m_fileTime = QFileInfo(path).lastModified();
-    m_fileSize = QFileInfo(path).size();
-    if (writable() || m_safe) rememberFormat();
-    refresh();
-    return true;
-}
-
-void MainWindow::saveAsDialog() {
-    if (!m_img.isOpen()) return;
+bool MainWindow::askSaveAs(QString *path, dw::device::Kind *kind) {
     // .dsk is not only the Amstrad CPC's: emulators of many machines use it for plain sector dumps too. What a file is comes from
     // the filter chosen here, never from the name typed, so the dialog starts on the kind this image already is (and a raw
     // image keeps its own file name, .dsk and all) and the raw filter lists .dsk and the other common raw suffixes.
@@ -720,115 +653,113 @@ void MainWindow::saveAsDialog() {
     const QString sdsk = "Standard DSK image (*.dsk)";
     const QString raw = "Raw sector image (*.img *.raw *.bin *.dsk *.h8d *.ima)";
     QString filter = imd;
-    QString name = QFileInfo(m_img.path()).completeBaseName() + ".imd";
-    switch (m_img.kind()) {
-    case dw::device::Kind::Raw: filter = raw; name = QFileInfo(m_img.path()).fileName(); break;
-    case dw::device::Kind::Dsk: filter = sdsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
-    case dw::device::Kind::Edsk: filter = dsk; name = QFileInfo(m_img.path()).completeBaseName() + ".dsk"; break;
+    QString name = QFileInfo(image().path()).completeBaseName() + ".imd";
+    switch (image().kind()) {
+    case dw::device::Kind::Raw: filter = raw; name = QFileInfo(image().path()).fileName(); break;
+    case dw::device::Kind::Dsk: filter = sdsk; name = QFileInfo(image().path()).completeBaseName() + ".dsk"; break;
+    case dw::device::Kind::Edsk: filter = dsk; name = QFileInfo(image().path()).completeBaseName() + ".dsk"; break;
     default: break;
     }
-    QString p = QFileDialog::getSaveFileName(this, "Save as", QFileInfo(m_img.path()).absolutePath() + "/" + name,
+    QString p = QFileDialog::getSaveFileName(this, "Save as", QFileInfo(image().path()).absolutePath() + "/" + name,
                                              imd + ";;" + dsk + ";;" + sdsk + ";;" + raw, &filter);
-    if (p.isEmpty()) return;
-    dw::device::Kind k = filter == imd ? dw::device::Kind::Imd : filter == dsk ? dw::device::Kind::Edsk : filter == sdsk ? dw::device::Kind::Dsk : dw::device::Kind::Raw;
-    saveAs(p, k);
+    if (p.isEmpty()) return false;
+    *path = p;
+    *kind = filter == imd ? dw::device::Kind::Imd : filter == dsk ? dw::device::Kind::Edsk : filter == sdsk ? dw::device::Kind::Dsk : dw::device::Kind::Raw;
+    return true;
 }
 
 // ------------------------------------------------------------------------------------------- the tree
 
-void MainWindow::refresh() {
-    QSet<QString> sel, closed;
-    for (QTreeWidgetItem *it : m_tree->selectedItems())
-        sel << QString("%1:%2:%3:%4").arg(it->data(0, RoleSide).toInt()).arg(it->data(0, RoleKind).toInt())
-                   .arg(it->data(0, RoleUser).toInt()).arg(it->data(0, RoleName).toString());
-    for (int r = 0; r < m_tree->topLevelItemCount(); ++r) {
-        QTreeWidgetItem *root = m_tree->topLevelItem(r);
-        if (!root->isExpanded()) closed << QString("root%1").arg(r);
-        for (int i = 0; i < root->childCount(); ++i)
-            if (!root->child(i)->isExpanded()) closed << QString("%1:%2").arg(r).arg(root->child(i)->data(0, RoleUser).toInt());
-    }
-    m_tree->clear();
-    for (int side = 0; side < m_nvols; ++side) {
-        const Cpm::Volume &v = m_vols[side];
-        auto *root = new QTreeWidgetItem(m_tree);
-        QString title = v.label().present ? toHostName(v.label().name) : (m_nvols == 1 ? QFileInfo(m_img.path()).fileName() : QString());
-        root->setText(0, dw::rootLabel(m_nvols == 1 ? QString("A:") : QString("Side %1").arg(side), title));
-        root->setData(0, RoleKind, RowRoot);
-        root->setData(0, RoleUser, -1);
-        root->setData(0, RoleSide, side);
-        for (int u : v.usersInUse()) {
-            auto *g = new QTreeWidgetItem(root);
-            int n = 0;
-            qint64 total = 0;
-            for (const Cpm::File &f : v.files()) if (f.user == u) { ++n; total += f.size; }
-            g->setText(0, QString("User %1   (%2 file%3)").arg(u).arg(n).arg(n == 1 ? "" : "s"));
-            g->setData(0, RoleKind, RowUser);
-            g->setData(0, RoleUser, u);
-            g->setData(0, RoleSide, side);
-            dw::setNumCell(g, 2, QString::number(total));
-            for (const Cpm::File &f : v.files()) {
-                if (f.user != u) continue;
-                auto *it = new QTreeWidgetItem(g);
-                it->setText(0, toHostName(f.name));
-                it->setData(0, RoleKind, RowFile);
-                it->setData(0, RoleUser, f.user);
-                it->setData(0, RoleName, f.name);
-                it->setData(0, RoleSide, side);
-                it->setText(1, Cpm::attrString(f.attrs));
-                dw::setNumCell(it, 2, QString::number(f.size));
-                dw::setNumCell(it, 3, QString::number(f.blocks));
-                QDateTime d = f.updated.isValid() ? f.updated : f.created;
-                if (d.isValid()) it->setText(4, d.toString("yyyy-MM-dd HH:mm"));
-                if (!f.problem.isEmpty()) { it->setToolTip(0, f.problem); it->setForeground(0, QColor("#b00000")); }
-                if (sel.contains(QString("%1:%2:%3:%4").arg(side).arg(RowFile).arg(f.user).arg(f.name))) it->setSelected(true);
-            }
-            g->setExpanded(!closed.contains(QString("%1:%2").arg(side).arg(u)));
-        }
-        root->setExpanded(!closed.contains(QString("root%1").arg(side)));
-    }
-    updateUi();
+QString MainWindow::rootLabel(int side) const {
+    const Cpm::Volume &v = vol(side);
+    QString title = v.label().present ? toHostName(v.label().name) : (sides() == 1 ? QFileInfo(image().path()).fileName() : QString());
+    return dw::rootLabel(sides() == 1 ? QString("A:") : QString("Side %1").arg(side), title);
 }
 
-void MainWindow::updateUi() {
-    bool have = m_nvols > 0;
+// The rows as this window has always drawn them, with its roles (guitest and screenshot find rows by them): a root per
+// side, a row per user area in use with its file count and total size, the files in directory order.
+void MainWindow::decorateRow(QTreeWidgetItem *it, int side, const dw::fs::Path &path, const dw::fs::Entry *e) const {
+    it->setData(0, RoleSide, side);
+    if (!e) {                                           // a side's root
+        it->setData(0, RoleKind, RowRoot);
+        it->setData(0, RoleUser, -1);
+        return;
+    }
+    if (e->kind == dw::fs::NodeKind::Namespace) {       // a user area
+        const int u = Cpm::CpmVolume::userOf(e->name);
+        int n = 0;
+        qint64 total = 0;
+        for (const Cpm::File &f : vol(side).files()) if (f.user == u) { ++n; total += f.size; }
+        it->setText(0, QString("User %1   (%2 file%3)").arg(u).arg(n).arg(n == 1 ? "" : "s"));
+        it->setData(0, RoleKind, RowUser);
+        it->setData(0, RoleUser, u);
+        dw::setNumCell(it, 2, QString::number(total));
+        return;
+    }
+    const int u = Cpm::CpmVolume::userOf(path.parts.value(0));
+    const Cpm::File *f = fileOf(side, u, e->name);
+    if (!f) return;
+    it->setText(0, toHostName(f->name));
+    it->setData(0, RoleKind, RowFile);
+    it->setData(0, RoleUser, f->user);
+    it->setData(0, RoleName, f->name);
+    it->setText(1, Cpm::attrString(f->attrs));
+    dw::setNumCell(it, 2, QString::number(f->size));
+    dw::setNumCell(it, 3, QString::number(f->blocks));
+    QDateTime d = f->updated.isValid() ? f->updated : f->created;
+    if (d.isValid()) it->setText(4, d.toString("yyyy-MM-dd HH:mm"));
+    if (!f->problem.isEmpty()) { it->setToolTip(0, f->problem); it->setForeground(0, QColor("#b00000")); }
+}
+
+// A side's root stands for its files in directory order (as the window has always copied, extracted and deleted
+// them), not user by user.
+void MainWindow::filesUnder(int side, const dw::fs::Path &dir, QVector<dw::fs::Path> *out) const {
+    if (!dir.isRoot()) { DiscWindow::filesUnder(side, dir, out); return; }
+    for (const Cpm::File &f : vol(side).files()) out->append(dw::fs::Path({Cpm::CpmVolume::userName(f.user), f.name}));
+}
+
+void MainWindow::updateActions() {
+    if (!m_actFormat) return;                           // the constructor hasn't made them all yet
+    bool have = sides() > 0;
     bool w = writable();
     QVector<FileRef> refs = have ? selectedRefs() : QVector<FileRef>();
-    bool oneFile = m_tree->selectedItems().size() == 1 && m_tree->selectedItems().first()->data(0, RoleKind).toInt() == RowFile;
-    m_actSave->setEnabled(have && m_img.hasPending() && (w || m_img.readOnlyContainer()));
-    m_actSaveAs->setEnabled(m_img.isOpen());
-    m_actRevert->setEnabled(m_img.hasPending() && !m_img.path().isEmpty());
+    bool oneFile = tree()->selectedItems().size() == 1 && tree()->selectedItems().first()->data(0, RoleKind).toInt() == RowFile;
+    m_actSave->setEnabled(have && image().hasPending() && (w || image().readOnlyContainer()));
+    m_actSaveAs->setEnabled(image().isOpen());
+    m_actRevert->setEnabled(image().hasPending() && !image().path().isEmpty());
     m_actAdd->setEnabled(w);
     m_actDelete->setEnabled(w && !refs.isEmpty());
     m_actProps->setEnabled(have && !refs.isEmpty());
     m_actRename->setEnabled(w && oneFile);
-    m_actLabel->setEnabled(w && m_vols[currentSide()].labelAllowed());
+    m_actLabel->setEnabled(w && vol(currentSide()).labelAllowed());
     m_actExtract->setEnabled(have && !refs.isEmpty());
     m_actCopy->setEnabled(have && !refs.isEmpty());
     m_actPaste->setEnabled(w && clipboardUsable());
     m_actView->setEnabled(have && oneFile);
     m_actCheck->setEnabled(have);
-    m_actInfo->setEnabled(m_img.isOpen());
+    m_actInfo->setEnabled(image().isOpen());
     m_actNat->setEnabled(have);
     m_actLower->setEnabled(have);
-    m_actFormat->setEnabled(m_img.isOpen());
-    setWindowTitle(title());
+    m_actFormat->setEnabled(image().isOpen());
     refreshNamesButton();
-    if (!have) {
-        if (m_img.isOpen())
-            m_status->setVariants({"Not read as CP/M: " + detectionText(m_det) + " Drop another image here to open it.", "Not read as CP/M: " + detectionText(m_det), "Not read as CP/M"});
-        else
-            m_status->setVariants({"Open a disc image (File > Open), or drop one here.", "Open or drop a disc image."});
-        return;
+}
+
+QStringList MainWindow::statusVariants() const {
+    if (!sides()) {
+        if (image().isOpen())
+            return {"Not read as CP/M: " + detectionText(m_det) + " Drop another image here to open it.", "Not read as CP/M: " + detectionText(m_det), "Not read as CP/M"};
+        return {"Open a disc image (File > Open), or drop one here.", "Open or drop a disc image."};
     }
-    const Cpm::Format &f = m_vols[0].format();
+    const bool w = writable();
+    const Cpm::Format &f = vol(0).format();
     const QString name = f.name == "detected" || f.name == "by-hand" ? QString("custom format") : f.name;
     auto files = [](int n) { return QString("%1 file%2").arg(n).arg(n == 1 ? "" : "s"); };
     QString longTail, shortTail;
     if (!w) { longTail += "  -  read-only: " + readOnlyReason(); shortTail += "  -  read-only"; }
-    if (m_img.needsPadding()) { longTail += "  -  the image file is short; it will be padded to full size when saved"; shortTail += "  -  short image"; }
+    if (image().needsPadding()) { longTail += "  -  the image file is short; it will be padded to full size when saved"; shortTail += "  -  short image"; }
     QStringList v;                                                     // longest first; the widest that fits is shown
-    if (m_nvols == 1) {
-        const QString n = files(m_vols[0].files().size()), fr = dw::fmtBytes(m_vols[0].freeBytes(), dw::SmallSizes::AsBytes);
+    if (sides() == 1) {
+        const QString n = files(vol(0).files().size()), fr = dw::fmtBytes(vol(0).freeBytes(), dw::SmallSizes::AsBytes);
         v << QString("%1 - %2, %3 free of %4").arg(name, n, fr, dw::fmtBytes(f.capacityBytes(), dw::SmallSizes::AsBytes)) + longTail
           << QString("%1 - %2, %3 free").arg(name, n, fr) + shortTail
           << QString("%1, %2 free").arg(n, fr) + shortTail
@@ -837,30 +768,21 @@ void MainWindow::updateUi() {
         QString full = name + " (a disc on each side)", mid, tot;
         int nf = 0;
         qint64 fb = 0;
-        for (int side = 0; side < m_nvols; ++side) {
-            full += QString(" - side %1: %2, %3 free").arg(side).arg(files(m_vols[side].files().size()), dw::fmtBytes(m_vols[side].freeBytes(), dw::SmallSizes::AsBytes));
-            mid += QString("%1side %2: %3, %4 free").arg(side ? " - " : "").arg(side).arg(files(m_vols[side].files().size()), dw::fmtBytes(m_vols[side].freeBytes(), dw::SmallSizes::AsBytes));
-            nf += m_vols[side].files().size();
-            fb += m_vols[side].freeBytes();
+        for (int side = 0; side < sides(); ++side) {
+            full += QString(" - side %1: %2, %3 free").arg(side).arg(files(vol(side).files().size()), dw::fmtBytes(vol(side).freeBytes(), dw::SmallSizes::AsBytes));
+            mid += QString("%1side %2: %3, %4 free").arg(side ? " - " : "").arg(side).arg(files(vol(side).files().size()), dw::fmtBytes(vol(side).freeBytes(), dw::SmallSizes::AsBytes));
+            nf += vol(side).files().size();
+            fb += vol(side).freeBytes();
         }
         v << full + longTail << mid + shortTail << QString("%1, %2 free").arg(files(nf), dw::fmtBytes(fb, dw::SmallSizes::AsBytes)) + shortTail << QString("%1 free").arg(dw::fmtBytes(fb, dw::SmallSizes::AsBytes)) + shortTail;
     }
-    m_status->setVariants(v);
+    return v;
 }
 
 QVector<FileRef> MainWindow::selectedRefs() const {
     QVector<FileRef> refs;
-    for (QTreeWidgetItem *it : m_tree->selectedItems()) {
-        int kind = it->data(0, RoleKind).toInt();
-        int side = qBound(0, it->data(0, RoleSide).toInt(), qMax(0, m_nvols - 1));
-        if (kind == RowFile) refs << FileRef(side, it->data(0, RoleUser).toInt(), it->data(0, RoleName).toString());
-        else
-            for (const Cpm::File &f : m_vols[side].files())
-                if (kind == RowRoot || f.user == it->data(0, RoleUser).toInt()) refs << FileRef(side, f.user, f.name);
-    }
-    QVector<FileRef> unique;
-    for (const FileRef &r : refs) if (!unique.contains(r)) unique << r;
-    return unique;
+    for (const Item &i : selectedFiles()) refs << FileRef(i.mount, Cpm::CpmVolume::userOf(i.path.parts.value(0)), i.path.name());
+    return refs;
 }
 
 int MainWindow::targetUser(QTreeWidgetItem *it) const {
@@ -869,19 +791,7 @@ int MainWindow::targetUser(QTreeWidgetItem *it) const {
 }
 
 int MainWindow::targetSide(QTreeWidgetItem *it) const {
-    return it ? qBound(0, it->data(0, RoleSide).toInt(), qMax(0, m_nvols - 1)) : 0;
-}
-
-void MainWindow::showContextMenu(const QPoint &pos) {
-    QMenu m;                                    // the Edit menu's order, as Acorn Disk Wrangler's
-    m.addActions({m_actView, m_actExtract});
-    m.addSeparator();
-    m.addAction(m_actAdd);
-    m.addSeparator();
-    m.addActions({m_actCopy, m_actPaste});
-    m.addSeparator();
-    m.addActions({m_actRename, m_actProps, m_actDelete});
-    m.exec(m_tree->viewport()->mapToGlobal(pos));
+    return it ? qBound(0, it->data(0, RoleSide).toInt(), qMax(0, sides() - 1)) : 0;
 }
 
 // ------------------------------------------------------------------------------------------- copying out
@@ -889,7 +799,7 @@ void MainWindow::showContextMenu(const QPoint &pos) {
 bool MainWindow::exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, QString *err) const {
     out->clear();
     for (const FileRef &r : refs) {
-        const Cpm::Volume &v = m_vols[qBound(0, r.side, 1)];
+        const Cpm::Volume &v = vol(qBound(0, r.side, 1));
         int i = v.indexOf(r.user, r.name);
         if (i < 0) { *err = QString("%1:%2 is no longer on the disc").arg(r.user).arg(r.name); return false; }
         const Cpm::File &f = v.files()[i];
@@ -909,22 +819,10 @@ bool MainWindow::exportFiles(const QVector<FileRef> &refs, QVector<XItem> *out, 
     return true;
 }
 
-void MainWindow::extractSelected() {
-    QVector<FileRef> refs = selectedRefs();
-    if (refs.isEmpty()) return;
-    QString dir = QFileDialog::getExistingDirectory(this, "Extract to folder", AppSettings().value("extractDir").toString());
-    if (dir.isEmpty()) return;
-    AppSettings().setValue("extractDir", dir);
-    QVector<XItem> items;
-    QString err;
-    if (!exportFiles(refs, &items, &err)) { message("Extract", err); return; }
+std::shared_ptr<dw::xfer::HostPolicy> MainWindow::hostPolicy(const QVector<dw::TransferItem> &items) const {
     QSet<int> users;
-    for (const XItem &x : items) users << x.user;
-    QStringList top, errors;
-    QJsonArray j;
-    RetroFiles::writeHost(items, dir, m_optFolders->isChecked() && users.size() > 1, m_optTrim->isChecked(), &top, &j, &errors);
-    if (!errors.isEmpty()) message("Extract", errors.join("\n"));
-    m_status->setText(QString("Extracted %1 file%2 to %3").arg(items.size()).arg(items.size() == 1 ? "" : "s").arg(dir));
+    for (const dw::TransferItem &t : items) users << RetroFiles::CpmPolicy::userOf(t);
+    return std::make_shared<RetroFiles::CpmPolicy>(m_optFolders->isChecked() && users.size() > 1, m_optTrim->isChecked());
 }
 
 void MainWindow::viewSelected() {
@@ -934,7 +832,7 @@ void MainWindow::viewSelected() {
     QString err;
     if (!exportFiles(refs, &items, &err)) { message("View", err); return; }
     QString t = QString("%1:%2").arg(refs[0].user).arg(toHostName(refs[0].name));
-    if (m_nvols > 1) t = QString("side %1 ").arg(refs[0].side) + t;
+    if (sides() > 1) t = QString("side %1 ").arg(refs[0].side) + t;
     auto *v = new ViewerDialog(t, items[0].data, this, m_natId);
     v->show();
 }
@@ -1043,7 +941,7 @@ static void hostNames(const QVector<XItem> &items, QStringList *out) {
 }
 
 bool MainWindow::askNatForNames(const QVector<XItem> &items) {
-    if (m_natId != "ascii" || autoAnswer || m_nvols < 1) return true;
+    if (m_natId != "ascii" || autoAnswer || sides() < 1) return true;
     QStringList names;
     hostNames(items, &names);
     const QString letters = Nat::foreignLetters(names);
@@ -1062,7 +960,7 @@ bool MainWindow::askNatForNames(const QVector<XItem> &items) {
     if (box.clickedButton() == plain) return true;
     if (box.clickedButton() != choose) return false;
     QVector<const Cpm::Volume *> vols;
-    for (int s = 0; s < m_nvols; ++s) vols << &m_vols[s];
+    for (int s = 0; s < sides(); ++s) vols << &vol(s);
     Nat::Dialog d(vols, m_natId, this, names);
     d.setLowerNames(m_lowerOk);
     if (d.exec() != QDialog::Accepted) return false;
@@ -1089,7 +987,7 @@ static QVector<XItem> withoutClashSuffixes(const QVector<XItem> &items) {
 
 void MainWindow::importItems(const QVector<XItem> &itemsIn, int user, int side, ImportCtx &c) {
     const QVector<XItem> items = withoutClashSuffixes(itemsIn);
-    side = qBound(0, side, qMax(0, m_nvols - 1));
+    side = qBound(0, side, qMax(0, sides() - 1));
     if (!writable()) { c.errors << "The disc is read-only: " + readOnlyReason(); return; }
     if (!c.natAsked) {
         c.natAsked = true;
@@ -1109,7 +1007,7 @@ void MainWindow::importItems(const QVector<XItem> &itemsIn, int user, int side, 
 }
 
 void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &c) {
-    Cpm::Volume &vol = m_vols[side];
+    Cpm::Volume &cv = vol(side);
     int user = targetUser >= 0 ? targetUser : (x.user >= 0 ? x.user : 0);
     if (user > maxUser()) user = 0;
     // A name from another CP/M disc is kept exactly (its [ \ ] | were letters there); only a host file name is read as
@@ -1125,13 +1023,13 @@ void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &
     quint16 attrs = quint16((x.readOnly ? Cpm::AttrRO : 0) | (x.system ? Cpm::AttrSYS : 0) | (x.archive ? Cpm::AttrARC : 0) |
                             (x.interfaceAttrs & 0x0F) << 4);
     bool replace = false;
-    int ix = vol.indexOf(user, name);
+    int ix = cv.indexOf(user, name);
     if (ix >= 0) {
         int choice = c.policy;
         if (choice == 0) {
             if (autoAnswer) choice = 1;
             else {
-                QMessageBox box(QMessageBox::Question, "File exists", QString("%1 already exists in user %2%3. Replace it?").arg(name).arg(user).arg(m_nvols > 1 ? QString(" on side %1").arg(side) : QString()),
+                QMessageBox box(QMessageBox::Question, "File exists", QString("%1 already exists in user %2%3. Replace it?").arg(name).arg(user).arg(sides() > 1 ? QString(" on side %1").arg(side) : QString()),
                                 QMessageBox::NoButton, this);
                 QPushButton *rep = box.addButton("Replace", QMessageBox::AcceptRole);
                 QPushButton *repAll = box.addButton("Replace all", QMessageBox::AcceptRole);
@@ -1148,14 +1046,14 @@ void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &
         }
         if (choice == 2) { c.skipped++; return; }
         replace = true;
-        if (vol.files()[ix].attrs & Cpm::AttrRO) {      // the user chose to replace a read-only file: clear R/O first
+        if (cv.files()[ix].attrs & Cpm::AttrRO) {      // the user chose to replace a read-only file: clear R/O first
             QString e;
-            if (!vol.setAttrs(user, name, vol.files()[ix].attrs & ~Cpm::AttrRO, &e)) { c.errors << e; return; }
+            if (!cv.setAttrs(user, name, cv.files()[ix].attrs & ~Cpm::AttrRO, &e)) { c.errors << e; return; }
         }
     }
     QString err;
-    vol.setExtraNameChars(extra);               // this file's own rules; put back to the disc's below
-    const bool added = vol.addFile(user, name, x.data, attrs, x.when, replace, &err);
+    cv.setExtraNameChars(extra);               // this file's own rules; put back to the disc's below
+    const bool added = cv.addFile(user, name, x.data, attrs, x.when, replace, &err);
     applyNameRules();
     if (!added) { c.errors << err; return; }
     c.files++;
@@ -1179,7 +1077,7 @@ void MainWindow::addFilesDialog() {
     QStringList p = QFileDialog::getOpenFileNames(this, "Add files", AppSettings().value("addDir").toString());
     if (p.isEmpty()) return;
     AppSettings().setValue("addDir", QFileInfo(p.first()).absolutePath());
-    QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
+    QList<QTreeWidgetItem *> sel = tree()->selectedItems();
     importPaths(p, sel.isEmpty() ? -1 : targetUser(sel.first()), sel.isEmpty() ? 0 : targetSide(sel.first()));
 }
 
@@ -1202,7 +1100,7 @@ void MainWindow::copySelected() {
     clipItems() = items;
     clipToken() = QByteArray::number(qint64(QCoreApplication::applicationPid())) + ":" + QByteArray::number(++serial);
     auto *m = new RetroFiles::DragOutMime([items](QVector<XItem> *out, QString *) { *out = items; return true; },
-                                          trimTextOnExtract(), QFileInfo(m_img.path()).fileName());
+                                          trimTextOnExtract(), QFileInfo(image().path()).fileName());
     m->setForClipboard(true);
     m->setData(DW_MIME_CLIP, clipToken());
     QApplication::clipboard()->setMimeData(m);
@@ -1242,9 +1140,9 @@ bool MainWindow::clipboardUsable() const {
 // Edit > Paste: to the user number and side of the selection, as Add files does (no selection: each file keeps its
 // own user number).
 void MainWindow::paste() {
-    if (!m_nvols) return;
+    if (!sides()) return;
     if (!writable()) { message("Paste", "The disc is read-only: " + readOnlyReason()); return; }
-    QList<QTreeWidgetItem *> sel = m_tree->selectedItems();
+    QList<QTreeWidgetItem *> sel = tree()->selectedItems();
     int user = sel.isEmpty() ? -1 : targetUser(sel.first()), side = sel.isEmpty() ? 0 : targetSide(sel.first());
     const QMimeData *m = QApplication::clipboard()->mimeData();
     if (!m || !pasteItems(m, user, side))
@@ -1272,28 +1170,21 @@ bool MainWindow::pasteItems(const QMimeData *m, int user, int side) {
 // ------------------------------------------------------------------------------------------- changing files
 
 bool MainWindow::deleteFiles(const QVector<FileRef> &refs, QString *err) {
-    if (!writable()) { *err = "read-only: " + readOnlyReason(); return false; }
-    auto snap = m_img.snapshot();
-    for (const FileRef &r : refs) {
-        Cpm::Volume &v = m_vols[qBound(0, r.side, 1)];
-        auto undo = [&] { m_img.restore(snap); for (int k = 0; k < m_nvols; ++k) m_vols[k].reload(); };
-        int i = v.indexOf(r.user, r.name);
-        if (i >= 0 && (v.files()[i].attrs & Cpm::AttrRO)) { *err = r.name + " is read-only"; undo(); return false; }
-        if (!v.deleteFile(r.user, r.name, err)) { undo(); return false; }
-    }
-    return true;
+    QVector<Item> items;
+    for (const FileRef &r : refs) items << itemOf(r);
+    return DiscWindow::deleteFiles(items, err);
 }
 
-void MainWindow::deleteSelected() {
-    QVector<FileRef> refs = selectedRefs();
-    if (refs.isEmpty()) return;
-    if (!autoAnswer &&
-        QMessageBox::question(this, "Delete", refs.size() == 1 ? QString("Delete %1:%2?").arg(refs[0].user).arg(refs[0].name)
-                                                               : QString("Delete %1 files?").arg(refs.size())) != QMessageBox::Yes)
-        return;
-    QString err;
-    if (!deleteFiles(refs, &err)) message("Delete", "Nothing was deleted: " + err);
-    refresh();
+QString MainWindow::deleteQuestion(const QVector<Item> &items) const {
+    return items.size() == 1 ? QString("Delete %1:%2?").arg(Cpm::CpmVolume::userOf(items[0].path.parts.value(0))).arg(items[0].path.name())
+                             : QString("Delete %1 files?").arg(items.size());
+}
+
+bool MainWindow::canRemove(const Item &item, QString *err) const {        // a read-only file stays
+    const Cpm::Volume &v = vol(item.mount);
+    const int i = v.indexOf(Cpm::CpmVolume::userOf(item.path.parts.value(0)), item.path.name());
+    if (i >= 0 && (v.files()[i].attrs & Cpm::AttrRO)) { *err = item.path.name() + " is read-only"; return false; }
+    return true;
 }
 
 void MainWindow::renameSelected() {
@@ -1304,7 +1195,7 @@ void MainWindow::renameSelected() {
                                       toHostName(refs[0].name), &ok);
     if (!ok || n.trimmed().isEmpty()) return;
     QString err;
-    if (!m_vols[refs[0].side].rename(refs[0].user, refs[0].name, refs[0].user, (m_natId != "ascii" ? toDiscName(n.trimmed()) : n.trimmed()), &err))
+    if (!vol(refs[0].side).rename(refs[0].user, refs[0].name, refs[0].user, (m_natId != "ascii" ? toDiscName(n.trimmed()) : n.trimmed()), &err))
         message("Rename", err);
     refresh();
 }
@@ -1315,12 +1206,12 @@ void MainWindow::editProperties() {
     QDialog d(this);
     d.setWindowTitle(refs.size() == 1 ? "Properties - " + toHostName(refs[0].name) : QString("Properties - %1 files").arg(refs.size()));
     auto *fl = new QFormLayout;
-    const Cpm::File *one = refs.size() == 1 ? &m_vols[refs[0].side].files()[m_vols[refs[0].side].indexOf(refs[0].user, refs[0].name)] : nullptr;
+    const Cpm::File *one = refs.size() == 1 ? &vol(refs[0].side).files()[vol(refs[0].side).indexOf(refs[0].user, refs[0].name)] : nullptr;
     QLineEdit *name = nullptr;
     if (one) {
         name = new QLineEdit(toHostName(one->name));
         fl->addRow("Name", name);
-        const QString unit = m_vols[refs[0].side].format().torch ? "sector" : "block";   // Torch: index sectors included
+        const QString unit = vol(refs[0].side).format().torch ? "sector" : "block";   // Torch: index sectors included
         fl->addRow("Size", new QLabel(QString("%1 bytes (%2 records%3), %4 %8%5, %6 directory entr%7")
                                           .arg(one->size).arg(one->records).arg(one->exactSize ? ", exact size recorded" : "")
                                           .arg(one->blocks).arg(one->blocks == 1 ? "" : "s").arg(one->entries.size())
@@ -1342,7 +1233,7 @@ void MainWindow::editProperties() {
     for (Box &b : boxes) {
         b.cb = new QCheckBox(b.label);
         int on = 0;
-        for (const FileRef &r : refs) if (m_vols[r.side].files()[m_vols[r.side].indexOf(r.user, r.name)].attrs & b.bit) ++on;
+        for (const FileRef &r : refs) if (vol(r.side).files()[vol(r.side).indexOf(r.user, r.name)].attrs & b.bit) ++on;
         if (on == 0) b.cb->setCheckState(Qt::Unchecked);
         else if (on == refs.size()) b.cb->setCheckState(Qt::Checked);
         else { b.cb->setTristate(true); b.cb->setCheckState(Qt::PartiallyChecked); }
@@ -1356,11 +1247,11 @@ void MainWindow::editProperties() {
     connect(bb, &QDialogButtonBox::accepted, &d, &QDialog::accept);
     connect(bb, &QDialogButtonBox::rejected, &d, &QDialog::reject);
     if (d.exec() != QDialog::Accepted || !writable()) return;
-    auto snap = m_img.snapshot();
+    auto snap = image().snapshot();
     QString err;
     bool ok = true;
     for (const FileRef &r : refs) {
-        Cpm::Volume &v = m_vols[r.side];
+        Cpm::Volume &v = vol(r.side);
         int i = v.indexOf(r.user, r.name);
         if (i < 0) continue;
         quint16 a = v.files()[i].attrs;
@@ -1373,16 +1264,16 @@ void MainWindow::editProperties() {
         int newUser = user->value() >= 0 ? user->value() : r.user;
         if (ok && (newName != r.name || newUser != r.user)) ok = v.rename(r.user, r.name, newUser, newName, &err);
     }
-    if (!ok) { m_img.restore(snap); for (int k = 0; k < m_nvols; ++k) m_vols[k].reload(); message("Properties", "Nothing was changed: " + err); }
+    if (!ok) { image().restore(snap); for (int k = 0; k < sides(); ++k) vol(k).reload(); message("Properties", "Nothing was changed: " + err); }
     refresh();
 }
 
 void MainWindow::setLabelDialog() {
     bool ok;
-    QString n = QInputDialog::getText(this, "Disc label", "Label (CP/M 3, 8.3 characters):", QLineEdit::Normal, m_vols[currentSide()].label().name, &ok);
+    QString n = QInputDialog::getText(this, "Disc label", "Label (CP/M 3, 8.3 characters):", QLineEdit::Normal, vol(currentSide()).label().name, &ok);
     if (!ok) return;
     QString err;
-    if (!m_vols[currentSide()].setLabel(n, &err)) message("Disc label", err);
+    if (!vol(currentSide()).setLabel(n, &err)) message("Disc label", err);
     refresh();
 }
 
@@ -1391,11 +1282,11 @@ void MainWindow::setLabelDialog() {
 void MainWindow::checkDisc() {
     QString s;
     bool allOk = true;
-    for (int side = 0; side < m_nvols; ++side) {
-        const Cpm::Volume &v = m_vols[side];
+    for (int side = 0; side < sides(); ++side) {
+        const Cpm::Volume &v = vol(side);
         Cpm::Report r = v.check();
         allOk = allOk && r.ok();
-        if (m_nvols > 1) s += QString("Side %1:\n").arg(side);
+        if (sides() > 1) s += QString("Side %1:\n").arg(side);
         if (r.ok() && r.warnings.isEmpty()) s += "No problems found.\n";
         if (!r.errors.isEmpty()) s += "Errors:\n" + r.errors.join("\n") + "\n";
         if (!r.warnings.isEmpty()) s += "Warnings:\n" + r.warnings.join("\n") + "\n";
@@ -1413,23 +1304,23 @@ void MainWindow::checkDisc() {
 
 void MainWindow::discInfo() {
     QStringList l;
-    dw::device::Shape sh = m_img.shape();
-    l << "<h3>" + QFileInfo(m_img.path()).fileName().toHtmlEscaped() + "</h3>";
-    l << "<b>Container:</b> " + dw::device::kindName(m_img.kind());
-    if (!m_img.headerLine().isEmpty()) l << "<b>ImageDisk header:</b> " + m_img.headerLine().toHtmlEscaped();
-    if (!m_img.comment().isEmpty()) l << "<b>Comment / creator:</b> " + m_img.comment().toHtmlEscaped().replace("\n", "<br>");
+    dw::device::Shape sh = image().shape();
+    l << "<h3>" + QFileInfo(image().path()).fileName().toHtmlEscaped() + "</h3>";
+    l << "<b>Container:</b> " + dw::device::kindName(image().kind());
+    if (!image().headerLine().isEmpty()) l << "<b>ImageDisk header:</b> " + image().headerLine().toHtmlEscaped();
+    if (!image().comment().isEmpty()) l << "<b>Comment / creator:</b> " + image().comment().toHtmlEscaped().replace("\n", "<br>");
     l << QString("<b>Physical:</b> %1 cylinders, %2 side(s); %3 tracks of %4 x %5 bytes, sector IDs from %6")
-             .arg(m_img.cylinders()).arg(m_img.heads()).arg(sh.uniformTracks).arg(sh.sectrk).arg(sh.seclen).arg(sh.firstId);
+             .arg(image().cylinders()).arg(image().heads()).arg(sh.uniformTracks).arg(sh.sectrk).arg(sh.seclen).arg(sh.firstId);
     if (sh.oddTracks) l << QString("&nbsp;&nbsp;%1 track(s) of another shape (often a single-density boot track)").arg(sh.oddTracks);
     if (sh.badSectors) l << QString("&nbsp;&nbsp;%1 bad, missing or duplicated sector(s)").arg(sh.badSectors);
-    if (m_img.kind() == dw::device::Kind::Raw) l << QString("<b>Raw file size:</b> %1 bytes").arg(m_img.rawFileSize());
-    if (m_nvols) {
-        const Cpm::Format &f = m_vols[0].format();
+    if (image().kind() == dw::device::Kind::Raw) l << QString("<b>Raw file size:</b> %1 bytes").arg(image().rawFileSize());
+    if (sides()) {
+        const Cpm::Format &f = vol(0).format();
         l << "<b>Format:</b> " + f.displayName().toHtmlEscaped() + " (" + f.origin.toHtmlEscaped() + ")";
         l << "&nbsp;&nbsp;" + f.summary().toHtmlEscaped();
         if (!f.source.isEmpty()) l << "&nbsp;&nbsp;Source: " + f.source.toHtmlEscaped();
         if (f.torch) {
-            const Cpm::Volume &v = m_vols[0];
+            const Cpm::Volume &v = vol(0);
             l << QString("<b>Filesystem:</b> Torch CP/N - 256 directory entries of 16 bytes in track 0 and track 1 sectors 0-5, "
                          "an allocation map in track 1 sectors 6-7; each file reached through index sectors (one L3 sector "
                          "for up to 128 data sectors, an L2 sector above more), two 128-byte records to a sector");
@@ -1448,12 +1339,12 @@ void MainWindow::discInfo() {
             QString xl;
             for (int v : f.xlat) xl += QString::number(v + 1) + " ";
             l << "<b>Sector order on a track:</b> " + xl;
-            for (int side = 0; side < m_nvols; ++side) {
-                const Cpm::Volume &v = m_vols[side];
+            for (int side = 0; side < sides(); ++side) {
+                const Cpm::Volume &v = vol(side);
                 l << QString("<b>Directory%5:</b> %1 of %2 entries used; %3; label %4")
                          .arg(v.usedEntries()).arg(f.maxdir).arg(v.hasStamps() ? "time stamps: " + v.stampKinds() : QString("no time stamps"))
                          .arg(v.label().present ? "'" + v.label().name.toHtmlEscaped() + "'" : QString("none"))
-                         .arg(m_nvols > 1 ? QString(" (side %1)").arg(side) : QString());
+                         .arg(sides() > 1 ? QString(" (side %1)").arg(side) : QString());
             }
             l << QString("<b>Detection:</b> confidence %1. %2").arg(m_det.confidence, detectionText(m_det).toHtmlEscaped());
             l << "<b>As a cpmtools definition:</b><pre>" + f.toDiskdef().toHtmlEscaped() + "</pre>";
@@ -1476,25 +1367,25 @@ void MainWindow::discInfo() {
 // The readings as the disc is now: files may have been added or deleted since it was detected, and a disc made
 // here was scored when it was empty. (Tools > Disc format needs no unsaved changes, so this is the saved disc.)
 void MainWindow::rescoreReadings() {
-    dw::device::RawLayout before = m_img.rawLayout();
+    dw::device::RawLayout before = image().rawLayout();
     QString e;
     for (Detect::Candidate &c : m_det.ranked) {
-        if (m_img.kind() == dw::device::Kind::Raw && c.raw.valid() && !m_img.setRawLayout(c.raw, &e)) continue;
-        c = Detect::reevaluate(m_img, c);
+        if (image().kind() == dw::device::Kind::Raw && c.raw.valid() && !image().setRawLayout(c.raw, &e)) continue;
+        c = Detect::reevaluate(image(), c);
     }
-    if (m_img.kind() == dw::device::Kind::Raw && before.valid()) m_img.setRawLayout(before, &e);
+    if (image().kind() == dw::device::Kind::Raw && before.valid()) image().setRawLayout(before, &e);
 }
 
 void MainWindow::formatDialog() {
-    if (!m_img.isOpen()) return;
-    if (m_img.hasPending()) { message("Disc format", "Save or revert your changes before reading the disc with another format."); return; }
-    dw::device::RawLayout before = m_img.rawLayout();
+    if (!image().isOpen()) return;
+    if (image().hasPending()) { message("Disc format", "Save or revert your changes before reading the disc with another format."); return; }
+    dw::device::RawLayout before = image().rawLayout();
     rescoreReadings();
-    FormatDialog d(&m_img, m_det, m_detIndex, m_safe, this);
+    FormatDialog d(&image(), m_det, m_detIndex, m_doc.safe(), this);
     int r = d.exec();
     QString err;
-    if (m_img.kind() == dw::device::Kind::Raw && before.valid()) m_img.setRawLayout(before, &err);   // previews may change it
-    if (r != QDialog::Accepted) { for (int side = 0; side < m_nvols; ++side) m_vols[side].reload(); return; }
+    if (image().kind() == dw::device::Kind::Raw && before.valid()) image().setRawLayout(before, &err);   // previews may change it
+    if (r != QDialog::Accepted) { for (int side = 0; side < sides(); ++side) vol(side).reload(); return; }
     Detect::Candidate c = d.chosen();
     if (!c.fmt.derived) return;
     useFormat(c, d.allowChanges());
