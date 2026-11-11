@@ -245,7 +245,8 @@ bool CpmVolume::write(const Path &dir, const QString &name, const QByteArray &da
 }
 
 bool CpmVolume::mkdir(const Path &dir, const QString &name, QString *err) {
-    if (!dir.isRoot() || userOf(name) < 0 || userOf(name) > 15) { *err = "CP/M has only user areas 0-15"; return false; }
+    const int maxUser = m_v->format().os == Os::V3 ? 15 : 31;      // as Cpm::Volume::addFile allows
+    if (!dir.isRoot() || userOf(name) < 0 || userOf(name) > maxUser) { *err = QString("CP/M has only user areas 0-%1").arg(maxUser); return false; }
     return true;                         // a user area exists as soon as a file is in it
 }
 
