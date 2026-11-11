@@ -140,7 +140,12 @@ private:
     QVector<QByteArray> m_dir;
     QVector<Cpm::File> m_files;
     Cpm::Label m_label;
-    QString m_extraNameChars;          // kept for the Store interface; Torch names are checked without them, as before
+    // The characters allowed beside A-Z, 0-9 and CP/M's punctuation, as Cpm::Volume has them: national letters, and a-z
+    // on a disc that takes lower-case names (then a name keeps its case; otherwise it is upper-cased). Torch's MCP
+    // stores a name's bytes as the program gives them and finds a file by its exact bytes (attributes in bit 7 aside),
+    // so readme.txt and README.TXT are two files, as on a CP/M disc.
+    QString m_extraNameChars;
+    bool keepCase() const { return m_extraNameChars.contains('a'); }
 };
 
 } // namespace Torch

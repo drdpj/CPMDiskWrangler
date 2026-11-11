@@ -339,8 +339,8 @@ static void markMap(QByteArray *map, const QVector<int> &sectors, bool inUse) {
 }
 
 bool Fs::addFile(int user, const QString &nameIn, const QByteArray &data, quint16 attrs, const QDateTime &, bool replace, QString *err) {
-    QString name = nameIn.toUpper(), why;
-    if (!Volume::validName(name, &why)) { *err = name + ": " + why; return false; }
+    QString name = keepCase() ? nameIn : nameIn.toUpper(), why;
+    if (!Volume::validName(name, &why, m_extraNameChars)) { *err = name + ": " + why; return false; }
     if (user < 0 || user > MaxUser) { *err = QString("user number %1 is out of range (0-31)").arg(user); return false; }
     TXN_BEGIN
     QString er;
@@ -402,7 +402,7 @@ bool Fs::addFile(int user, const QString &nameIn, const QByteArray &data, quint1
 }
 
 bool Fs::deleteFile(int user, const QString &name, QString *err) {
-    int ix = indexOf(user, name.toUpper());
+    int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
     TXN_BEGIN
     QString er;
@@ -428,10 +428,10 @@ bool Fs::deleteFile(int user, const QString &name, QString *err) {
 }
 
 bool Fs::rename(int user, const QString &name, int newUser, const QString &newNameIn, QString *err) {
-    QString newName = newNameIn.toUpper(), why;
-    if (!Volume::validName(newName, &why)) { *err = newName + ": " + why; return false; }
+    QString newName = keepCase() ? newNameIn : newNameIn.toUpper(), why;
+    if (!Volume::validName(newName, &why, m_extraNameChars)) { *err = newName + ": " + why; return false; }
     if (newUser < 0 || newUser > MaxUser) { *err = QString("user number %1 is out of range (0-31)").arg(newUser); return false; }
-    int ix = indexOf(user, name.toUpper());
+    int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
     int other = indexOf(newUser, newName);
     if (other >= 0 && other != ix) { *err = QString("%1 already exists in user %2").arg(newName).arg(newUser); return false; }
@@ -447,7 +447,7 @@ bool Fs::rename(int user, const QString &name, int newUser, const QString &newNa
 }
 
 bool Fs::setAttrs(int user, const QString &name, quint16 attrs, QString *err) {
-    int ix = indexOf(user, name.toUpper());
+    int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
     TXN_BEGIN
     QString er;
