@@ -197,6 +197,49 @@ int main(int argc, char **argv) {
         CHECK(r.ok() && r.warnings.isEmpty(), "Torch::Fs check: clean, map and directory agree");
     }
 
+    // Torch's MCP (v1.22) stores a name's bytes as the program gives them and finds a file by its exact bytes (bit 7,
+    // the attributes, aside), so readme.txt and README.TXT are two files; only the command line is upper-cased.
+    printf("Torch CP/N: names kept and found as the MCP keeps them\n");
+    {
+        const QString p = W + "/torch-case.img";
+        err.clear();
+        CHECK(blank(p, "torch-cpn", dw::device::Kind::Raw, &err), "blank Torch disc: " + err);
+        Cpm::OpenedDisc o;
+        auto *tv = o.open(p, &err) ? dynamic_cast<Cpm::TorchVolume *>(o.disc().volume(0)) : nullptr;
+        CHECK(tv, "opened as a TorchVolume: " + err);
+        if (!tv) { printf("\n%d FAILED\n", ++fails); return 1; }
+        Cpm::Store *st = tv->cpm();
+        tv->setCharset("ascii", true);                    // a disc that takes lower-case names
+        QByteArray d;
+        CHECK(st->addFile(0, "readme.txt", "one\x1a", 0, QDateTime(), false, &err) && st->indexOf(0, "readme.txt") >= 0 &&
+                  st->files()[st->indexOf(0, "readme.txt")].name == "readme.txt" && st->indexOf(0, "README.TXT") < 0,
+              "a lower-case name is kept as given, and README.TXT is not it: " + err);
+        CHECK(st->addFile(0, "README.TXT", "two\x1a", 0, QDateTime(), false, &err) && st->files().size() == 2,
+              "README.TXT beside it is another file: " + err);
+        err.clear();
+        CHECK(!st->addFile(0, "readme.txt", "three\x1a", 0, QDateTime(), false, &err) && err == "readme.txt already exists in user 0",
+              "readme.txt a second time is a file that exists: " + err);
+        CHECK(st->addFile(0, "readme.txt", "three\x1a", 0, QDateTime(), true, &err) && st->files().size() == 2 &&
+                  st->readFile(st->files()[st->indexOf(0, "readme.txt")], &d, &err) && d.startsWith("three") &&
+                  st->readFile(st->files()[st->indexOf(0, "README.TXT")], &d, &err) && d.startsWith("two"),
+              "... and replacing it replaces that file, not README.TXT: " + err);
+        CHECK(st->setAttrs(0, "readme.txt", Cpm::AttrSYS, &err) && st->rename(0, "readme.txt", 2, "notes.txt", &err) &&
+                  st->indexOf(2, "notes.txt") >= 0 && (st->files()[st->indexOf(2, "notes.txt")].attrs & Cpm::AttrSYS) &&
+                  st->deleteFile(2, "notes.txt", &err) && st->indexOf(0, "README.TXT") >= 0 && st->files().size() == 1,
+              "attributes, rename (keeping the case) and delete find the lower-case name by its own bytes: " + err);
+        err.clear();
+        CHECK(!st->deleteFile(0, "readme.txt", &err), "deleting readme.txt doesn't take README.TXT");
+        tv->setCharset("ascii", false);                   // a disc that doesn't take lower-case names: upper-cased, as before
+        CHECK(st->addFile(0, "lower.txt", "x\x1a", 0, QDateTime(), false, &err) && st->indexOf(0, "LOWER.TXT") >= 0 && st->indexOf(0, "lower.txt") < 0,
+              "without lower-case names a name is upper-cased: " + err);
+        CHECK(o.save(&err), "checked save: " + err);
+        Cpm::OpenedDisc o2;
+        CHECK(o2.open(p, &err) && o2.disc().volume(0)->read(Path({"user 0", "README.TXT"}), &d, &err) && d.startsWith("two"),
+              "reopened: " + err);
+        const Cpm::Report r = static_cast<Cpm::CpmVolume *>(o2.disc().volume(0))->cpm()->check();
+        CHECK(r.ok() && r.warnings.isEmpty(), "Torch::Fs check: clean");
+    }
+
     printf("Acorn Disk Wrangler's discs are handed to it\n");
     {
         QByteArray dfs(800 * 256, char(0xE5));             // a DFS disc with one file
