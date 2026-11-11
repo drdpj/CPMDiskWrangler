@@ -344,6 +344,16 @@ bool OpenedDisc::open(const QString &path, const Detect::Candidate &c, QString *
     return attach(c, err);
 }
 
+bool OpenedDisc::load(const QString &path, QString *err) {
+    dw::device::Container img;
+    if (!img.open(path, err)) return false;
+    detach();
+    m_img = img;
+    m_det = Detect::Result();
+    noteFileState();
+    return true;
+}
+
 void OpenedDisc::noteFileState() {
     const QFileInfo fi(m_img.path());
     m_fileTime = fi.lastModified();

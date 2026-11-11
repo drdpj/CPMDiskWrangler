@@ -139,8 +139,12 @@ public:
     OpenedDisc &operator=(const OpenedDisc &) = delete;
     bool open(const QString &path, QString *err);                   // detection's best reading
     bool open(const QString &path, const Detect::Candidate &c, QString *err);
-    // The window opens the container and runs detection itself (Tools > Disc format re-reads it): attach a reading of
-    // the container as it is, or detach every volume (the container stays open). attach's err names the side ("side
+    // The window's open (step 5g): the file's container opened and its state noted, no reading attached yet. The
+    // window runs detection, the kit's open pipeline decides (ask, hand over), and the window attaches the reading
+    // chosen. A file that can't be opened leaves the document as it was.
+    bool load(const QString &path, QString *err);
+    // The window runs detection itself (Tools > Disc format re-reads it): attach a reading of the container as it is,
+    // or detach every volume (the container stays open). attach's err names the side ("side
     // 1: ...") when the format has a filesystem on each side.
     bool attach(const Detect::Candidate &c, QString *err);
     void detach();

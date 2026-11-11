@@ -85,10 +85,11 @@ private:
 };
 
 // The main window: DiskWranglerCore's DiscWindow (step 5c) over a Cpm::OpenedDisc. The kit does the rows, the
-// selection, the title, Save / Save As / Revert / Close, Delete, Extract and every import (step 5e: the import session,
-// with CP/M's questions and rules as its hooks); this class fills its hooks and keeps the rest of CP/M Disk Wrangler's
-// window (opening and detection, the format, character sets, the dialogs) until the later series of step 5 move each
-// onto the kit.
+// selection, the title, Save / Save As / Revert / Close, Delete, Extract, every import (step 5e: the import session,
+// with CP/M's questions and rules as its hooks), Properties, Disc label and Check (step 5f) and opening (step 5g: the
+// open pipeline, with CP/M's detection, its "not CP/M" message and the format dialog as its hooks); this class fills
+// its hooks and keeps the rest of CP/M Disk Wrangler's window (the format, character sets, the Tools dialogs) until
+// 5h moves them onto the kit.
 class MainWindow : public dw::ui::DiscWindow {
     Q_OBJECT
 public:
@@ -106,7 +107,7 @@ public:
     void setNat(const QString &id, bool remember);     // the disc's national character set (natchars.h)
     QString natId() const { return m_natId; }
     QString natHint() const { return m_natHint; }
-    bool openImage(const QString &path);
+    bool openImage(const QString &path);                // the kit's openFile (the open pipeline)
     bool newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label);
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
     // user -1: each file's own user number (0 for files without one); side: which side's filesystem
@@ -179,6 +180,13 @@ protected:
     bool propertiesEditor(const QVector<Item> &items, PropertiesEdit *edit) override;
     bool volumeEditor(int side, const QString &key, VolumeEdit *edit) override;
     QString checkText(const dw::fs::Report &all, const QVector<dw::fs::Report> &perSide) const override;
+    bool detectImage(const QString &path, int force, dw::fs::Verdict *verdict) override;
+    bool openDocument(const QString &path, const dw::fs::Verdict &verdict, const dw::fs::Candidate *pick, int force) override;
+    void openStopped() override;
+    NotOpened handOverMessage(const QString &path, const dw::fs::Verdict &verdict, const dw::fs::Candidate &pick) const override;
+    void afterOpen(const QString &path) override;
+    dw::ui::DiscWindow *createWindow() override;
+    bool closeFailedWindow() const override { return false; }     // a new window that didn't open the disc stays open
 
 private slots:
     void setLabelDialog();
@@ -192,6 +200,7 @@ private slots:
 private:
     const Cpm::File *fileOf(int side, int user, const QString &name) const;   // the side's file of that user and name
     bool attachFormat(const Detect::Candidate &c, QString *err);
+    NotOpened notOpened(const QString &path) const;    // "<file>, how it was read, why it isn't CP/M" with Choose a format...
     // The disc's national character set (natchars.h): how names and text are shown, extracted, added and viewed.
     Nat::Set nat() const { return Nat::find(m_natId); }
     QString rememberedNat() const;

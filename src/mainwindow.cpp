@@ -480,44 +480,60 @@ bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
     return true;
 }
 
-bool MainWindow::openImage(const QString &path) {
-    if (image().isOpen() && !confirmDiscard()) return false;
+bool MainWindow::openImage(const QString &path) { return openFile(path); }
+
+// The open pipeline (the kit's openFile): the file read and detected here, the verdict decided by the kit (asked
+// about, or handed to Acorn Disk Wrangler), the reading attached here.
+bool MainWindow::detectImage(const QString &path, int, dw::fs::Verdict *verdict) {
     QString err;
-    dw::device::Container img;
-    if (!img.open(path, &err)) { message("Open", QString("%1:\n%2").arg(path, err)); return false; }
-    detachAll();
-    image() = img;
+    if (!m_doc.load(path, &err)) { message("Open", QString("%1:\n%2").arg(path, err)); return false; }
     QApplication::setOverrideCursor(Qt::WaitCursor);
     m_det = Detect::detect(image(), rememberedFormat());
     QApplication::restoreOverrideCursor();
-    m_doc.noteFileState();
     m_doc.setSafe(m_det.safeToWrite);
     m_detIndex = 0;
     // Detection by tiers (DiskWranglerCore): CP/M's reading against a recogniser for Acorn Disk Wrangler's discs. A disc
     // that is plainly Acorn's is opened there; one that reads as CP/M and also looks like Acorn's is asked about.
-    const dw::fs::Verdict verdict = Cpm::verdict(image(), path, m_det);
-    const dw::fs::Candidate *pick = verdict.bestCandidate();
-    if (verdict.action == dw::fs::Verdict::Ask && !autoAnswer) {
-        const int a = dw::ui::askWhich(this, path, *verdict.bestCandidate(), *verdict.rivalCandidate());
-        if (a < 0) { detachAll(); refresh(); return false; }
-        if (a == 1) pick = verdict.rivalCandidate();
-    }
-    const bool handOff = pick && pick->foreign();
-    if (handOff || m_det.ranked.isEmpty() || !attachFormat(m_det.ranked.first(), &err)) {
-        detachAll();
-        refresh();
-        // started in Acorn Disk Wrangler (it says so), or the message as before, with where to get it
-        if (handOff && dw::ui::handOff(this, *pick, path, QString(), QString(), !autoAnswer, !autoAnswer)) return false;
-        if (!autoAnswer) {
-            QMessageBox box(QMessageBox::Warning, "Open", QString("%1\n\n%2\n%3").arg(QFileInfo(path).fileName(), m_det.physical, detectionText(m_det)),
-                            QMessageBox::Ok, this);
-            if (handOff) box.setInformativeText(dw::ui::releasesLink(pick->owner));
-            QPushButton *fmt = box.addButton("Choose a format...", QMessageBox::ActionRole);
-            box.exec();
-            if (box.clickedButton() == fmt) formatDialog();
-        }
+    *verdict = Cpm::verdict(image(), path, m_det);
+    return true;
+}
+
+// Not read as CP/M (nothing to attach, or the reading can't be attached): the message as before, with the format dialog
+// a button away. The file stays open, so Choose a format... can read it another way.
+bool MainWindow::openDocument(const QString &path, const dw::fs::Verdict &, const dw::fs::Candidate *, int) {
+    QString err;
+    if (m_det.ranked.isEmpty() || !attachFormat(m_det.ranked.first(), &err)) {
+        openStopped();
+        showNotOpened(path, notOpened(path));
         return false;
     }
+    return true;
+}
+
+void MainWindow::openStopped() {
+    detachAll();
+    refresh();
+}
+
+dw::ui::DiscWindow::NotOpened MainWindow::notOpened(const QString &path) const {
+    NotOpened m;
+    m.title = "Open";
+    m.text = QString("%1\n\n%2\n%3").arg(QFileInfo(path).fileName(), m_det.physical, detectionText(m_det));
+    m.warning = true;
+    m.format = Qt::AutoText;
+    m.selectable = false;
+    auto *self = const_cast<MainWindow *>(this);
+    m.buttons = {{"Choose a format...", [self] { self->formatDialog(); }}};
+    return m;
+}
+
+// Acorn Disk Wrangler wasn't started (not found, or it handed the disc here): CP/M's own message, which the kit gives the
+// link to get it and Locate...
+dw::ui::DiscWindow::NotOpened MainWindow::handOverMessage(const QString &path, const dw::fs::Verdict &, const dw::fs::Candidate &) const {
+    return notOpened(path);
+}
+
+void MainWindow::afterOpen(const QString &) {
     if (image().needsPadding()) image().markForSave();
     m_natId = Nat::find(rememberedNat()).id;
     autoLower();
@@ -529,7 +545,13 @@ bool MainWindow::openImage(const QString &path) {
             m_natHint = "names or text use [ \\ ] { | } between letters, which may be national letters";
     }
     refresh();
-    return true;
+}
+
+dw::ui::DiscWindow *MainWindow::createWindow() {
+    auto *w = new MainWindow;
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->show();
+    return w;
 }
 
 bool MainWindow::newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label) {
@@ -583,25 +605,14 @@ bool MainWindow::useFormat(const Detect::Candidate &c, bool allowChanges) {
     return true;
 }
 
-void MainWindow::newWindow() {
-    auto *w = new MainWindow;
-    w->setAttribute(Qt::WA_DeleteOnClose);
-    w->show();
-}
+void MainWindow::newWindow() { createWindow(); }
 
 void MainWindow::openDialog() {
     QString p = QFileDialog::getOpenFileName(this, "Open CP/M disc image", AppSettings().value("lastDir").toString(),
                                              "Disc images (" + dw::anyCase("*.imd *.dsk *.td0 *.img *.ima *.raw *.h8d *.ssd *.dsd *.bin") + ");;All files (*)");
     if (p.isEmpty()) return;
     AppSettings().setValue("lastDir", QFileInfo(p).absolutePath());
-    if (image().isOpen()) {
-        auto *w = new MainWindow;
-        w->setAttribute(Qt::WA_DeleteOnClose);
-        w->show();
-        w->openImage(p);
-    } else {
-        openImage(p);
-    }
+    openInWindow(p);                              // in a new window if this one has an image open
 }
 
 void MainWindow::newImageDialog() {
@@ -612,12 +623,7 @@ void MainWindow::newImageDialog() {
     QString p = QFileDialog::getSaveFileName(this, "New disc image", AppSettings().value("lastDir").toString() + "/" + f.name + (f.separateSides ? "-2sides" : "") + "." + ext,
                                              QString("Disc image (*.%1)").arg(ext));
     if (p.isEmpty()) return;
-    MainWindow *w = this;
-    if (image().isOpen()) {
-        w = new MainWindow;
-        w->setAttribute(Qt::WA_DeleteOnClose);
-        w->show();
-    }
+    MainWindow *w = image().isOpen() ? static_cast<MainWindow *>(createWindow()) : this;
     w->newImage(p, d.kind(), f, d.stamps(), d.label());
 }
 
@@ -844,11 +850,8 @@ void MainWindow::onPathsDropped(const QStringList &paths, QTreeWidgetItem *targe
         QTimer::singleShot(0, this, [this, p] {
             for (int i = 0; i < p.size(); ++i) {
                 if (QFileInfo(p[i]).isDir()) continue;
-                if (dropOpensImage()) { openImage(p[i]); continue; }
-                auto *w = new MainWindow;
-                w->setAttribute(Qt::WA_DeleteOnClose);
-                w->show();
-                w->openImage(p[i]);
+                if (dropOpensImage()) { openFile(p[i]); continue; }
+                createWindow()->openFile(p[i]);
             }
         });
         return;
