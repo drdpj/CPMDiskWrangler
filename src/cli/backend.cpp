@@ -292,31 +292,6 @@ bool Backend::readHost(const QStringList &paths, const PutOptions &, QVector<dw:
 
 // ------------------------------------------------------------------------------------------------ before importing
 
-// Extraction to a host that can't tell LONSEDDE.L from lonsedde.l adds _2 (or _1...) to one of them. Dropped back, that
-// suffix is taken off again - but only when what is left matches another name dropped with it, so a real foo_1.txt stays.
-static void withoutClashSuffixes(QVector<dw::TransferItem> *items) {
-    QSet<QString> names;
-    for (const dw::TransferItem &x : *items) if (!x.isDir && x.sourceFs.isEmpty()) names.insert(x.name.toLower());
-    static const QRegularExpression re("^(.*)_(\\d+)(\\.[^.]*)?$");
-    for (dw::TransferItem &x : *items) {
-        if (x.isDir || !x.sourceFs.isEmpty()) continue;
-        const QRegularExpressionMatch m = re.match(x.name);
-        if (!m.hasMatch()) continue;
-        const QString stem = m.captured(1) + m.captured(3);
-        if (names.contains(stem.toLower())) x.name = stem;
-    }
-}
-
-// "user3", "User 3", "u3" or "3": a host folder that stands for a CP/M user number (as extraction writes them).
-static int userFromFolderName(const QString &n) {
-    QString s = n.trimmed().toLower();
-    if (s.startsWith("user")) s = s.mid(4).trimmed();
-    else if (s.startsWith('u')) s = s.mid(1);
-    bool ok = false;
-    const int u = s.toInt(&ok);
-    return ok && u >= 0 && u <= 31 && !s.isEmpty() && s.size() <= 2 ? u : -1;
-}
-
 static void setUser(dw::TransferItem *t, int user) {
     QJsonObject c = t->attrs.value("cpm");
     c["user"] = user;
@@ -327,11 +302,11 @@ static void setUser(dw::TransferItem *t, int user) {
 // not made. Other folders are left for the importer to flatten, with a warning.
 static QVector<dw::TransferItem> placeUsers(const QVector<dw::TransferItem> &in, int override, int maxUser) {
     QVector<dw::TransferItem> level = in;
-    withoutClashSuffixes(&level);
+    RetroFiles::withoutClashSuffixes(&level);
     QVector<dw::TransferItem> out;
     for (dw::TransferItem x : level) {
         if (x.isDir) {
-            int u = userFromFolderName(x.name);
+            int u = RetroFiles::userFromFolderName(x.name);
             if (u > maxUser) u = -1;
             const int use = u >= 0 ? u : override;
             QVector<dw::TransferItem> kids = placeUsers(x.kids, use, maxUser);

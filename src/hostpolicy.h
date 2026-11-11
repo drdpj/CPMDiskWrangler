@@ -15,12 +15,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-// hostpolicy.h - how CP/M items become host files (QtCore only: the command-line program uses it too): the Z padding
-// trim and CpmPolicy, the policy Extract to host and drag-out write with.
+// hostpolicy.h - how CP/M items become host files and host files come back (QtCore only: the command-line program uses
+// it too): the Z padding trim and CpmPolicy, the policy Extract to host and drag-out write with; and, for files coming
+// in, the host's clash suffixes taken off and the folders that stand for user numbers.
 #pragma once
 
 #include <QByteArray>
+#include <QString>
+#include <QVector>
 #include <diskwrangler/xfer/retrofiles.h>
+#include <diskwrangler/xfer/transferitem.h>
 
 namespace RetroFiles {
 
@@ -41,5 +45,15 @@ public:
 private:
     bool m_folders, m_trim;
 };
+
+// ----- files coming in from the host (the window's imports and cpmdw put alike)
+
+// Extracting to a host that can't tell LONSEDDE.L from lonsedde.l adds _2 (or _1...) to one of them. Dropped back, that
+// suffix is taken off again - but only when what is left matches another host file name of the same list, so a real
+// foo_1.txt stays. One level of a folder at a time (callers apply it to each folder's own list).
+void withoutClashSuffixes(QVector<dw::TransferItem> *items);
+
+// "user3", "User 3", "u3" or "3": a host folder that stands for a CP/M user number (as extraction writes them); -1 if not.
+int userFromFolderName(const QString &name);
 
 } // namespace RetroFiles

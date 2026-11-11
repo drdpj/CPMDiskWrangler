@@ -21,6 +21,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMap>
+#include <QRegularExpression>
+#include <QSet>
 #include <diskwrangler/xfer/hostname.h>
 
 namespace RetroFiles {
@@ -76,6 +78,30 @@ bool CpmPolicy::planNames(const QVector<dw::TransferItem> &items, const QString 
             else (*names)[i] = u.unique(exact, true);
         }
     return true;
+}
+
+// ------------------------------------------------------------------------------ files coming in
+
+void withoutClashSuffixes(QVector<dw::TransferItem> *items) {
+    QSet<QString> names;
+    for (const dw::TransferItem &x : *items) if (!x.isDir && x.sourceFs.isEmpty()) names.insert(x.name.toLower());
+    static const QRegularExpression re("^(.*)_(\\d+)(\\.[^.]*)?$");
+    for (dw::TransferItem &x : *items) {
+        if (x.isDir || !x.sourceFs.isEmpty()) continue;
+        const QRegularExpressionMatch m = re.match(x.name);
+        if (!m.hasMatch()) continue;
+        const QString stem = m.captured(1) + m.captured(3);
+        if (names.contains(stem.toLower())) x.name = stem;
+    }
+}
+
+int userFromFolderName(const QString &n) {
+    QString s = n.trimmed().toLower();
+    if (s.startsWith("user")) s = s.mid(4).trimmed();
+    else if (s.startsWith('u')) s = s.mid(1);
+    bool ok = false;
+    const int u = s.toInt(&ok);
+    return ok && u >= 0 && u <= 31 && !s.isEmpty() && s.size() <= 2 ? u : -1;
 }
 
 } // namespace RetroFiles
