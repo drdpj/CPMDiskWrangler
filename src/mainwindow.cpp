@@ -1206,18 +1206,25 @@ void MainWindow::renameSelected() {
     refresh();
 }
 
-void MainWindow::editProperties() {
-    QVector<FileRef> refs = selectedRefs();
-    if (refs.isEmpty()) return;
+// Properties: the dialog is this program's, the change the kit's (DiscWindow::editProperties applies what this returns
+// in one Disc::transact and refreshes). Per file: the attribute bits that differ, then a rename (a new name or user).
+bool MainWindow::propertiesEditor(const QVector<Item> &items, PropertiesEdit *edit) {
+    QVector<FileRef> refs;
+    for (const Item &i : items) refs << refOf(i);
+    auto fileAt = [this](const FileRef &r) -> const Cpm::File & {
+        const Cpm::Store *st = m_doc.store(r.side);
+        return st->files()[st->indexOf(r.user, r.name)];
+    };
     QDialog d(this);
     d.setWindowTitle(refs.size() == 1 ? "Properties - " + toHostName(refs[0].name) : QString("Properties - %1 files").arg(refs.size()));
     auto *fl = new QFormLayout;
-    const Cpm::File *one = refs.size() == 1 ? &vol(refs[0].side).files()[vol(refs[0].side).indexOf(refs[0].user, refs[0].name)] : nullptr;
+    const Cpm::File *one = refs.size() == 1 ? &fileAt(refs[0]) : nullptr;
     QLineEdit *name = nullptr;
     if (one) {
         name = new QLineEdit(toHostName(one->name));
         fl->addRow("Name", name);
-        const QString unit = vol(refs[0].side).format().torch ? "sector" : "block";   // Torch: index sectors included
+        const dw::fs::Volume *v = m_doc.disc().volume(refs[0].side);
+        const QString unit = v && v->fsId() == "torch" ? "sector" : "block";   // Torch: index sectors included
         fl->addRow("Size", new QLabel(QString("%1 bytes (%2 records%3), %4 %8%5, %6 directory entr%7")
                                           .arg(one->size).arg(one->records).arg(one->exactSize ? ", exact size recorded" : "")
                                           .arg(one->blocks).arg(one->blocks == 1 ? "" : "s").arg(one->entries.size())
@@ -1239,7 +1246,7 @@ void MainWindow::editProperties() {
     for (Box &b : boxes) {
         b.cb = new QCheckBox(b.label);
         int on = 0;
-        for (const FileRef &r : refs) if (vol(r.side).files()[vol(r.side).indexOf(r.user, r.name)].attrs & b.bit) ++on;
+        for (const FileRef &r : refs) if (fileAt(r).attrs & b.bit) ++on;
         if (on == 0) b.cb->setCheckState(Qt::Unchecked);
         else if (on == refs.size()) b.cb->setCheckState(Qt::Checked);
         else { b.cb->setTristate(true); b.cb->setCheckState(Qt::PartiallyChecked); }
@@ -1252,60 +1259,65 @@ void MainWindow::editProperties() {
     lay->addWidget(bb);
     connect(bb, &QDialogButtonBox::accepted, &d, &QDialog::accept);
     connect(bb, &QDialogButtonBox::rejected, &d, &QDialog::reject);
-    if (d.exec() != QDialog::Accepted || !writable()) return;
-    auto snap = image().snapshot();
-    QString err;
-    bool ok = true;
+    if (d.exec() != QDialog::Accepted || !writable()) return false;
     for (const FileRef &r : refs) {
-        Cpm::Volume &v = vol(r.side);
-        int i = v.indexOf(r.user, r.name);
+        const Cpm::Store *st = m_doc.store(r.side);
+        const int i = st->indexOf(r.user, r.name);
         if (i < 0) continue;
-        quint16 a = v.files()[i].attrs;
+        const quint16 was = st->files()[i].attrs;
+        quint16 a = was;
         for (const Box &b : boxes) {
             if (b.cb->checkState() == Qt::Checked) a |= b.bit;
             else if (b.cb->checkState() == Qt::Unchecked) a &= quint16(~b.bit);
         }
-        if (ok && a != v.files()[i].attrs) ok = v.setAttrs(r.user, r.name, a, &err);
-        QString newName = name ? toDiscName(name->text().trimmed()) : r.name;
-        int newUser = user->value() >= 0 ? user->value() : r.user;
-        if (ok && (newName != r.name || newUser != r.user)) ok = v.rename(r.user, r.name, newUser, newName, &err);
+        PropertyChange c;
+        c.item = itemOf(r);
+        if (a != was) c.attrs = Cpm::CpmVolume::attrValues(a);
+        const QString newName = name ? toDiscName(name->text().trimmed()) : r.name;
+        const int newUser = user->value() >= 0 ? user->value() : r.user;
+        if (newName != r.name || newUser != r.user) c.to = itemOf(FileRef(r.side, newUser, newName)).path;
+        edit->changes << c;
     }
-    if (!ok) { image().restore(snap); for (int k = 0; k < sides(); ++k) vol(k).reload(); message("Properties", "Nothing was changed: " + err); }
-    refresh();
+    return true;
 }
 
-void MainWindow::setLabelDialog() {
+void MainWindow::setLabelDialog() { editVolume(currentSide(), "label"); }
+
+// The disc label: this program's question, the kit's change (DiscWindow::editVolume).
+bool MainWindow::volumeEditor(int side, const QString &, VolumeEdit *edit) {
+    const Cpm::Store *st = m_doc.store(side);
     bool ok;
-    QString n = QInputDialog::getText(this, "Disc label", "Label (CP/M 3, 8.3 characters):", QLineEdit::Normal, vol(currentSide()).label().name, &ok);
-    if (!ok) return;
-    QString err;
-    if (!vol(currentSide()).setLabel(n, &err)) message("Disc label", err);
-    refresh();
+    QString n = QInputDialog::getText(this, "Disc label", "Label (CP/M 3, 8.3 characters):", QLineEdit::Normal,
+                                      st ? st->label().name : QString(), &ok);
+    if (!ok) return false;
+    edit->values = {{"label", n}};
+    edit->title = "Disc label";
+    return true;
 }
 
 // ------------------------------------------------------------------------------------------- tools
 
-void MainWindow::checkDisc() {
+// Check disc: the kit runs every side's check (DiscWindow::checkDisc); this program words the report, side by side.
+QString MainWindow::checkText(const dw::fs::Report &, const QVector<dw::fs::Report> &perSide) const {
     QString s;
-    bool allOk = true;
-    for (int side = 0; side < sides(); ++side) {
-        const Cpm::Volume &v = vol(side);
-        Cpm::Report r = v.check();
-        allOk = allOk && r.ok();
-        if (sides() > 1) s += QString("Side %1:\n").arg(side);
+    for (int side = 0; side < perSide.size(); ++side) {
+        const dw::fs::Report &r = perSide[side];
+        const Cpm::Store *st = m_doc.store(side);
+        const dw::fs::Volume *v = m_doc.disc().volume(side);
+        if (perSide.size() > 1) s += QString("Side %1:\n").arg(side);
         if (r.ok() && r.warnings.isEmpty()) s += "No problems found.\n";
         if (!r.errors.isEmpty()) s += "Errors:\n" + r.errors.join("\n") + "\n";
         if (!r.warnings.isEmpty()) s += "Warnings:\n" + r.warnings.join("\n") + "\n";
-        if (v.format().torch)
+        if (v->fsId() == "torch")
             s += QString("%1 files; %2 of %3 directory entries free; %4 of %5 sectors free (Torch CP/N).\n\n")
-                     .arg(v.files().size()).arg(v.freeEntries()).arg(Torch::Entries)
-                     .arg(v.freeBlocks()).arg(Torch::Sectors - Torch::Reserved);
+                     .arg(st->files().size()).arg(st->freeEntries()).arg(Torch::Entries)
+                     .arg(st->freeBlocks()).arg(Torch::Sectors - Torch::Reserved);
         else
             s += QString("%1 files in %2 directory entries; %3 of %4 entries free; %5 of %6 blocks free.\n\n")
-                     .arg(v.files().size()).arg(v.usedEntries()).arg(v.freeEntries()).arg(v.format().maxdir)
-                     .arg(v.freeBlocks()).arg(v.format().dsm + 1);
+                     .arg(st->files().size()).arg(st->usedEntries()).arg(st->freeEntries()).arg(st->format().maxdir)
+                     .arg(st->freeBlocks()).arg(st->format().dsm + 1);
     }
-    message("Check disc", s.trimmed(), !allOk);
+    return s.trimmed();
 }
 
 void MainWindow::discInfo() {

@@ -147,7 +147,6 @@ public:
     void copySelected() override;
     void paste() override;
     void renameSelected() override;
-    void editProperties() override;
     void about() override;
 
 protected:
@@ -177,10 +176,12 @@ protected:
     dw::xfer::Conflict askReplace(int side, const dw::fs::Path &target, const dw::fs::Entry &existing,
                                   const dw::TransferItem &incoming) override;
     void importSummary(const dw::xfer::ImportResult &r) override;
+    bool propertiesEditor(const QVector<Item> &items, PropertiesEdit *edit) override;
+    bool volumeEditor(int side, const QString &key, VolumeEdit *edit) override;
+    QString checkText(const dw::fs::Report &all, const QVector<dw::fs::Report> &perSide) const override;
 
 private slots:
     void setLabelDialog();
-    void checkDisc();
     void discInfo();
     void formatDialog();
     void addDiskdefsDialog();
