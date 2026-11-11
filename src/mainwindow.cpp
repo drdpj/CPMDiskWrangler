@@ -884,66 +884,76 @@ void MainWindow::onInternalDrop(const QByteArray &payload, QTreeWidgetItem *targ
         QVector<dw::TransferItem> files;
         QString err;
         if (!w->exportForCopy(chosen, &files, &err)) { message("Copy", err); return; }
-        QVector<XItem> items;                                // the import code (until step 5e) takes XItems
-        for (const dw::TransferItem &t : files) items << RetroFiles::fromTransfer(t);
-        ImportCtx c;
-        importItems(items, u, side, c);
-        importSummary(c);
+        importInto(files, u, side);
     });
 }
 
 bool MainWindow::importRetroFiles(const QByteArray &json, int user, int side) {
-    QVector<XItem> items;
+    QVector<dw::TransferItem> items;
     QString err;
-    if (!RetroFiles::readJson(json, &items, &err)) { message("Drop", err); return false; }
-    ImportCtx c;
-    importItems(items, user, side, c);
-    importSummary(c);
-    return c.errors.isEmpty();
+    if (!dw::xfer::readJson(json, &items, &err)) { message("Drop", err); return false; }
+    return importInto(items, user, side).errors.isEmpty();
 }
 
-static XItem hostItem(const QString &path, QStringList *errors, int depth = 0) {
+// A host file or folder as an item to import. A file that can't be read (or is too large) is left out, with its error.
+static bool hostItem(const QString &path, dw::TransferItem *x, QVector<dw::xfer::ImportError> *errors, int depth = 0) {
     QFileInfo fi(path);
-    XItem x;
-    x.name = fi.fileName();
+    x->name = fi.fileName();
     if (fi.isDir()) {
-        x.isDir = true;
-        if (depth > 8) return x;
+        x->isDir = true;
+        if (depth > 8) return true;
         QDir d(path);
-        for (const QFileInfo &k : d.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
-            x.kids << hostItem(k.absoluteFilePath(), errors, depth + 1);
-        return x;
+        for (const QFileInfo &k : d.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
+            dw::TransferItem kid;
+            if (hostItem(k.absoluteFilePath(), &kid, errors, depth + 1)) x->kids << kid;
+        }
+        return true;
     }
+    auto failed = [&](const QString &why) {
+        dw::xfer::ImportError e;
+        e.kind = dw::xfer::ImportError::Failed;
+        e.message = e.why = fi.fileName() + ": " + why;
+        e.from = path;
+        errors->append(e);
+        return false;
+    };
     QFile f(path);
-    if (fi.size() > 16 * 1024 * 1024) { errors->append(fi.fileName() + ": too large for a CP/M disc"); x.isDir = true; return x; }
-    if (!f.open(QIODevice::ReadOnly)) { errors->append(fi.fileName() + ": " + f.errorString()); x.isDir = true; return x; }
-    x.data = f.readAll();
-    x.when = fi.lastModified();
-    return x;
+    if (fi.size() > 16 * 1024 * 1024) return failed("too large for a CP/M disc");
+    if (!f.open(QIODevice::ReadOnly)) return failed(f.errorString());
+    x->data = f.readAll();
+    x->when = fi.lastModified();
+    return true;
 }
 
 void MainWindow::importPaths(const QStringList &paths, int user, int side) {
     if (!writable()) { message("Add files", "The disc is read-only: " + readOnlyReason()); return; }
-    ImportCtx c;
-    QVector<XItem> items;
+    QVector<dw::xfer::ImportError> errors;
+    QVector<dw::TransferItem> items;
     for (const QString &p : paths) {
         if (QFileInfo(p).fileName().endsWith(".inf", Qt::CaseInsensitive)) continue;   // Acorn sidecars: not CP/M files
-        items << hostItem(p, &c.errors);
+        dw::TransferItem x;
+        if (hostItem(p, &x, &errors)) items << x;
     }
-    importItems(items, user, side, c);
-    importSummary(c);
+    importInto(items, user, side, errors);
+}
+
+dw::xfer::ImportResult MainWindow::importInto(const QVector<dw::TransferItem> &items, int user, int side,
+                                              const QVector<dw::xfer::ImportError> &readErrors) {
+    side = qBound(0, side, qMax(0, sides() - 1));
+    const dw::fs::Path dir = user >= 0 ? dw::fs::Path({Cpm::CpmVolume::userName(user)}) : dw::fs::Path();
+    return importItems(side, dir, items, {}, readErrors);
 }
 
 // Host file names with letters plain ASCII can't hold (lønseddel.l): offer to choose the national character set for this
 // disc first, so the letters are written the way that country's machines wrote them. False if the user cancelled.
-static void hostNames(const QVector<XItem> &items, QStringList *out) {
-    for (const XItem &x : items) {
+static void hostNames(const QVector<dw::TransferItem> &items, QStringList *out) {
+    for (const dw::TransferItem &x : items) {
         if (x.isDir) hostNames(x.kids, out);
-        else if (x.srcFs.isEmpty()) *out << x.name;
+        else if (x.sourceFs.isEmpty()) *out << x.name;
     }
 }
 
-bool MainWindow::askNatForNames(const QVector<XItem> &items) {
+bool MainWindow::askNatForNames(const QVector<dw::TransferItem> &items) {
     if (m_natId != "ascii" || autoAnswer || sides() < 1) return true;
     QStringList names;
     hostNames(items, &names);
@@ -971,48 +981,48 @@ bool MainWindow::askNatForNames(const QVector<XItem> &items) {
     return true;
 }
 
-// Extracting to a host that can't tell LØNSEDDE.L from lønsedde.l adds _2 (or _1...) to one of them. Dropped back, that
-// suffix is taken off again - but only when what is left matches another name dropped with it, so a real foo_1.txt stays.
-static QVector<XItem> withoutClashSuffixes(const QVector<XItem> &items) {
-    QSet<QString> names;
-    for (const XItem &x : items) if (!x.isDir && x.srcFs.isEmpty()) names.insert(x.name.toLower());
-    static const QRegularExpression re("^(.*)_(\\d+)(\\.[^.]*)?$");
-    QVector<XItem> out = items;
-    for (XItem &x : out) {
-        if (x.isDir || !x.srcFs.isEmpty()) continue;
-        const QRegularExpressionMatch m = re.match(x.name);
-        if (!m.hasMatch()) continue;
-        const QString stem = m.captured(1) + m.captured(3);
-        if (names.contains(stem.toLower())) x.name = stem;
-    }
-    return out;
+static void withoutClashSuffixesAll(QVector<dw::TransferItem> *items) {      // each folder's list on its own
+    RetroFiles::withoutClashSuffixes(items);
+    for (dw::TransferItem &x : *items) if (x.isDir) withoutClashSuffixesAll(&x.kids);
 }
 
-void MainWindow::importItems(const QVector<XItem> &itemsIn, int user, int side, ImportCtx &c) {
-    const QVector<XItem> items = withoutClashSuffixes(itemsIn);
-    side = qBound(0, side, qMax(0, sides() - 1));
-    if (!writable()) { c.errors << "The disc is read-only: " + readOnlyReason(); return; }
-    if (!c.natAsked) {
-        c.natAsked = true;
-        if (!askNatForNames(items)) { c.cancelled = true; return; }
-    }
-    for (const XItem &x : items) {
-        if (c.cancelled) return;
-        if (x.isDir) {
-            int u = userFromFolderName(x.name);
-            if (u > maxUser()) u = -1;
-            if (u < 0 && !x.kids.isEmpty()) c.flattened++;
-            importItems(x.kids, u >= 0 ? u : user, side, c);
-            continue;
+// The import session's hooks: CP/M Disk Wrangler's own rules where they are not cpmdw's (the volume's placeIncoming).
+// The drop target's user area wins over the user an item brings with it; a name made twice in one import is asked
+// about, as a file that exists; a file exists only under exactly its name (the directory's bytes, as Store::indexOf
+// compares them); a replacing file has the attributes it brings (none, from the host); host folders
+// userN are user areas, other folders are flattened; names are made valid with this window's character set and case
+// rule, and each one made valid is listed in the summary.
+dw::ui::ImportHooks MainWindow::importHooks(int) {
+    m_importRenamed.clear();                   // asked once per import, before anything is placed
+    dw::ui::ImportHooks h;
+    h.options.renameRepeats = false;
+    h.options.exactNames = true;
+    h.prepare = withoutClashSuffixesAll;
+    h.beforeRun = [this](const QVector<dw::TransferItem> &items) { return askNatForNames(items); };
+    h.dirHook = [this](const dw::TransferItem &folder, const dw::fs::Path &) {
+        dw::xfer::DirChoice c;                 // Flatten, unless it is a user area this disc has
+        int u = RetroFiles::userFromFolderName(folder.name);
+        if (u > maxUser()) u = -1;
+        if (u >= 0) {
+            c.action = dw::xfer::DirChoice::Into;
+            c.dir = dw::fs::Path({Cpm::CpmVolume::userName(u)});
         }
-        importOne(x, user, side, c);
-    }
+        return c;
+    };
+    h.place = [this](const dw::TransferItem &item, const dw::fs::Path &target) { return placeIncoming(item, target); };
+    h.attrs = [](const dw::TransferItem &item, const dw::fs::Entry *) {
+        const XItem x = RetroFiles::fromTransfer(item);      // the attributes the window reads from each source
+        dw::fs::AttrValues a{{"readonly", x.readOnly}, {"system", x.system}, {"archive", x.archive}};
+        for (int k = 0; k < 4; ++k) a[QString("f%1").arg(k + 1)] = bool(x.interfaceAttrs & (1 << k));
+        return a;
+    };
+    return h;
 }
 
-void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &c) {
-    Cpm::Volume &cv = vol(side);
-    int user = targetUser >= 0 ? targetUser : (x.user >= 0 ? x.user : 0);
-    if (user > maxUser()) user = 0;
+dw::fs::Placement MainWindow::placeIncoming(const dw::TransferItem &item, const dw::fs::Path &target) {
+    const XItem x = RetroFiles::fromTransfer(item);          // the user and name the window reads from each source
+    int user = target.isRoot() ? (x.user >= 0 ? x.user : 0) : Cpm::CpmVolume::userOf(target.parts.value(0));
+    if (user > maxUser() || user < 0) user = 0;
     // A name from another CP/M disc is kept exactly (its [ \ ] | were letters there); only a host file name is read as
     // Unicode and put into this disc's national set. Names from other filesystems are bytes: no set applies.
     const bool fromCpm = x.srcFs == "cpm", fromHost = x.srcFs.isEmpty();
@@ -1021,59 +1031,45 @@ void MainWindow::importOne(const XItem &x, int targetUser, int side, ImportCtx &
     QString why, name = want;
     if (!Cpm::Volume::validName(name, &why, extra)) {
         name = Cpm::Volume::toCpmName(fromHost ? want : x.name, extra);
-        c.renamed << QString("%1 -> %2").arg(x.name, name);
+        m_importRenamed << QString("%1 -> %2").arg(x.name, name);
     }
-    quint16 attrs = quint16((x.readOnly ? Cpm::AttrRO : 0) | (x.system ? Cpm::AttrSYS : 0) | (x.archive ? Cpm::AttrARC : 0) |
-                            (x.interfaceAttrs & 0x0F) << 4);
-    bool replace = false;
-    int ix = cv.indexOf(user, name);
-    if (ix >= 0) {
-        int choice = c.policy;
-        if (choice == 0) {
-            if (autoAnswer) choice = 1;
-            else {
-                QMessageBox box(QMessageBox::Question, "File exists", QString("%1 already exists in user %2%3. Replace it?").arg(name).arg(user).arg(sides() > 1 ? QString(" on side %1").arg(side) : QString()),
-                                QMessageBox::NoButton, this);
-                QPushButton *rep = box.addButton("Replace", QMessageBox::AcceptRole);
-                QPushButton *repAll = box.addButton("Replace all", QMessageBox::AcceptRole);
-                QPushButton *skip = box.addButton("Skip", QMessageBox::RejectRole);
-                QPushButton *skipAll = box.addButton("Skip all", QMessageBox::RejectRole);
-                box.addButton(QMessageBox::Cancel);
-                box.exec();
-                if (box.clickedButton() == rep) choice = 1;
-                else if (box.clickedButton() == repAll) choice = c.policy = 1;
-                else if (box.clickedButton() == skip) choice = 2;
-                else if (box.clickedButton() == skipAll) choice = c.policy = 2;
-                else { c.cancelled = true; return; }
-            }
-        }
-        if (choice == 2) { c.skipped++; return; }
-        replace = true;
-        if (cv.files()[ix].attrs & Cpm::AttrRO) {      // the user chose to replace a read-only file: clear R/O first
-            QString e;
-            if (!cv.setAttrs(user, name, cv.files()[ix].attrs & ~Cpm::AttrRO, &e)) { c.errors << e; return; }
-        }
-    }
-    QString err;
-    cv.setExtraNameChars(extra);               // this file's own rules; put back to the disc's below
-    const bool added = cv.addFile(user, name, x.data, attrs, x.when, replace, &err);
-    applyNameRules();
-    if (!added) { c.errors << err; return; }
-    c.files++;
-    if (replace) c.replaced++;
+    if (!extra.contains('a')) name = name.toUpper();          // as the disc's own rules write it
+    dw::fs::Placement p;
+    p.dir = dw::fs::Path({Cpm::CpmVolume::userName(user)});
+    p.name = name;
+    return p;
 }
 
-void MainWindow::importSummary(const ImportCtx &c) {
-    refresh();
-    QString s = QString("Added %1 file%2").arg(c.files).arg(c.files == 1 ? "" : "s");
-    if (c.replaced) s += QString(" (%1 replaced)").arg(c.replaced);
-    if (c.skipped) s += QString(", skipped %1").arg(c.skipped);
-    if (c.flattened) s += QString(", %1 folder%2 flattened (CP/M has no folders)").arg(c.flattened).arg(c.flattened == 1 ? "" : "s");
-    if (!c.renamed.isEmpty()) s += QString(", %1 renamed").arg(c.renamed.size());
+dw::xfer::Conflict MainWindow::askReplace(int side, const dw::fs::Path &target, const dw::fs::Entry &, const dw::TransferItem &) {
+    QMessageBox box(QMessageBox::Question, "File exists",
+                    QString("%1 already exists in user %2%3. Replace it?").arg(target.name()).arg(Cpm::CpmVolume::userOf(target.parts.value(0)))
+                        .arg(sides() > 1 ? QString(" on side %1").arg(side) : QString()),
+                    QMessageBox::NoButton, this);
+    QPushButton *rep = box.addButton("Replace", QMessageBox::AcceptRole);
+    QPushButton *repAll = box.addButton("Replace all", QMessageBox::AcceptRole);
+    QPushButton *skip = box.addButton("Skip", QMessageBox::RejectRole);
+    QPushButton *skipAll = box.addButton("Skip all", QMessageBox::RejectRole);
+    box.addButton(QMessageBox::Cancel);
+    box.exec();
+    if (box.clickedButton() == rep) return dw::xfer::Conflict::Replace;
+    if (box.clickedButton() == repAll) return dw::xfer::Conflict::ReplaceAll;
+    if (box.clickedButton() == skip) return dw::xfer::Conflict::Skip;
+    if (box.clickedButton() == skipAll) return dw::xfer::Conflict::SkipAll;
+    return dw::xfer::Conflict::Cancel;
+}
+
+void MainWindow::importSummary(const dw::xfer::ImportResult &r) {
+    const int files = r.added + r.replaced;
+    QString s = QString("Added %1 file%2").arg(files).arg(files == 1 ? "" : "s");
+    if (r.replaced) s += QString(" (%1 replaced)").arg(r.replaced);
+    if (r.skipped) s += QString(", skipped %1").arg(r.skipped);
+    if (r.flattened) s += QString(", %1 folder%2 flattened (CP/M has no folders)").arg(r.flattened).arg(r.flattened == 1 ? "" : "s");
+    if (!m_importRenamed.isEmpty()) s += QString(", %1 renamed").arg(m_importRenamed.size());
     m_status->setText(s + ".");
-    QStringList detail = c.errors;
-    if (!c.renamed.isEmpty() && c.renamed.size() <= 20) detail << "" << "Renamed to CP/M 8.3 names:" << c.renamed;
-    if (!c.errors.isEmpty()) message("Add files", s + ".\n\n" + detail.join("\n"));
+    QStringList detail;
+    for (const dw::xfer::ImportError &e : r.errors) detail << e.why;
+    if (!m_importRenamed.isEmpty() && m_importRenamed.size() <= 20) detail << "" << "Renamed to CP/M 8.3 names:" << m_importRenamed;
+    if (!r.errors.isEmpty()) message("Add files", s + ".\n\n" + detail.join("\n"));
 }
 
 void MainWindow::addFilesDialog() {
@@ -1090,7 +1086,7 @@ void MainWindow::addFilesDialog() {
 // if the disc has changed or its window has closed since. Inside this program a paste uses that copy (the clipboard
 // carries a token naming it); for the desktop and other programs the clipboard offers the files, as a drag does
 // (text/uri-list, the retro-files JSON and GNOME's list), written to a temporary folder only when something asks.
-static QVector<XItem> &clipItems() { static QVector<XItem> v; return v; }
+static QVector<dw::TransferItem> &clipItems() { static QVector<dw::TransferItem> v; return v; }
 static QByteArray &clipToken() { static QByteArray t; return t; }
 
 void MainWindow::copySelected() {
@@ -1100,8 +1096,7 @@ void MainWindow::copySelected() {
     QString err;
     if (!exportForCopy(chosen, &items, &err)) { message("Copy", err); return; }
     static int serial = 0;
-    clipItems().clear();                                   // Paste (until step 5e) imports XItems
-    for (const dw::TransferItem &t : items) clipItems() << RetroFiles::fromTransfer(t);
+    clipItems() = items;
     clipToken() = QByteArray::number(qint64(QCoreApplication::applicationPid())) + ":" + QByteArray::number(++serial);
     auto *m = new dw::DragOutMime([items](QVector<dw::TransferItem> *out, QString *) { *out = items; return true; },
                                   RetroFiles::dragSpec(trimTextOnExtract(), QFileInfo(image().path()).fileName()));
@@ -1155,10 +1150,7 @@ void MainWindow::paste() {
 
 bool MainWindow::pasteItems(const QMimeData *m, int user, int side) {
     if (m->hasFormat(DW_MIME_CLIP) && !clipToken().isEmpty() && m->data(DW_MIME_CLIP) == clipToken()) {
-        const QVector<XItem> items = clipItems();          // copied in this program: nothing written to the host
-        ImportCtx c;
-        importItems(items, user, side, c);
-        importSummary(c);
+        importInto(clipItems(), user, side);               // copied in this program: nothing written to the host
         return true;
     }
     if (m->hasFormat(RetroFiles::MimeType)) {             // another copy of this program, or another tool

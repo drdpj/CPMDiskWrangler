@@ -52,7 +52,8 @@ struct FileRef {
 
 // The file tree: the window kit's pane, which also accepts files and folders from the desktop, items from other
 // windows of this program and retro-files drags from other programs, and drags its selection out the same three ways
-// (the drags out are made from the kit's exportItems since step 5d; the drops move onto the kit's import in step 5e).
+// (the drags out are made from the kit's exportItems since step 5d; what is dropped goes to the kit's import session
+// since step 5e).
 class DropTree : public dw::ui::VolumePane {
     Q_OBJECT
 public:
@@ -84,9 +85,10 @@ private:
 };
 
 // The main window: DiskWranglerCore's DiscWindow (step 5c) over a Cpm::OpenedDisc. The kit does the rows, the
-// selection, the title, Save / Save As / Revert / Close, Delete and Extract; this class fills its hooks and keeps the
-// rest of CP/M Disk Wrangler's window (opening and detection, the format, character sets, imports, copy and drag, the
-// dialogs) until the later series of step 5 move each onto the kit.
+// selection, the title, Save / Save As / Revert / Close, Delete, Extract and every import (step 5e: the import session,
+// with CP/M's questions and rules as its hooks); this class fills its hooks and keeps the rest of CP/M Disk Wrangler's
+// window (opening and detection, the format, character sets, the dialogs) until the later series of step 5 move each
+// onto the kit.
 class MainWindow : public dw::ui::DiscWindow {
     Q_OBJECT
 public:
@@ -109,8 +111,10 @@ public:
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
     // user -1: each file's own user number (0 for files without one); side: which side's filesystem
     void importPaths(const QStringList &paths, int user, int side = 0);
-    void importItems(const QVector<XItem> &items, int user, int side, ImportCtx &c);
     bool importRetroFiles(const QByteArray &json, int user, int side = 0);
+    // The kit's import (importItems) into a user area (-1: each file's own user) of a side: what every import ends in.
+    dw::xfer::ImportResult importInto(const QVector<dw::TransferItem> &items, int user, int side,
+                                      const QVector<dw::xfer::ImportError> &readErrors = {});
     // Copying out (View, Copy, a drag, a drop on another window): the kit's exportItems, as CP/M's copy-out wants it.
     bool exportForCopy(const QVector<Item> &items, QVector<dw::TransferItem> *out, QString *err) const;
     QVector<FileRef> selectedRefs() const;
@@ -169,6 +173,10 @@ protected:
     QString deleteQuestion(const QVector<Item> &items) const override;
     bool canRemove(const Item &item, QString *err) const override;
     std::shared_ptr<dw::xfer::HostPolicy> hostPolicy(const QVector<dw::TransferItem> &items) const override;
+    dw::ui::ImportHooks importHooks(int side) override;
+    dw::xfer::Conflict askReplace(int side, const dw::fs::Path &target, const dw::fs::Entry &existing,
+                                  const dw::TransferItem &incoming) override;
+    void importSummary(const dw::xfer::ImportResult &r) override;
 
 private slots:
     void setLabelDialog();
@@ -195,7 +203,7 @@ private:
     QVector<const Cpm::Volume *> volumePtrs() const;
     QString nameRules() const { return Nat::extraNameChars(nat()) + (lowerDisc() ? Nat::lowerLetters() : QString()); }
     void applyNameRules();             // the character set and case rule, to every side's volume
-    bool askNatForNames(const QVector<XItem> &items);
+    bool askNatForNames(const QVector<dw::TransferItem> &items);
     QString m_natId = "ascii";
     QString m_natHint;                 // shown in the status bar: this disc looks as if it uses a national character set
     QString toHostName(const QString &discName) const { return Nat::toHost(discName, nat()); }
@@ -207,8 +215,8 @@ private:
     int currentSide() const;                            // the side of the selection (0 if none)
     int maxUser() const;
     void detachAll();
-    void importOne(const XItem &x, int user, int side, ImportCtx &c);
-    void importSummary(const ImportCtx &c);
+    dw::fs::Placement placeIncoming(const dw::TransferItem &item, const dw::fs::Path &target);
+    QStringList m_importRenamed;       // "name -> NAME" for each name made valid in the current import (its summary lists them)
     bool clipboardUsable() const;                       // something Paste can add
     bool pasteItems(const QMimeData *m, int user, int side);
     Cpm::Volume &vol(int side) const { return const_cast<Cpm::OpenedDisc &>(m_doc).legacy(side); }

@@ -58,13 +58,6 @@ struct XItem {
     QVector<XItem> kids;
 };
 
-struct ImportCtx {
-    int files = 0, replaced = 0, skipped = 0, flattened = 0;
-    int policy = 0;             // 0 = ask, 1 = replace all, 2 = skip all
-    bool cancelled = false, natAsked = false;
-    QStringList errors, renamed;
-};
-
 // The status line: one line that never makes the window wider. It is given several versions of the text, longest first,
 // shows the longest that fits, and cuts the last with "..." if even that doesn't; the longest is always in the tooltip.
 class StatusLabel : public QLabel {
@@ -86,13 +79,3 @@ protected:
 private:
     QStringList m_v;
 };
-
-// "user3", "User 3", "u3" or "3": a host folder that stands for a CP/M user number (as extraction writes them).
-inline int userFromFolderName(const QString &n) {
-    QString s = n.trimmed().toLower();
-    if (s.startsWith("user")) s = s.mid(4).trimmed();
-    else if (s.startsWith('u')) s = s.mid(1);
-    bool ok = false;
-    int u = s.toInt(&ok);
-    return ok && u >= 0 && u <= 31 && !s.isEmpty() && s.size() <= 2 ? u : -1;
-}
