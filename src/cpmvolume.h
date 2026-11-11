@@ -98,6 +98,7 @@ public:
     dw::fs::Placement placeIncoming(const dw::TransferItem &item, const dw::fs::Path &targetDir) const override;
 
     static quint16 attrBits(const dw::fs::AttrValues &a, quint16 base = 0);
+    static dw::fs::AttrValues attrValues(quint16 bits);        // every attribute, as the bits say
 
 private:
     bool userOfDir(const dw::fs::Path &dir, int *user, QString *err) const;

@@ -176,7 +176,7 @@ quint16 CpmVolume::attrBits(const AttrValues &a, quint16 base) {
     return base;
 }
 
-static AttrValues attrValues(quint16 a) {
+AttrValues CpmVolume::attrValues(quint16 a) {
     return {{"readonly", bool(a & AttrRO)}, {"system", bool(a & AttrSYS)}, {"archive", bool(a & AttrARC)},
             {"f1", bool(a & AttrF1)},       {"f2", bool(a & AttrF2)},       {"f3", bool(a & AttrF3)},
             {"f4", bool(a & AttrF4)}};
