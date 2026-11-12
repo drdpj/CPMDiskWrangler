@@ -1340,8 +1340,8 @@ void MainWindow::discInfo() {
         l << "<b>Format:</b> " + f.displayName().toHtmlEscaped() + " (" + f.origin.toHtmlEscaped() + ")";
         l << "&nbsp;&nbsp;" + f.summary().toHtmlEscaped();
         if (!f.source.isEmpty()) l << "&nbsp;&nbsp;Source: " + f.source.toHtmlEscaped();
-        if (f.torch) {
-            const Cpm::Volume &v = vol(0);
+        if (m_doc.disc().volume(0)->fsId() == "torch") {          // asked of the volume, not of the format (step 5b / 5f)
+            const Cpm::Store &v = *m_doc.store(0);
             l << QString("<b>Filesystem:</b> Torch CP/N - 256 directory entries of 16 bytes in track 0 and track 1 sectors 0-5, "
                          "an allocation map in track 1 sectors 6-7; each file reached through index sectors (one L3 sector "
                          "for up to 128 data sectors, an L2 sector above more), two 128-byte records to a sector");
