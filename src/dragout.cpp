@@ -123,14 +123,4 @@ dw::DragSpec dragSpec(bool trimText, const QString &imageName) {
     return s;
 }
 
-DragOutMime::DragOutMime(Exporter exporter, bool trimText, const QString &imageName)
-    : dw::DragOutMime(
-          [exporter](QVector<dw::TransferItem> *out, QString *err) {
-              QVector<XItem> items;
-              if (!exporter(&items, err)) return false;
-              for (const XItem &x : items) out->append(toTransfer(x));
-              return true;
-          },
-          dragSpec(trimText, imageName)) {}
-
 } // namespace RetroFiles

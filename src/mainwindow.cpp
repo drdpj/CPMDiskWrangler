@@ -476,7 +476,6 @@ bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
         return false;
     }
     applyNameRules();
-    m_current = c;
     return true;
 }
 
@@ -645,7 +644,6 @@ bool MainWindow::beforeSave() {
 void MainWindow::afterSave() { rememberFormat(); }
 
 bool MainWindow::afterSaveAs(const QString &, QString *err) {
-    m_current.raw = image().rawLayout();
     for (int side = 0; side < sides(); ++side)
         if (!m_doc.store(side)->reload(err)) return false;
     if (writable() || m_doc.safe()) rememberFormat();

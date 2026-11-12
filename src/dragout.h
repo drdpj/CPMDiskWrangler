@@ -74,13 +74,4 @@ typedef dw::DragState DragState;
 // it and an exporter of TransferItems (MainWindow::exportForCopy).
 dw::DragSpec dragSpec(bool trimText, const QString &imageName);
 
-// Drag data: this program's private formats (set with setData) plus the files as text/uri-list and retro-files
-// JSON, written only when a drop target first asks for either.
-class DragOutMime : public dw::DragOutMime {
-    Q_OBJECT
-public:
-    typedef std::function<bool(QVector<XItem> *, QString *)> Exporter;
-    DragOutMime(Exporter exporter, bool trimText, const QString &imageName);
-};
-
 } // namespace RetroFiles

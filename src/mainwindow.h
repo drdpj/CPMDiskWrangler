@@ -88,8 +88,8 @@ private:
 // selection, the title, Save / Save As / Revert / Close, Delete, Extract, every import (step 5e: the import session,
 // with CP/M's questions and rules as its hooks), Properties, Disc label and Check (step 5f) and opening (step 5g: the
 // open pipeline, with CP/M's detection, its "not CP/M" message and the format dialog as its hooks); this class fills
-// its hooks and keeps the rest of CP/M Disk Wrangler's window (the format, character sets, the Tools dialogs) until
-// 5h moves them onto the kit.
+// its hooks and keeps what is CP/M's own: the format, the national character sets and lower-case names, and the Tools
+// items (plain actions of this program, as the kit's design has it).
 class MainWindow : public dw::ui::DiscWindow {
     Q_OBJECT
 public:
@@ -106,7 +106,6 @@ public:
     bool lowerNames() const { return m_lowerOk; }
     void setNat(const QString &id, bool remember);     // the disc's national character set (natchars.h)
     QString natId() const { return m_natId; }
-    QString natHint() const { return m_natHint; }
     bool openImage(const QString &path);                // the kit's openFile (the open pipeline)
     bool newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label);
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
@@ -234,7 +233,6 @@ private:
     Cpm::OpenedDisc m_doc;
     Detect::Result m_det;
     int m_detIndex = 0;                // which ranked reading is in use (-1: one set by hand)
-    Detect::Candidate m_current;
     StatusLabel *m_status = nullptr;
     QToolButton *m_natBtn = nullptr;   // right of the status line: "Names: <character set>, <case>"; its menu has the lower-case option and the character set dialog
     QAction *m_actSave = nullptr, *m_actSaveAs = nullptr, *m_actRevert = nullptr, *m_actAdd = nullptr, *m_actDelete = nullptr,
