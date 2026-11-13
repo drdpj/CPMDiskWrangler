@@ -113,8 +113,6 @@ bool NewDiscDialog::selectFormat(const QString &name) {
     return false;
 }
 
-void NewDiscDialog::setKind(dw::device::Kind k) { m_kind->setCurrentIndex(qMax(0, m_kind->findData(int(k)))); }
-
 Cpm::Format NewDiscDialog::format() const {
     QListWidgetItem *it = m_list->currentItem();
     const Cpm::Format *f = it ? Cpm::findFormat(it->data(Qt::UserRole).toString()) : nullptr;

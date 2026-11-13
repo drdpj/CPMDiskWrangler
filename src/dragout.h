@@ -52,18 +52,10 @@ XItem fromTransfer(const dw::TransferItem &t);
 void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderPerUser, bool trimText,
                QStringList *topLevel, QJsonArray *jsonItems, QStringList *errors);
 
-// The retro-files document for files written by writeHost.
-QByteArray makeJson(const QJsonArray &items, const QString &hostDir, const QString &imageName);
-
-// Reads a retro-files document (from this program, Acorn Disk Wrangler or anything else) and the files it lists.
-// Attributes are taken from the "cpm", "fat" and "acorn" namespaces; DFS names lose their directory letter.
-bool readJson(const QByteArray &json, QVector<XItem> *out, QString *err);
-
 // The CP/M ^Z (0x1A) padding after the end of a text file: everything from the first ^Z in the last record on,
 // if the rest of the record is ^Z too. Returns the data unchanged if it doesn't look like padded text.
 // trimCpmText (the ^Z padding trim) and CpmPolicy are in hostpolicy.h.
 
-QString newDragDir(QString *err);
 QString dragDirPrefix();
 int cleanStale(qint64 maxAgeSecs = 24 * 3600);
 

@@ -89,25 +89,9 @@ void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderP
     dw::xfer::writeHost(t, hostDir, CpmPolicy(folderPerUser, trimText), topLevel, jsonItems, errors);
 }
 
-QByteArray makeJson(const QJsonArray &items, const QString &hostDir, const QString &imageName) {
-    return dw::xfer::makeJson(items, hostDir, imageName, "cpm", Generator);
-}
-
-// ------------------------------------------------------------------------------ reading a drop
-
-bool readJson(const QByteArray &json, QVector<XItem> *out, QString *err) {
-    out->clear();
-    QVector<dw::TransferItem> t;
-    if (!dw::xfer::readJson(json, &t, err)) return false;
-    for (const dw::TransferItem &x : t) out->append(fromTransfer(x));
-    return true;
-}
-
 // ------------------------------------------------------------------------------ temporary folders
 
 QString dragDirPrefix() { return QDir::temp().filePath("cpmdiskwrangler-drag-"); }
-
-QString newDragDir(QString *err) { return dw::xfer::newDragDir(dragDirPrefix(), err); }
 
 int cleanStale(qint64 maxAgeSecs) { return dw::xfer::cleanStale(dragDirPrefix(), maxAgeSecs); }
 

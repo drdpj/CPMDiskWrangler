@@ -36,7 +36,6 @@ public:
     bool stamps() const;
     QString label() const;
     bool selectFormat(const QString &name);           // for tests
-    void setKind(dw::device::Kind k);
 private slots:
     void filter(const QString &text);
     void changed();

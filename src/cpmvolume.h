@@ -179,7 +179,6 @@ public:
     QString readOnlyWhy(int mount) const override;
     void setSafe(bool on) { m_safe = on; }        // detection (or the user) says the format can be written with
     bool safe() const { return m_safe; }
-    bool checkOk() const { return m_checkOk; }    // every side's directory passed check() when it was attached
 
 private:
     bool checkWritten(dw::device::Container &written, QString *err) const;

@@ -127,7 +127,6 @@ QStringList withdrawnFormats();   // cpmtools definitions the built-in file with
 const QVector<Format> &library();
 QVector<dw::fs::Preset> libraryPresets();     // the library's presets, in its order (the library is made first if need be)
 void setExtraDiskdefFiles(const QStringList &paths, QStringList *warnings);
-QStringList extraDiskdefFiles();
 const Format *findFormat(const QString &name);
 
 // The same format as a disc with a separate CP/M disc on each side (Research Machines'): each side its own track 0 and

@@ -448,8 +448,6 @@ void setExtraDiskdefFiles(const QStringList &paths, QStringList *warnings) {
     build(warnings);
 }
 
-QStringList extraDiskdefFiles() { return extraFiles(); }
-
 const Format *findFormat(const QString &name) {
     for (const Format &f : library())
         if (f.name.compare(name, Qt::CaseInsensitive) == 0) return &f;
