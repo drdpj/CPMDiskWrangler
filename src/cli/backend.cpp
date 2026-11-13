@@ -275,18 +275,16 @@ std::shared_ptr<dw::xfer::HostPolicy> Backend::hostPolicy(const GetOptions &o, Q
     return std::make_shared<RetroFiles::CpmPolicy>(o.userFolders == "on", o.trim);
 }
 
+// The core's host reader with this program's rules (RetroFiles::cpmHostRead: the .inf rule, 16 MB). The run stops at
+// a file that can't be read or isn't there, else at a file too large, with the words cpmdw has always used.
 bool Backend::readHost(const QStringList &paths, const PutOptions &, QVector<dw::TransferItem> *items, QStringList *, QString *err, int *exit) {
-    QString problem;
-    const HostFileFilter accept = [&](const QString &p, dw::TransferItem *it) {
-        const QFileInfo fi(p);
-        // Acorn's .inf sidecars aren't CP/M files: skipped when named, or when the file they describe is beside them
-        if (fi.fileName().endsWith(".inf", Qt::CaseInsensitive) && (paths.contains(p) || QFileInfo::exists(p.left(p.size() - 4)))) return false;
-        if (fi.size() > 16 * 1024 * 1024) { if (problem.isEmpty()) problem = fi.fileName() + ": too large for a CP/M disc"; return false; }
-        Q_UNUSED(it);
-        return true;
-    };
-    if (!readHostTree(paths, accept, items, err, exit)) return false;
-    if (!problem.isEmpty()) { *err = problem; *exit = ExitFailed; return false; }
+    QVector<dw::xfer::HostReadError> errors;
+    const QVector<dw::TransferItem> got = dw::xfer::readHost(paths, RetroFiles::cpmHostRead(), &errors);
+    QVector<dw::xfer::HostReadError> reading, tooLarge;
+    for (const dw::xfer::HostReadError &e : errors) (e.kind == dw::xfer::HostReadError::TooLarge ? tooLarge : reading) << e;
+    if (hostReadFailed(reading, err, exit)) return false;
+    if (!tooLarge.isEmpty()) { *err = QFileInfo(tooLarge.first().path).fileName() + ": too large for a CP/M disc"; *exit = ExitFailed; return false; }
+    *items += got;
     return true;
 }
 

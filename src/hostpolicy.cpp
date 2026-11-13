@@ -104,4 +104,14 @@ int userFromFolderName(const QString &n) {
     return ok && u >= 0 && u <= 31 && !s.isEmpty() && s.size() <= 2 ? u : -1;
 }
 
+dw::xfer::HostReadOptions cpmHostRead() {
+    dw::xfer::HostReadOptions o;
+    o.sizeLimit = MaxHostFile;
+    o.fileHook = [](const QString &p, bool named, dw::TransferItem *) {
+        if (!QFileInfo(p).fileName().endsWith(".inf", Qt::CaseInsensitive)) return true;
+        return !(named || QFileInfo::exists(p.left(p.size() - 4)));
+    };
+    return o;
+}
+
 } // namespace RetroFiles

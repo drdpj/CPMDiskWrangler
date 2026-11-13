@@ -896,44 +896,21 @@ bool MainWindow::importRetroFiles(const QByteArray &json, int user, int side) {
     return importInto(items, user, side).errors.isEmpty();
 }
 
-// A host file or folder as an item to import. A file that can't be read (or is too large) is left out, with its error.
-static bool hostItem(const QString &path, dw::TransferItem *x, QVector<dw::xfer::ImportError> *errors, int depth = 0) {
-    QFileInfo fi(path);
-    x->name = fi.fileName();
-    if (fi.isDir()) {
-        x->isDir = true;
-        if (depth > 8) return true;
-        QDir d(path);
-        for (const QFileInfo &k : d.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
-            dw::TransferItem kid;
-            if (hostItem(k.absoluteFilePath(), &kid, errors, depth + 1)) x->kids << kid;
-        }
-        return true;
-    }
-    auto failed = [&](const QString &why) {
-        dw::xfer::ImportError e;
-        e.kind = dw::xfer::ImportError::Failed;
-        e.message = e.why = fi.fileName() + ": " + why;
-        e.from = path;
-        errors->append(e);
-        return false;
-    };
-    QFile f(path);
-    if (fi.size() > 16 * 1024 * 1024) return failed("too large for a CP/M disc");
-    if (!f.open(QIODevice::ReadOnly)) return failed(f.errorString());
-    x->data = f.readAll();
-    x->when = fi.lastModified();
-    return true;
-}
-
+// Host files and folders: read by the core's one host reader with this program's rules (RetroFiles::cpmHostRead, as
+// cpmdw reads them: .inf sidecars left out, 16 MB at most). What can't be read is reported as "<name>: <reason>", the
+// rest imported.
 void MainWindow::importPaths(const QStringList &paths, int user, int side) {
     if (!writable()) { message("Add files", "The disc is read-only: " + readOnlyReason()); return; }
+    QVector<dw::xfer::HostReadError> problems;
+    const QVector<dw::TransferItem> items = dw::xfer::readHost(paths, RetroFiles::cpmHostRead(), &problems);
     QVector<dw::xfer::ImportError> errors;
-    QVector<dw::TransferItem> items;
-    for (const QString &p : paths) {
-        if (QFileInfo(p).fileName().endsWith(".inf", Qt::CaseInsensitive)) continue;   // Acorn sidecars: not CP/M files
-        dw::TransferItem x;
-        if (hostItem(p, &x, &errors)) items << x;
+    for (const dw::xfer::HostReadError &p : problems) {
+        dw::xfer::ImportError e;
+        e.kind = dw::xfer::ImportError::Failed;
+        e.message = e.why = QFileInfo(p.path).fileName() + ": " +
+                            (p.kind == dw::xfer::HostReadError::TooLarge ? QString("too large for a CP/M disc") : p.reason);
+        e.from = p.path;
+        errors.append(e);
     }
     importInto(items, user, side, errors);
 }

@@ -23,6 +23,7 @@
 #include <QByteArray>
 #include <QString>
 #include <QVector>
+#include <diskwrangler/xfer/hostread.h>
 #include <diskwrangler/xfer/retrofiles.h>
 #include <diskwrangler/xfer/transferitem.h>
 
@@ -55,5 +56,12 @@ void withoutClashSuffixes(QVector<dw::TransferItem> *items);
 
 // "user3", "User 3", "u3" or "3": a host folder that stands for a CP/M user number (as extraction writes them); -1 if not.
 int userFromFolderName(const QString &name);
+
+// How both of this program's readers of host files (the window's Add files, drops and pastes, and cpmdw put) use the
+// core's one host reader (dw::xfer::readHost, step 5l): a file over 16 MB is too large for a CP/M disc (refused before
+// it is read), and Acorn's .inf sidecars aren't CP/M files: one is left out when it was named, or when the file it
+// describes is beside it, at every level.
+const qint64 MaxHostFile = 16 * 1024 * 1024;
+dw::xfer::HostReadOptions cpmHostRead();
 
 } // namespace RetroFiles
