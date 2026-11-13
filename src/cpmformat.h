@@ -22,6 +22,7 @@
 #include <QString>
 #include <QStringList>
 #include <QVector>
+#include <diskwrangler/fs/presets.h>
 
 namespace Cpm {
 
@@ -120,7 +121,11 @@ QStringList withdrawnFormats();   // cpmtools definitions the built-in file with
 
 // The library: built-in definitions first, then cpmtools' diskdefs (bundled), then any files the user added.
 // A name defined earlier wins.
+// Whenever the library is made (or made again with other diskdefs files), its floppy formats (not the hard disc
+// partitions, which have an offset) are this program's presets in the core's registry (dw::fs::presets(), source
+// "cpm", in library order): File > New disc image and cpmdw new --list read them (libraryPresets()).
 const QVector<Format> &library();
+QVector<dw::fs::Preset> libraryPresets();     // the library's presets, in its order (the library is made first if need be)
 void setExtraDiskdefFiles(const QStringList &paths, QStringList *warnings);
 QStringList extraDiskdefFiles();
 const Format *findFormat(const QString &name);

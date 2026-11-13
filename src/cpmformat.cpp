@@ -17,6 +17,7 @@
  */
 #include "cpmformat.h"
 #include <diskwrangler/fs/dfs/dfs.h>
+#include <diskwrangler/fs/presets.h>
 
 #include <QFile>
 #include <QRegularExpression>
@@ -375,6 +376,39 @@ QStringList withdrawnFormats() {
     return w;
 }
 
+// The library's floppy formats as presets (source "cpm"), in place of the ones a previous library gave. The extras
+// are what cpmdw new --list says of a format beside the preset's own fields.
+static void addLibraryPresets() {
+    dw::fs::PresetRegistry &r = dw::fs::presets();
+    r.removeSource("cpm");
+    for (const Format &f : lib()) {
+        if (f.offsetSectors) continue;                       // hard disc partitions: not as new floppies
+        dw::fs::Preset p;
+        p.id = f.name;
+        p.name = f.displayName();
+        p.fsId = f.torch ? "torch" : "cpm";
+        p.source = "cpm";
+        p.cylinders = f.cylinders;
+        p.heads = f.physHeads;
+        p.sectors = f.sectrk;
+        p.sectorSize = f.seclen;
+        qint64 bytes = qint64(f.tracks) * f.sectrk * f.seclen;
+        if (f.t0sectrk) bytes += qint64(f.t0sectrk) * f.t0seclen - qint64(f.sectrk) * f.seclen;
+        p.bytes = quint64(qMax<qint64>(0, bytes));
+        p.containers = QStringList{"imd", "edsk", "dsk", "raw"};
+        p.suffix = "img";
+        p.doubleSided = f.physHeads == 2;
+        p.sideOrder = false;                                 // the format says how the sides follow each other
+        if (!f.torch) { p.titleWhat = "Disc label"; p.titleMax = 12; }   // a CP/M 3 label (with time stamps); Torch CP/N has none
+        p.notes = f.desc;
+        p.extra["os"] = osName(f.os);
+        p.extra["separateSidesOk"] = f.twoSidedOk && f.physHeads == 1;
+        p.extra["summary"] = f.shortSummary();
+        p.extra["origin"] = f.origin;
+        r.add(p);
+    }
+}
+
 static void build(QStringList *warnings) {
     QVector<Format> all;
     all += parseDiskdefs(readResource(":/diskdefs/builtin"), "built-in", warnings);
@@ -396,11 +430,17 @@ static void build(QStringList *warnings) {
     QMap<QString, QString> d = describes(readResource(":/diskdefs/builtin"));
     for (Format &f : lib())
         if (f.desc.isEmpty() && d.contains(f.name.toLower())) f.desc = d[f.name.toLower()];
+    addLibraryPresets();
 }
 
 const QVector<Format> &library() {
     if (lib().isEmpty()) build(nullptr);
     return lib();
+}
+
+QVector<dw::fs::Preset> libraryPresets() {
+    library();
+    return dw::fs::presets().fromSource("cpm");
 }
 
 void setExtraDiskdefFiles(const QStringList &paths, QStringList *warnings) {

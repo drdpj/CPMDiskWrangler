@@ -34,11 +34,10 @@ NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
     m_filter = new QLineEdit;
     m_filter->setPlaceholderText("Filter formats (name or description)");
     m_list = new QListWidget;
-    for (const Cpm::Format &f : Cpm::library()) {
-        if (f.offsetSectors) continue;                       // hard disc partitions: not as new floppies
-        auto *it = new QListWidgetItem(f.displayName());
-        it->setData(Qt::UserRole, f.name);
-        if (!f.desc.isEmpty()) { QFont b = it->font(); b.setBold(true); it->setFont(b); }
+    for (const dw::fs::Preset &p : Cpm::libraryPresets()) {   // the library's floppy formats, from the presets registry
+        auto *it = new QListWidgetItem(p.name);
+        it->setData(Qt::UserRole, p.id);
+        if (!p.notes.isEmpty()) { QFont b = it->font(); b.setBold(true); it->setFont(b); }
         m_list->addItem(it);
     }
     m_list->sortItems();

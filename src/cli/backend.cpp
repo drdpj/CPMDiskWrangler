@@ -229,17 +229,16 @@ OpenOutcome Backend::open(const QString &path, const OpenOptions &o) {
 
 QJsonArray Backend::formats() const {
     QJsonArray a;
-    for (const Cpm::Format &f : Cpm::library()) {
-        if (f.offsetSectors) continue;                       // hard disc partitions: not as new floppies
+    for (const dw::fs::Preset &p : Cpm::libraryPresets()) {     // the library's floppy formats, from the presets registry
         QJsonObject o;
-        o["id"] = f.name;
-        o["name"] = f.displayName();
-        o["description"] = f.desc;
-        o["os"] = Cpm::osName(f.os);
-        o["doubleSided"] = f.physHeads == 2;
-        o["separateSidesOk"] = f.twoSidedOk && f.physHeads == 1;
-        o["summary"] = f.shortSummary();
-        o["origin"] = f.origin;
+        o["id"] = p.id;
+        o["name"] = p.name;
+        o["description"] = p.notes;
+        o["os"] = p.extra.value("os").toString();
+        o["doubleSided"] = p.doubleSided;
+        o["separateSidesOk"] = p.extra.value("separateSidesOk").toBool();
+        o["summary"] = p.extra.value("summary").toString();
+        o["origin"] = p.extra.value("origin").toString();
         a.append(o);
     }
     return a;
