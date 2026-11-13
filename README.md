@@ -64,8 +64,12 @@ status bar says why.
   empty window open; dropped on a window with a disc, they're copied onto it as files.
 * **Files are grouped by user number.** Drop files on a *User N* row to give them that user number. Host folders
   named `user3`, `user 3`, `u3` or `3` go to that user number; other folders are flattened.
-* **Add files** by dropping them from your file manager, or by pasting files copied there. Names become CP/M 8.3
+* **Add files** by dropping them from your file manager, or by pasting files copied there (`cpmdw put` reads host
+  files the same way, so a file or folder behaves alike in the window and on the command line; a file that can't be
+  read is reported and the rest are still added). Names become CP/M 8.3
   (upper case unless lower case is allowed - see below; characters CP/M can't use become `-`).
+* **Discs that belong to Acorn Disk Wrangler.** If you open a disc the other program owns and it can't be found,
+  the message has a **Locate...** button: pick the program once and it is remembered for next time.
 * **Extract files** by dragging them out or by copying and pasting them into another program. A tool that supports
   retro-files receives their user number and attributes too.
 * **Copy and Paste** (Ctrl+C / Ctrl+V, Cmd+C / Cmd+V on a Mac) work between windows, between the two sides of a
