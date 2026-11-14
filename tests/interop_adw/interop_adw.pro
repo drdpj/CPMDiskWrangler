@@ -10,10 +10,9 @@ ADW_SRC = $$ADW/src                    # its sources (in the folder itself befor
 !exists($$ADW_SRC/hostpolicy.cpp): ADW_SRC = $$ADW
 CORE = $$PWD/../../core                # DiskWranglerCore, this program's copy: Acorn's host naming is built on it
 INCLUDEPATH += $$ADW_SRC $$CORE
-SOURCES += interop_adw.cpp $$ADW_SRC/adfs.cpp
-SOURCES += $$ADW_SRC/hostpolicy.cpp
+SOURCES += interop_adw.cpp $$ADW_SRC/hostpolicy.cpp   # Acorn's host naming alone (its hostpolicy.h has needed no adfs.h since 6c)
 HEADERS += $$ADW_SRC/hostpolicy.h
-include($$CORE/diskwrangler-device.pri)    # Acorn's adfs.cpp sits on the core's device layer (DiskWranglerCore v0.3.0 on)
+include($$CORE/diskwrangler-device.pri)
 include($$CORE/diskwrangler-dfs.pri)
 include($$CORE/diskwrangler-fat.pri)
 include($$CORE/diskwrangler-xfer.pri)
