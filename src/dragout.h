@@ -47,8 +47,6 @@ extern const char *const Generator;         // "CP/M Disk Wrangler"
 // removes stale ones at start-up).
 QString dragDirPrefix();
 
-typedef dw::DragState DragState;
-
 // How this program's drags (and Edit > Copy) are written out: the core's DragSpec with CP/M's policy (no folder per
 // user), "cpm" as the source filesystem and this program's drag folders. The window builds a dw::DragOutMime from
 // it and an exporter of TransferItems (MainWindow::exportForCopy).

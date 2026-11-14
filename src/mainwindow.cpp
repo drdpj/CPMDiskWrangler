@@ -98,14 +98,12 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
     auto *m = new dw::DragOutMime(exporter, RetroFiles::dragSpec(win->trimTextOnExtract(), QFileInfo(win->image().path()).fileName()));
     m->setData(DW_MIME_ITEMS, payload);
     m->setData(DW_MIME_SOURCE, sourceTag());
-    m_lastDrag = m->state();
     return m;
 }
 
 void DropTree::startDrag(Qt::DropActions) {
     QMimeData *data = makeMime(selectedItems());
     if (!data) return;
-    std::shared_ptr<RetroFiles::DragState> state = m_lastDrag;
     auto *drag = new QDrag(this);
     drag->setMimeData(data);
     if (QTreeWidgetItem *first = currentItem()) {
@@ -116,9 +114,7 @@ void DropTree::startDrag(Qt::DropActions) {
             drag->setHotSpot(viewport()->mapFromGlobal(QCursor::pos()) - r.topLeft());
         }
     }
-    Qt::DropAction result = drag->exec(Qt::CopyAction, Qt::CopyAction);     // copy only: never "move" off the disc
-    if (state && state->extracted && result == Qt::CopyAction) emit dragOutFinished(state->files, state->errors);
-    m_lastDrag.reset();
+    execDragOut(drag);       // copy only; never deleted here: on X11 the target fetches the files after exec() returns
 }
 
 // What the tree takes (the kit sorts the drop): only files while nothing is read as CP/M here (they are opened), nothing
@@ -305,9 +301,12 @@ MainWindow::MainWindow(QWidget *parent) : DiscWindow(parent) {
                                                   nullptr, m_actFormat});
     connect(tree(), &DropTree::internalDrop, this, &MainWindow::onInternalDrop);
     connect(tree(), &DropTree::retroFilesDropped, this, &MainWindow::onRetroFilesDropped);
-    connect(tree(), &DropTree::dragOutFinished, this, [this](int files, const QStringList &errors) {
+    connect(tree(), &DropTree::dragOutFinished, this, [this](int files, int, const QStringList &errors) {
         if (!errors.isEmpty()) message("Drag", errors.join("\n"));
         else m_status->setText(QString("Copied %1 file%2 out of the disc.").arg(files).arg(files == 1 ? "" : "s"));
+    });
+    connect(tree(), &DropTree::dragOutNothing, this, [this] {
+        m_status->setText("No files were copied out of the disc: the drop wasn't taken, or no file was asked for.");
     });
     refresh();
 }

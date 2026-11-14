@@ -58,14 +58,11 @@ class DropTree : public dw::ui::VolumePane {
 public:
     explicit DropTree(QWidget *parent = nullptr);
     QMimeData *makeMime(const QList<QTreeWidgetItem *> &items) const override;
-signals:
-    void dragOutFinished(int files, const QStringList &errors);
 protected:
     DropRules dropRules() const override;
     QStringList mimeTypes() const override;
+    // A picture of the row, then the kit's execDragOut (which says what came of it: dragOutFinished, dragOutNothing).
     void startDrag(Qt::DropActions supported) override;
-private:
-    mutable std::shared_ptr<RetroFiles::DragState> m_lastDrag;
 };
 
 // The main window: DiskWranglerCore's DiscWindow (step 5c) over a Cpm::OpenedDisc. The kit does the rows, the
