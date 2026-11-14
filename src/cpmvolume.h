@@ -18,9 +18,9 @@
 // cpmvolume.h - CP/M Disk Wrangler on DiskWranglerCore's filesystem interface (step 4 of the move to the core):
 // a CP/M (or Torch CP/N) volume as a dw::fs::Volume, the opened disc as a dw::fs::Disc (one volume, or one per side),
 // and detection by tiers: CP/M's own scored detection as one probe, and a recogniser for the discs that are Acorn
-// Disk Wrangler's. The main window uses the detection; the adapters are for the tests and the command-line program
-// (step 4b) until the main window becomes the core's (step 5). A Torch CP/N disc is a TorchVolume over a Torch::Fs
-// (step 5b): the same CP/M names, users and attributes as CpmVolume, its own filesystem underneath.
+// Disk Wrangler's. The main window (on the core's window kit since step 5) and the command-line program both use
+// them: OpenedDisc is the window's document and cpmdw's opened image. A Torch CP/N disc is a TorchVolume over a
+// Torch::Fs (step 5b): the same CP/M names, users and attributes as CpmVolume, its own filesystem underneath.
 #pragma once
 
 #include <memory>
