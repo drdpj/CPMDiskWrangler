@@ -118,6 +118,16 @@ starts on the filter for the kind the image already is, and the kind saved is th
   `importPaths`. Target: the selection's user number and side, as Add files (none selected: each file keeps its
   user). A clipboard we still own is cleared at exit (its files go with the drag folders). Checked across real
   processes on X11 (Xvfb + xclip); not tested with Windows Explorer or macOS Finder.
+- **Dragging out** (the same design in Acorn Disk Wrangler, whose AGENTS.md has the rules in full): `makeMime` gives a
+  `dw::DragOutMime` (the private formats for this program's windows, plus `text/uri-list` and the retro-files JSON,
+  the files written only when another program asks); `DropTree::startDrag` sets the picture and runs the drag with
+  the kit's `execDragOut` (core v1.1.0, series 6c-2), which reports `dragOutFinished` ("Copied N files out of the
+  disc.") once the files were asked for and written and the drop taken, or `dragOutNothing` ("No files were copied
+  out of the disc: ...") when it was let go outside the program and nothing was copied; a drop on a window of this
+  program reports neither. On X11 the target asks after `exec()` returns, so the outcome waits for it; never delete
+  the `QDrag`. On Linux under X11 and XWayland the kit answers the drag's selection requests itself
+  (`core/diskwrangler/ui/xdndsource.h`: Qt's own answers left GTK 4 and GNOME's XWayland bridge waiting).
+  `tests/xdragtest` checks real drags on Xvfb.
 
 ## Names and character sets
 * Imports (step 5e): every one - Add files, drops, Paste, retro-files, drops from another window - ends in `importInto` (a user area or -1, a side), which runs the kit's `importItems` (an `ImportSession` on the core's `Importer`: the conflict question, errors collected and the rest imported, one `Disc::transact` per file). CP/M's rules are the session's hooks in `MainWindow::importHooks`: the clash suffixes taken off (`RetroFiles::withoutClashSuffixes`, shared with `cpmdw`), the character-set question, `userN` folders as user areas (`RetroFiles::userFromFolderName`), `placeIncoming` (the drop target's user wins over the item's; names as below; each name made valid is listed in the summary), the attributes the item brings (none from the host, so a replaced file's SYS / ARC aren't kept, unlike `cpmdw`), a file existing only under exactly its name (`exactNames`: the directory's bytes, as `Store::indexOf` compares them), and a name made twice in one import asked about as a file that exists (`renameRepeats` off). The question (`askReplace`) and the summary (`importSummary`) keep their texts. Host files are read by the core's one host reader with this program's rules (`RetroFiles::cpmHostRead()`, shared with `cpmdw`: folders first, then files, names ignoring case; links met inside a folder skipped; any depth; over 16 MB refused before reading; an `.inf` sidecar beside its file left out). The window reports what it can't read and adds the rest; `cpmdw` stops at the first problem.
