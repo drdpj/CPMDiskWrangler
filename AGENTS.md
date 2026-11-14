@@ -111,7 +111,8 @@ starts on the filter for the kind the image already is, and the kind saved is th
   selected then even if the disc has changed or the window has closed. The clipboard gets a `dw::DragOutMime`
   (`RetroFiles::dragSpec` says how) whose exporter returns that copy (files are written to a
   drag folder only when another program asks: text/uri-list, the retro-files JSON and, `setForClipboard`, GNOME's
-  `x-special/gnome-copied-files`), plus `CPMDW_MIME_CLIP` = `pid:n`. Paste (`pasteItems`): our own token ->
+  `x-special/gnome-copied-files`), plus `DW_MIME_CLIP` = `pid:n` (the clipboard's part is the window kit's since step
+  6c: `publishCopy`, `pasteClipboard`). Paste (the kit's `pasteClipboard`, given this program's three imports): our own token ->
   `importInto` from the kept copy (nothing written); else retro-files JSON -> `importRetroFiles` (another copy of
   this program, Acorn Disk Wrangler); else local files from a file manager (URLs or GNOME's list) ->
   `importPaths`. Target: the selection's user number and side, as Add files (none selected: each file keeps its
