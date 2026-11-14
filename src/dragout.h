@@ -43,8 +43,9 @@ extern const char *const Generator;         // "CP/M Disk Wrangler"
 // if the rest of the record is ^Z too. Returns the data unchanged if it doesn't look like padded text.
 // trimCpmText (the ^Z padding trim) and CpmPolicy are in hostpolicy.h.
 
+// This program's drag folders (the core's, for the program id: <temp>/cpmdiskwrangler-drag-...; the window kit
+// removes stale ones at start-up).
 QString dragDirPrefix();
-int cleanStale(qint64 maxAgeSecs = 24 * 3600);
 
 typedef dw::DragState DragState;
 

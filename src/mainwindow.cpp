@@ -60,10 +60,6 @@
 
 // ================================================================================================ DropTree
 
-static QByteArray sourceTag(quint64 owner) {
-    return QByteArray::number(qint64(QCoreApplication::applicationPid())) + ":" + QByteArray::number(owner);
-}
-
 DropTree::DropTree(QWidget *parent) : dw::ui::VolumePane(parent) {
     setAcceptDrops(true);
     setDragEnabled(true);
@@ -72,31 +68,9 @@ DropTree::DropTree(QWidget *parent) : dw::ui::VolumePane(parent) {
 }
 
 QStringList DropTree::mimeTypes() const { return {DW_MIME_ITEMS, RetroFiles::MimeType, "text/uri-list"}; }
-Qt::DropActions DropTree::supportedDropActions() const { return Qt::CopyAction; }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-QMimeData *DropTree::mimeData(const QList<QTreeWidgetItem *> &items) const { return makeMime(items); }
-#else
-QMimeData *DropTree::mimeData(const QList<QTreeWidgetItem *> items) const { return makeMime(items); }
-#endif
-
-// Where a drag is over the tree: QDropEvent::pos() is deprecated in Qt 6 and position() is new in it.
-static QPoint dropPos(const QDropEvent *e) {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    return e->position().toPoint();
-#else
-    return e->pos();
-#endif
-}
-
-bool DropTree::fromThisProcess(const QMimeData *m) {
-    if (!m->hasFormat(DW_MIME_SOURCE) || !m->hasFormat(DW_MIME_ITEMS)) return false;
-    QList<QByteArray> f = m->data(DW_MIME_SOURCE).split(':');
-    return f.size() == 2 && f[0].toLongLong() == qint64(QCoreApplication::applicationPid()) &&
-           MainWindow::byId(f[1].toULongLong()) != nullptr;
-}
 
 QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
-    MainWindow *win = MainWindow::byId(m_owner);
+    MainWindow *win = MainWindow::byId(sourceWindow());
     if (!win) return nullptr;
     QVector<FileRef> refs;
     for (QTreeWidgetItem *it : items) {
@@ -112,7 +86,7 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
     if (unique.isEmpty()) return nullptr;
     QByteArray payload;
     QDataStream ds(&payload, QIODevice::WriteOnly);
-    ds << quint64(m_owner) << qint32(unique.size());
+    ds << quint64(sourceWindow()) << qint32(unique.size());
     for (const FileRef &r : unique) ds << qint32(r.side) << qint32(r.user) << r.name;
     QPointer<MainWindow> pw = win;
     dw::DragOutMime::Exporter exporter = [pw, unique](QVector<dw::TransferItem> *out, QString *err) {
@@ -123,7 +97,7 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
     };
     auto *m = new dw::DragOutMime(exporter, RetroFiles::dragSpec(win->trimTextOnExtract(), QFileInfo(win->image().path()).fileName()));
     m->setData(DW_MIME_ITEMS, payload);
-    m->setData(DW_MIME_SOURCE, sourceTag(m_owner));
+    m->setData(DW_MIME_SOURCE, sourceTag());
     m_lastDrag = m->state();
     return m;
 }
@@ -147,51 +121,15 @@ void DropTree::startDrag(Qt::DropActions) {
     m_lastDrag.reset();
 }
 
-bool DropTree::acceptable(const QMimeData *m) const {
-    MainWindow *win = MainWindow::byId(m_owner);
-    if (win && win->dropOpensImage()) return m->hasUrls();     // an empty window: a dropped file is opened
-    if (!win || !win->writable()) return false;
-    if (fromThisProcess(m)) {
-        if (m->data(DW_MIME_SOURCE) != sourceTag(m_owner)) return true;
-        MainWindow *w = MainWindow::byId(m_owner);       // within one window: only between its two sides
-        return w && w->sides() > 1;
-    }
-    return m->hasFormat(RetroFiles::MimeType) || m->hasUrls();
-}
-
-void DropTree::dragEnterEvent(QDragEnterEvent *e) {
-    if (acceptable(e->mimeData())) e->acceptProposedAction();
-}
-
-void DropTree::dragMoveEvent(QDragMoveEvent *e) {
-    if (!acceptable(e->mimeData())) { e->ignore(); return; }
-    e->setDropAction(Qt::CopyAction);
-    e->accept();
-}
-
-void DropTree::dropEvent(QDropEvent *e) {
-    if (!acceptable(e->mimeData())) return;
-    if (fromThisProcess(e->mimeData())) {
-        e->setDropAction(Qt::CopyAction);
-        e->accept();
-        emit internalDrop(e->mimeData()->data(DW_MIME_ITEMS), itemAt(dropPos(e)));
-        return;
-    }
-    if (e->mimeData()->hasFormat(RetroFiles::MimeType)) {
-        QByteArray json = e->mimeData()->data(RetroFiles::MimeType);
-        if (!json.isEmpty()) {
-            e->setDropAction(Qt::CopyAction);
-            e->accept();
-            emit retroFilesDropped(json, itemAt(dropPos(e)));
-            return;
-        }
-    }
-    QStringList paths;
-    for (const QUrl &u : e->mimeData()->urls())
-        if (u.isLocalFile()) paths << u.toLocalFile();
-    if (paths.isEmpty()) return;
-    e->acceptProposedAction();
-    emit pathsDropped(paths, itemAt(dropPos(e)));
+// What the tree takes (the kit sorts the drop): only files while nothing is read as CP/M here (they are opened), nothing
+// on a read-only disc, and items dragged within one window only between its two sides.
+dw::ui::VolumePane::DropRules DropTree::dropRules() const {
+    DropRules r;
+    MainWindow *win = MainWindow::byId(sourceWindow());
+    r.filesOnly = win && win->dropOpensFiles();
+    r.take = win && win->writable();
+    r.fromItself = win && win->sides() > 1;
+    return r;
 }
 
 // ================================================================================================ the window
@@ -267,7 +205,7 @@ dw::ui::PaneLayout MainWindow::paneLayout(const QString &) const {
 
 dw::ui::VolumePane *MainWindow::createPane(const QString &) {
     auto *t = new DropTree;
-    t->setOwner(id());
+    t->setDragSource(id(), 0);
     return t;
 }
 
@@ -365,7 +303,6 @@ MainWindow::MainWindow(QWidget *parent) : DiscWindow(parent) {
     // Open / Save live in the File menu only; the button bar is for working on the disc contents.
     ButtonBar::makeButtonBar(addToolBar("Main"), {m_actView, m_actExtract, m_actAdd, m_actRename, m_actProps, m_actDelete,
                                                   nullptr, m_actFormat});
-    connect(tree(), &DropTree::pathsDropped, this, &MainWindow::onPathsDropped);
     connect(tree(), &DropTree::internalDrop, this, &MainWindow::onInternalDrop);
     connect(tree(), &DropTree::retroFilesDropped, this, &MainWindow::onRetroFilesDropped);
     connect(tree(), &DropTree::dragOutFinished, this, [this](int files, const QStringList &errors) {
@@ -577,12 +514,7 @@ void MainWindow::afterOpen(const QString &) {
     refresh();
 }
 
-dw::ui::DiscWindow *MainWindow::createWindow() {
-    auto *w = new MainWindow;
-    w->setAttribute(Qt::WA_DeleteOnClose);
-    w->show();
-    return w;
-}
+dw::ui::DiscWindow *MainWindow::createWindow() { return makeWindow<MainWindow>(); }
 
 bool MainWindow::newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label) {
     QString err;
@@ -634,8 +566,6 @@ bool MainWindow::useFormat(const Detect::Candidate &c, bool allowChanges) {
     refresh();
     return true;
 }
-
-void MainWindow::newWindow() { createWindow(); }
 
 void MainWindow::openDialog() {
     QString p = QFileDialog::getOpenFileName(this, "Open CP/M disc image", AppSettings().value("lastDir").toString(),
@@ -873,18 +803,10 @@ void MainWindow::viewSelected() {
 
 // ------------------------------------------------------------------------------------------- copying in
 
-void MainWindow::onPathsDropped(const QStringList &paths, QTreeWidgetItem *target) {
+// Host files dropped on a disc (on a window with nothing read as CP/M, the kit opens them instead): imported, disc
+// images too.
+void MainWindow::droppedOnDisc(dw::ui::VolumePane *, QTreeWidgetItem *target, const QStringList &paths) {
     QStringList p = paths;
-    if (dropOpensImage()) {                       // no disc here yet: open the first, the rest in new windows
-        QTimer::singleShot(0, this, [this, p] {
-            for (int i = 0; i < p.size(); ++i) {
-                if (QFileInfo(p[i]).isDir()) continue;
-                if (dropOpensImage()) { openFile(p[i]); continue; }
-                createWindow()->openFile(p[i]);
-            }
-        });
-        return;
-    }
     int u = targetUser(target), side = targetSide(target);
     QTimer::singleShot(0, this, [this, p, u, side] { importPaths(p, u, side); });   // no dialogs inside the drop handler
 }
@@ -1091,58 +1013,17 @@ void MainWindow::addFilesDialog() {
 
 // ------------------------------------------------------------------------------------------- copy and paste
 
-// Edit > Copy takes a copy of the selected files there and then, so a paste copies what was selected at the time even
-// if the disc has changed or its window has closed since. Inside this program a paste uses that copy (the clipboard
-// carries a token naming it); for the desktop and other programs the clipboard offers the files, as a drag does
-// (text/uri-list, the retro-files JSON and GNOME's list), written to a temporary folder only when something asks.
-static QVector<dw::TransferItem> &clipItems() { static QVector<dw::TransferItem> v; return v; }
-static QByteArray &clipToken() { static QByteArray t; return t; }
-
+// Edit > Copy takes a copy of the selected files there and then (the kit's publishCopy: a paste in this program gets
+// exactly those; the desktop and other programs get the files).
 void MainWindow::copySelected() {
     const QVector<Item> chosen = selectedFiles();
     if (chosen.isEmpty()) { m_status->setText("Select the files to copy."); return; }
     QVector<dw::TransferItem> items;
     QString err;
     if (!exportForCopy(chosen, &items, &err)) { message("Copy", err); return; }
-    static int serial = 0;
-    clipItems() = items;
-    clipToken() = QByteArray::number(qint64(QCoreApplication::applicationPid())) + ":" + QByteArray::number(++serial);
-    auto *m = new dw::DragOutMime([items](QVector<dw::TransferItem> *out, QString *) { *out = items; return true; },
-                                  RetroFiles::dragSpec(trimTextOnExtract(), QFileInfo(image().path()).fileName()));
-    m->setForClipboard(true);
-    m->setData(DW_MIME_CLIP, clipToken());
-    QApplication::clipboard()->setMimeData(m);
-    static bool once = false;                  // the copied files live in a folder removed at exit: don't leave
-    if (!once) {                               // a clipboard behind that names them
-        once = true;
-        connect(qApp, &QCoreApplication::aboutToQuit, [] {
-            const QMimeData *c = QApplication::clipboard()->mimeData();
-            if (c && c->hasFormat(DW_MIME_CLIP) && QApplication::clipboard()->ownsClipboard()) QApplication::clipboard()->clear();
-        });
-    }
+    const int n = publishCopy(items, RetroFiles::dragSpec(trimTextOnExtract(), QFileInfo(image().path()).fileName()));
     m_status->setText(QString("Copied %1 file%2 - Edit > Paste puts %3 into another disc, a folder on the desktop or "
-                              "another program.").arg(items.size()).arg(items.size() == 1 ? "" : "s").arg(items.size() == 1 ? "it" : "them"));
-}
-
-// Local files the clipboard names: a file manager's copy (text/uri-list, or GNOME's own list).
-static QStringList clipboardPaths(const QMimeData *m) {
-    QStringList paths;
-    for (const QUrl &u : m->urls())
-        if (u.isLocalFile()) paths << u.toLocalFile();
-    if (paths.isEmpty() && m->hasFormat("x-special/gnome-copied-files")) {
-        const QList<QByteArray> lines = m->data("x-special/gnome-copied-files").split('\n');
-        for (int i = 1; i < lines.size(); ++i) {               // line 0 is "copy" or "cut"
-            QUrl u = QUrl::fromEncoded(lines[i].trimmed());
-            if (u.isLocalFile()) paths << u.toLocalFile();
-        }
-    }
-    return paths;
-}
-
-bool MainWindow::clipboardUsable() const {
-    const QMimeData *m = QApplication::clipboard()->mimeData();
-    return m && (m->hasFormat(DW_MIME_CLIP) || m->hasFormat(RetroFiles::MimeType) || m->hasUrls() ||
-                 m->hasFormat("x-special/gnome-copied-files"));
+                              "another program.").arg(n).arg(n == 1 ? "" : "s").arg(n == 1 ? "it" : "them"));
 }
 
 // Edit > Paste: to the user number and side of the selection, as Add files does (no selection: each file keeps its
@@ -1152,24 +1033,12 @@ void MainWindow::paste() {
     if (!writable()) { message("Paste", "The disc is read-only: " + readOnlyReason()); return; }
     QList<QTreeWidgetItem *> sel = tree()->selectedItems();
     int user = sel.isEmpty() ? -1 : targetUser(sel.first()), side = sel.isEmpty() ? 0 : targetSide(sel.first());
-    const QMimeData *m = QApplication::clipboard()->mimeData();
-    if (!m || !pasteItems(m, user, side))
+    PasteTo to;
+    to.copied = [this, user, side](const QVector<dw::TransferItem> &items) { importInto(items, user, side); };
+    to.retroFiles = [this, user, side](const QByteArray &json) { importRetroFiles(json, user, side); };
+    to.paths = [this, user, side](const QStringList &paths) { importPaths(paths, user, side); };
+    if (!pasteClipboard(to))
         m_status->setText("Nothing to paste: copy some files first (here, in another window, or in a file manager).");
-}
-
-bool MainWindow::pasteItems(const QMimeData *m, int user, int side) {
-    if (m->hasFormat(DW_MIME_CLIP) && !clipToken().isEmpty() && m->data(DW_MIME_CLIP) == clipToken()) {
-        importInto(clipItems(), user, side);               // copied in this program: nothing written to the host
-        return true;
-    }
-    if (m->hasFormat(RetroFiles::MimeType)) {             // another copy of this program, or another tool
-        QByteArray json = m->data(RetroFiles::MimeType);
-        if (!json.isEmpty()) { importRetroFiles(json, user, side); return true; }
-    }
-    QStringList paths = clipboardPaths(m);                 // files copied in a file manager: as Add files
-    if (paths.isEmpty()) return false;
-    importPaths(paths, user, side);
-    return true;
 }
 
 // ------------------------------------------------------------------------------------------- changing files

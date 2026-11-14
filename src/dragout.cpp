@@ -35,9 +35,7 @@ const char *const Generator = "CP/M Disk Wrangler";
 
 // ------------------------------------------------------------------------------ temporary folders
 
-QString dragDirPrefix() { return QDir::temp().filePath("cpmdiskwrangler-drag-"); }
-
-int cleanStale(qint64 maxAgeSecs) { return dw::xfer::cleanStale(dragDirPrefix(), maxAgeSecs); }
+QString dragDirPrefix() { return dw::xfer::dragDirPrefix("cpmdiskwrangler"); }
 
 // ------------------------------------------------------------------------------ the drag data
 

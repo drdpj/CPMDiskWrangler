@@ -50,37 +50,22 @@ struct FileRef {
 };
 
 // The file tree: the window kit's pane, which also accepts files and folders from the desktop, items from other
-// windows of this program and retro-files drags from other programs, and drags its selection out the same three ways
-// (the drags out are made from the kit's exportItems since step 5d; what is dropped goes to the kit's import session
-// since step 5e).
+// windows of this program and retro-files drags from other programs (the kit sorts the drops, step 6c: dropRules says
+// what this tree takes), and drags its selection out the same three ways (the drags out are made from the kit's
+// exportItems since step 5d; what is dropped goes to the kit's import session since step 5e).
 class DropTree : public dw::ui::VolumePane {
     Q_OBJECT
 public:
     explicit DropTree(QWidget *parent = nullptr);
-    void setOwner(quint64 owner) { m_owner = owner; }
-    QMimeData *makeMime(const QList<QTreeWidgetItem *> &items) const;
-    static bool fromThisProcess(const QMimeData *m);
+    QMimeData *makeMime(const QList<QTreeWidgetItem *> &items) const override;
 signals:
-    void pathsDropped(const QStringList &paths, QTreeWidgetItem *target);
-    void internalDrop(const QByteArray &payload, QTreeWidgetItem *target);
-    void retroFilesDropped(const QByteArray &json, QTreeWidgetItem *target);
     void dragOutFinished(int files, const QStringList &errors);
 protected:
-    void dragEnterEvent(QDragEnterEvent *e) override;
-    void dragMoveEvent(QDragMoveEvent *e) override;
-    void dropEvent(QDropEvent *e) override;
+    DropRules dropRules() const override;
     QStringList mimeTypes() const override;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)               // Qt 6 passes the list by reference, Qt 5 by value
-    QMimeData *mimeData(const QList<QTreeWidgetItem *> &items) const override;
-#else
-    QMimeData *mimeData(const QList<QTreeWidgetItem *> items) const override;
-#endif
-    Qt::DropActions supportedDropActions() const override;
     void startDrag(Qt::DropActions supported) override;
 private:
-    bool acceptable(const QMimeData *m) const;
     mutable std::shared_ptr<RetroFiles::DragState> m_lastDrag;
-    quint64 m_owner = 0;
 };
 
 // The main window: DiskWranglerCore's DiscWindow (step 5c) over a Cpm::OpenedDisc. The kit does the rows, the
@@ -123,7 +108,6 @@ public:
     using DiscWindow::readOnlyReason;
 
     // ----- the kit's slots this program fills (until later series of step 5 make them the kit's)
-    void newWindow() override;
     void newImageDialog() override;
     void openDialog() override;
     void viewSelected() override;
@@ -170,13 +154,14 @@ protected:
     void afterOpen(const QString &path) override;
     dw::ui::DiscWindow *createWindow() override;
     bool closeFailedWindow() const override { return false; }     // a new window that didn't open the disc stays open
+    bool dropOpensFiles() const override { return sides() == 0; }  // nothing read as CP/M here: a drop opens an image
+    void droppedOnDisc(dw::ui::VolumePane *pane, QTreeWidgetItem *target, const QStringList &paths) override;
 
 private slots:
     void setLabelDialog();
     void discInfo();
     void formatDialog();
     void addDiskdefsDialog();
-    void onPathsDropped(const QStringList &paths, QTreeWidgetItem *target);
     void onInternalDrop(const QByteArray &payload, QTreeWidgetItem *target);
     void onRetroFilesDropped(const QByteArray &json, QTreeWidgetItem *target);
 
@@ -189,7 +174,6 @@ private:
     const dw::device::Container &image() const { return m_doc.container(); }
     Cpm::Store &vol(int side) const;
     int sides() const { return m_doc.sides(); }          // filesystems shown: 1, or 2 for a disc on each side
-    bool dropOpensImage() const { return sides() == 0; }   // nothing read as CP/M here: a drop opens an image
     DropTree *tree() const { return static_cast<DropTree *>(pane()); }
     bool writable() const { return DiscWindow::writable(0); }
     QString readOnlyReason() const { return DiscWindow::readOnlyReason(0); }
@@ -225,8 +209,6 @@ private:
     void detachAll();
     dw::fs::Placement placeIncoming(const dw::TransferItem &item, const dw::fs::Path &target);
     QStringList m_importRenamed;       // "name -> NAME" for each name made valid in the current import (its summary lists them)
-    bool clipboardUsable() const;                       // something Paste can add
-    bool pasteItems(const QMimeData *m, int user, int side);
 
     Cpm::OpenedDisc m_doc;
     Cpm::Volume m_noSide;              // what vol() gives when the disc has no such side: detached, so no files
