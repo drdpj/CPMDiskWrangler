@@ -1,8 +1,8 @@
 #!/bin/bash
 # CP/M Disk Wrangler - Copyright (C) 2026 Daniel Jameson - GPL v3 or later
 # run_all.sh <build dir> [<real images dir (fetch_real_images.sh)>] [<Acorn Disk Wrangler source dir>]
-# Builds every test, runs the self-tests, the independent checks (cpmtools, libdsk, Python) and, given real
-# images, detection on them, the cpmtools comparison and the GUI test. Exit status 0 only if everything passed.
+# Builds every test, runs the self-tests, the independent checks (cpmtools, libdsk, Python), the drags out to other
+# programs on Xvfb (xdragtest) and, given real images, detection on them, the cpmtools comparison and the GUI test. Exit status 0 only if everything passed.
 src=$(cd "$(dirname "$0")/.." && pwd)
 b=${1:?usage: run_all.sh <build dir> [real images] [acorn disk wrangler source]}; real=$2; adw=$3
 mkdir -p "$b"; b=$(cd "$b" && pwd)
@@ -11,7 +11,7 @@ step() { echo; echo "######## $*"; }
 build() { mkdir -p "$b/$1" && (cd "$b/$1" && qmake "$2" ${3:+"$3"} >/dev/null && make -j8 >/dev/null 2>"$b/$1.log") || { echo "BUILD FAILED: $1 (see $b/$1.log)"; fail=1; }; }
 step build
 build app "$src/cpmdiskwrangler.pro"
-for t in detecttest fstest voltest guitest screenshot mkicon chartest; do build $t "$src/tests/$t.pro"; done
+for t in detecttest fstest voltest guitest screenshot mkicon chartest xdragtest; do build $t "$src/tests/$t.pro"; done
 build settingstest "$src/core/tests/settingstest.pro"      # in DiskWranglerCore
 build xfertest "$src/core/tests/xfertest.pro"
 build uitest "$src/core/tests/uitest.pro"
@@ -70,6 +70,9 @@ nd=$(grep -c 'verdict: none' "$W/foreign.log"); echo "handed to Acorn Disk Wrang
 [ $((nh + nd)) -eq "$nf" ] && [ "$nh" -ge 1 ] || { grep 'verdict:' "$W/foreign.log"; fail=1; }
 step "DiskWranglerCore's filesystem interface: Volume, Disc, detection by tiers (voltest)"
 "$b/voltest/voltest" "$W/voltest" > "$W/voltest.log" 2>&1 && tail -1 "$W/voltest.log" | grep -q "all ok" && echo "voltest: ok" || { grep FAIL "$W/voltest.log"; echo "FAIL voltest"; fail=1; }
+step "dragging out to other programs on a real X server (xdragtest: Xvfb, xdotool)"
+mkdir -p "$W/xd"; (unset QT_QPA_PLATFORM; timeout 300 xvfb-run -a -s "-screen 0 1280x800x24" "$b/xdragtest/xdragtest" "$W/xd" > "$W/xdrag.log" 2>&1)
+grep -v "^QStandardPaths" "$W/xdrag.log"; grep -q "^ALL OK" "$W/xdrag.log" || { echo "FAIL xdragtest"; fail=1; }
 if [ -n "$real" ]; then
   O="$real/Myrcurial_o1next/research"; Z="$real/udo-munk_z80pack/cpmsim/disks/library"
   step "real images: round trip, detection, cpmtools comparison"
