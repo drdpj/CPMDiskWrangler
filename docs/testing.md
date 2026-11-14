@@ -10,7 +10,7 @@ against the sources in `src/`. Run GUI tests with `QT_QPA_PLATFORM=offscreen`.
 | Test | What |
 |---|---|
 | `detecttest [-v] [-x dir] images...` | prints the ranked readings, the verdict of detection by tiers (open, ask, handoff) and the listing; `-x` extracts every file (compare with cpmtools: `tests/cmp_cpmtools.sh`) |
-| `voltest <dir>` | DiskWranglerCore's filesystem interface (`src/cpmvolume.h`): a CP/M and a Torch CP/N disc as `dw::fs::Disc` (user areas as namespace levels, attributes, renaming into another user, a failed transaction put back, the checked save); detection by tiers (CP/M discs open here, DFS and FAT discs go to Acorn Disk Wrangler); Acorn Z80's catalogue from the core's DFS module |
+| `voltest <dir>` | DiskWranglerCore's filesystem interface (`src/cpmvolume.h`): a CP/M and a Torch CP/N disc as `dw::fs::Disc` (user areas as namespace levels, attributes, renaming into another user, a failed transaction put back, the checked save); detection by tiers (CP/M discs open here, DFS and FAT discs go to Acorn Disk Wrangler); Acorn Z80's catalogue from the core's DFS module; and (step 6b) on CP/M 2.2, CP/M 3 (`pcw`) and Torch CP/N, `reload()` giving back exactly what every kind of change leaves in memory, and the transaction alone undoing a replace that doesn't fit and a failure among several changes |
 | `fstest <out> <format> raw\|imd\|edsk` | new disc, awkward file sizes, replace/delete/rename/attrs, commit, reopen **by detection**, verify; leaves material for `verify_independent.sh` |
 | `fstest roundtrip images...` | unchanged images serialise byte-identically |
 | `fstest atomic <out>` | failed adds leave nothing behind |

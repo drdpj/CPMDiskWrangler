@@ -23,6 +23,7 @@
 #include <QDir>
 #include <QFile>
 #include <cstdio>
+#include <memory>
 #include <diskwrangler/fs/dfs/dfs.h>
 #include "../src/cpmvolume.h"
 
@@ -50,6 +51,27 @@ static dw::fs::Verdict verdictOf(const QString &path) {
 }
 
 static void spit(const QString &p, const QByteArray &d) { QFile f(p); f.open(QIODevice::WriteOnly); f.write(d); }
+
+// Everything a Store holds in memory, as text: what reload() must give back exactly (step 6b).
+static QString describe(const Cpm::Store &st) {
+    QStringList out;
+    for (const Cpm::File &f : st.files()) {
+        QStringList ents;
+        for (int e : f.entries) ents << QString::number(e);
+        out << QString("%1:%2 %3 a%4 e[%5] r%6 s%7 x%8 b%9 %10 %11 %12 %13").arg(f.user).arg(f.name, QString::fromLatin1(f.name11.toHex()))
+                   .arg(f.attrs).arg(ents.join(',')).arg(f.records).arg(f.size).arg(f.exactSize).arg(f.blocks)
+                   .arg(f.created.toString(Qt::ISODate), f.updated.toString(Qt::ISODate), f.accessed.toString(Qt::ISODate), f.problem);
+    }
+    const Cpm::Label &l = st.label();
+    out << QString("label %1 %2 %3 %4 %5 %6").arg(l.present).arg(l.index).arg(l.name).arg(l.mode)
+               .arg(l.created.toString(Qt::ISODate), l.updated.toString(Qt::ISODate));
+    out << QString("free %1 %2 used %3 bytes %4").arg(st.freeBlocks()).arg(st.freeEntries()).arg(st.usedEntries()).arg(st.freeBytes());
+    QVector<QByteArray> dir;
+    if (const Cpm::Volume *v = dynamic_cast<const Cpm::Volume *>(&st)) dir = v->directory();
+    else if (const Torch::Fs *t = dynamic_cast<const Torch::Fs *>(&st)) dir = t->directory();
+    for (const QByteArray &e : dir) out << QString::fromLatin1(e.toHex());
+    return out.join('\n');
+}
 
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
@@ -239,6 +261,83 @@ int main(int argc, char **argv) {
               "reopened: " + err);
         const Cpm::Report r = static_cast<Cpm::CpmVolume *>(o2.disc().volume(0))->cpm()->check();
         CHECK(r.ok() && r.warnings.isEmpty(), "Torch::Fs check: clean");
+    }
+
+    // Step 6b: Cpm::Volume and Torch::Fs keep no snapshot of their own. A change that fails half way leaves what it
+    // staged; dw::fs::Disc::transact puts it back and has the volume reload, and reload() must give exactly the state
+    // the changes left in memory (a second Store attached to the same staged container is that reload).
+    printf("Step 6b: Disc::transact is the only rollback, and reload() is faithful\n");
+    err.clear();
+    for (const char *name : {"ibm-3740", "pcw", "torch-cpn"}) {
+        printf(" %s\n", name);
+        const QString p = W + "/staging-" + name + ".img";
+        const Cpm::Format *fp = Cpm::findFormat(name);
+        CHECK(fp, QString("format ") + name);
+        if (!fp) continue;
+        Cpm::Format f = *fp;
+        CHECK(f.derive(&err), "derive: " + err);
+        const bool stamps = f.os == Cpm::Os::V3;
+        {
+            dw::device::Container img;
+            CHECK(Cpm::makeBlank(&img, dw::device::Kind::Raw, f, stamps, stamps ? "SIXB" : QString(), &err) &&
+                      img.saveAs(p, dw::device::Kind::Raw, &err), "blank disc: " + err);
+        }
+        Cpm::OpenedDisc o;
+        CHECK(o.open(p, &err) && o.disc().mounts().size() == 1, "opened: " + err);
+        if (o.disc().mounts().size() != 1) continue;
+        Cpm::Store *st = static_cast<Cpm::CpmVolume *>(o.disc().volume(0))->cpm();
+        auto faithful = [&](const QString &after) {
+            QString e;
+            std::unique_ptr<Cpm::Store> fresh = Cpm::openStore(&o.container(), st->format(), &e);
+            const bool same = fresh && describe(*fresh) == describe(*st);
+            CHECK(same, "reload() gives what " + after + " left in memory" + (fresh ? QString() : ": " + e));
+        };
+        const QDateTime when(QDate(1986, 5, 4), QTime(12, 34, 0));
+        CHECK(st->addFile(0, "ONE.TXT", QByteArray(3000, '1'), 0, when, false, &err), "add ONE.TXT: " + err);
+        faithful("an add");
+        CHECK(st->addFile(3, "TWO.COM", QByteArray(9000, '2'), Cpm::AttrSYS, when, false, &err), "add TWO.COM in user 3: " + err);
+        CHECK(st->addFile(0, "EMPTY", QByteArray(), 0, when, false, &err), "add an empty file: " + err);
+        faithful("adds in two users");
+        CHECK(st->addFile(0, "ONE.TXT", QByteArray(5000, 'o'), 0, when, true, &err), "replace ONE.TXT: " + err);
+        faithful("a replace");
+        CHECK(st->rename(3, "TWO.COM", 5, "MOVED.COM", &err) && st->setAttrs(5, "MOVED.COM", Cpm::AttrRO | Cpm::AttrF2, &err),
+              "rename into user 5, set attributes: " + err);
+        faithful("a rename and attributes");
+        CHECK(st->deleteFile(0, "EMPTY", &err), "delete: " + err);
+        faithful("a delete");
+        if (st->labelAllowed()) {
+            CHECK(st->setLabel("NEWNAME", &err), "label: " + err);
+            faithful("a label");
+        }
+        // A replace that doesn't fit: the old file is deleted first, then the disc is full.
+        const auto snap = o.container().snapshot();
+        const QString before = describe(*st);
+        QByteArray old;
+        const int ix = st->indexOf(0, "ONE.TXT");
+        CHECK(ix >= 0 && st->readFile(st->files()[ix], &old, &err), "ONE.TXT read: " + err);
+        const QByteArray huge(int(st->freeBytes() + 64 * 1024), 'h');
+        CHECK(!o.disc().transact([&](QString *e) { return st->addFile(0, "ONE.TXT", huge, 0, when, true, e); }, &err),
+              "a replace that doesn't fit fails: " + err);
+        QByteArray now;
+        const int ix2 = st->indexOf(0, "ONE.TXT");
+        CHECK(o.container().snapshot() == snap && describe(*st) == before && ix2 >= 0 && st->readFile(st->files()[ix2], &now, &err) &&
+                  now == old, "the transaction put everything back: the staging, the directory in memory and ONE.TXT");
+        // Without a transaction the class now leaves its half-done change (the contract: changes go inside one).
+        QString e2;
+        CHECK(!st->addFile(0, "ONE.TXT", huge, 0, when, true, &e2) && !(o.container().snapshot() == snap),
+              "without a transaction, the old file's deletion stays staged (" + e2 + ")");
+        o.container().restore(snap);
+        CHECK(st->reload(&err) && describe(*st) == before, "put back by hand and reloaded: " + err);
+        // A failure in the middle of several changes, as Delete or Properties make them.
+        CHECK(!o.disc().transact([&](QString *e) {
+                  return st->deleteFile(5, "MOVED.COM", e) && st->addFile(1, "NEW.TXT", "new", 0, when, false, e) &&
+                         st->rename(0, "NOSUCH.TXT", 0, "X.TXT", e);
+              }, &err) && o.container().snapshot() == snap && describe(*st) == before, "a delete, an add, then a failure: all put back: " + err);
+        CHECK(st->check().ok() && o.disc().validateAll().ok() && o.save(&err), "checked and saved: " + err);
+        dw::device::Container saved;
+        std::unique_ptr<Cpm::Store> back;
+        if (saved.open(p, &err) && saved.setRawLayout(o.container().rawLayout(), &err)) back = Cpm::openStore(&saved, f, &err);
+        CHECK(back && describe(*back) == before, "the saved disc reads back the same: " + err);
     }
 
     printf("Acorn Disk Wrangler's discs are handed to it\n");
