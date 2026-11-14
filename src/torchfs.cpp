@@ -169,8 +169,6 @@ using Cpm::File;
 using Cpm::Report;
 using Cpm::Volume;
 
-#define TXN_BEGIN auto snap__ = m_img->snapshot(); auto fail = [&](const QString &e) { *err = e; m_img->restore(snap__); reload(); return false; };
-
 static QByteArray name11Of(const QByteArray &e) {
     QByteArray n;
     for (int k = 5; k < 16; ++k) { int c = quint8(e[k]) & 0x7F; n += char(c ? c : ' '); }
@@ -338,11 +336,14 @@ static void markMap(QByteArray *map, const QVector<int> &sectors, bool inUse) {
     }
 }
 
+// Changes. One that fails says why and stops: what it has staged is put back by the caller's dw::fs::Disc::transact,
+// which then has every volume reload (step 6b: this class keeps no snapshot of its own).
+
 bool Fs::addFile(int user, const QString &nameIn, const QByteArray &data, quint16 attrs, const QDateTime &, bool replace, QString *err) {
     QString name = keepCase() ? nameIn : nameIn.toUpper(), why;
     if (!Volume::validName(name, &why, m_extraNameChars)) { *err = name + ": " + why; return false; }
     if (user < 0 || user > MaxUser) { *err = QString("user number %1 is out of range (0-31)").arg(user); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QString er;
     int ix = indexOf(user, name);
     if (ix >= 0) {
@@ -404,7 +405,7 @@ bool Fs::addFile(int user, const QString &nameIn, const QByteArray &data, quint1
 bool Fs::deleteFile(int user, const QString &name, QString *err) {
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QString er;
     int slot = m_files[ix].entries.value(0);
     const QByteArray e = m_dir[slot];
@@ -435,7 +436,7 @@ bool Fs::rename(int user, const QString &name, int newUser, const QString &newNa
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
     int other = indexOf(newUser, newName);
     if (other >= 0 && other != ix) { *err = QString("%1 already exists in user %2").arg(newName).arg(newUser); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QString er;
     int slot = m_files[ix].entries.value(0);
     QByteArray e = m_dir[slot];
@@ -449,7 +450,7 @@ bool Fs::rename(int user, const QString &name, int newUser, const QString &newNa
 bool Fs::setAttrs(int user, const QString &name, quint16 attrs, QString *err) {
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1:%2 not found").arg(user).arg(name); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QString er;
     int slot = m_files[ix].entries.value(0);
     QByteArray e = m_dir[slot];
@@ -461,7 +462,7 @@ bool Fs::setAttrs(int user, const QString &name, quint16 attrs, QString *err) {
 
 // An empty disc: a zeroed directory, the map of a disc with no files, and the formatter's two sectors.
 bool Fs::initDirectory(QString *err) {
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QString er;
     if (!writeBytes(0, QByteArray(DirSectors * SecLen, '\0'), &er) ||
         !writeBytes(qint64(MapSector) * SecLen, emptyMap(), &er) ||

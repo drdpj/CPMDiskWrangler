@@ -19,7 +19,8 @@
 // CP/M 3 / P2DOS time stamps and disc labels; adding, deleting, renaming files and setting attributes.
 //
 // Every change goes through the image's staging (dw::device::Container::write), so nothing reaches the file until the image
-// is committed. Each mutating call is atomic: it takes a snapshot of the staged writes and restores it on failure.
+// is committed. A change that fails stops where it is: make every change inside a dw::fs::Disc::transact (the window
+// kit and the import session do), which puts the staged writes back and has the volumes reload.
 // The file types and the Store interface are in cpmstore.h; Torch CP/N's filesystem is Torch::Fs (torchfs.h).
 #pragma once
 
@@ -59,7 +60,7 @@ public:
 
     Report check() const override;
 
-    // ----- changes (staged, atomic)
+    // ----- changes (staged; atomic only inside dw::fs::Disc::transact)
     // Adds (or with replace, replaces) a file. when: the date for the time stamps (current time if invalid).
     bool addFile(int user, const QString &name, const QByteArray &data, quint16 attrs, const QDateTime &when,
                  bool replace, QString *err) override;

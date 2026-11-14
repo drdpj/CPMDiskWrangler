@@ -70,7 +70,8 @@ struct Report {
 };
 
 // The CP/M files on one disc (or one side of a disc with a filesystem per side). Every change goes through the
-// image's staging and is atomic: a snapshot of the staged writes is taken and put back on failure.
+// image's staging. A change that fails may leave part of itself staged: changes are made inside dw::fs::Disc::transact,
+// which puts the staging back and calls reload() (the classes keep no snapshot of their own since step 6b).
 class Store {
 public:
     virtual ~Store() = default;

@@ -478,7 +478,8 @@ bool Volume::writeStamps(int entry, const QDateTime &first, const QDateTime &upd
     return writeEntry(entry | 3, sf, err);
 }
 
-#define TXN_BEGIN auto snap__ = m_img->snapshot(); auto fail = [&](const QString &e) { *err = e; m_img->restore(snap__); reload(); return false; };
+// Changes. One that fails says why and stops: what it has staged is put back by the caller's dw::fs::Disc::transact,
+// which then has every volume reload (step 6b: this class keeps no snapshot of its own).
 
 bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, quint16 attrs, const QDateTime &when,
                      bool replace, QString *err) {
@@ -486,7 +487,7 @@ bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, qu
     if (!validName(name, &why, m_extraNameChars)) { *err = name + ": " + why; return false; }
     int maxUser = m_fmt.os == Os::V3 ? 15 : 31;
     if (user < 0 || user > maxUser) { *err = QString("user number %1 is out of range (0-%2)").arg(user).arg(maxUser); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     int ix = indexOf(user, name);
     if (ix >= 0) {
         if (!replace) return fail(QString("%1 already exists in user %2").arg(name).arg(user));
@@ -560,7 +561,7 @@ bool Volume::addFile(int user, const QString &nameIn, const QByteArray &data, qu
 bool Volume::deleteFile(int user, const QString &name, QString *err) {
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1 is not in user %2").arg(name).arg(user); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     File f = m_files[ix];
     for (int ei : f.entries) {
         QByteArray e = m_dir[ei];
@@ -594,7 +595,7 @@ bool Volume::rename(int user, const QString &name, int newUser, const QString &n
     if (newUser < 0 || newUser > maxUser) { *err = QString("user number %1 is out of range (0-%2)").arg(newUser).arg(maxUser); return false; }
     int clash = indexOf(newUser, newName);
     if (clash >= 0 && clash != ix) { *err = QString("%1 already exists in user %2").arg(newName).arg(newUser); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QByteArray n11 = name11(newName);
     File f = m_files[ix];
     for (int ei : f.entries) {
@@ -611,7 +612,7 @@ bool Volume::rename(int user, const QString &name, int newUser, const QString &n
 bool Volume::setAttrs(int user, const QString &name, quint16 attrs, QString *err) {
     int ix = indexOf(user, name);
     if (ix < 0) { *err = QString("%1 is not in user %2").arg(name).arg(user); return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     File f = m_files[ix];
     for (int ei : f.entries) {
         QByteArray e = m_dir[ei];
@@ -631,7 +632,7 @@ bool Volume::setLabel(const QString &labelIn, QString *err) {
     if (!labelAllowed()) { *err = "disc labels are a CP/M 3 feature; this disc's format is CP/M 2.2"; return false; }
     QString label = labelIn.toUpper().trimmed(), why;
     if (!label.isEmpty() && !validName(label, &why, m_extraNameChars)) { *err = label + ": " + why; return false; }
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QByteArray n11 = name11(label.isEmpty() ? QString() : label);
     QString er;
     if (m_label.present) {
@@ -656,7 +657,7 @@ bool Volume::setLabel(const QString &labelIn, QString *err) {
 }
 
 bool Volume::initDirectory(bool stamps, const QString &labelName, QString *err) {
-    TXN_BEGIN
+    auto fail = [err](const QString &e) { *err = e; return false; };
     QString er;
     for (int i = 0; i < m_fmt.maxdir; ++i) {
         QByteArray e(32, char(0xE5));

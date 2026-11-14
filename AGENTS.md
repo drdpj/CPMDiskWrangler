@@ -77,9 +77,13 @@ starts on the filter for the kind the image already is, and the kind saved is th
    staged sectors are re-emitted from their original bytes (header and comment too); DSK/EDSK and raw files are
    patched in place. `fstest roundtrip` checks this on every image it is given.
 5. **Every mutation is atomic**: the window changes a disc through `Disc::transact` (the window kit does
-   this for Delete, Rename, Properties, the label and every import, one transaction per file); underneath, `TXN_BEGIN`
-   in `cpmfs.cpp` (and `Torch::Fs` alike) snapshots the staging and restores it on failure. A failed add (disc full,
-   directory full) leaves no trace (`fstest atomic`).
+   this for Delete, Rename, Properties, the label and every import, one transaction per file, folders included). The
+   transaction is the only rollback: `Cpm::Volume` and `Torch::Fs` keep no snapshot of their own (step 6b), so a
+   change that fails half way leaves what it staged until the transaction puts the staging back and every volume
+   reloads (`reload()` reads the directory again; it must give exactly what the changes left in memory). `cpmdw` needs
+   none: its first error abandons the run, so nothing is saved. Never call a `Store` change outside a transaction in
+   the program. A failed add (disc full, directory full) leaves no trace (`fstest atomic`), nor does a replace that
+   doesn't fit, through the transaction (`voltest`, step 6b).
 6. **Changes need a safe reading** (`MainWindow::readOnlyReason`, from `OpenedDisc::readOnlyWhy`): a known format with no competing reading,
    a format the user confirmed (remembered per file in QSettings), or a disc made here. A reading found only by
    searching is shown but read-only until confirmed. A directory that fails `check()` is read-only. TeleDisk
