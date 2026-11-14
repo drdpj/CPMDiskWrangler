@@ -104,7 +104,7 @@ QMimeData *DropTree::makeMime(const QList<QTreeWidgetItem *> &items) const {
         int side = it->data(0, RoleSide).toInt();
         if (kind == RowFile) refs << FileRef(side, it->data(0, RoleUser).toInt(), it->data(0, RoleName).toString());
         else                    // a user group or a side's root: every file in it
-            for (const Cpm::File &f : win->volume(side).files())
+            for (const Cpm::File &f : win->vol(side).files())
                 if (kind == RowRoot || f.user == it->data(0, RoleUser).toInt()) refs << FileRef(side, f.user, f.name);
     }
     QVector<FileRef> unique;
@@ -196,13 +196,40 @@ void DropTree::dropEvent(QDropEvent *e) {
 
 // ================================================================================================ the window
 
-MainWindow *MainWindow::byId(quint64 id) { return qobject_cast<MainWindow *>(DiscWindow::byId(id)); }
+namespace {
+// What the window reads from each incoming item: the CP/M user, the name and the attributes, from the "cpm", "fat" or
+// "acorn" family, whichever the item has.
+struct Incoming {
+    QString name, srcFs;
+    int user = -1;                     // CP/M user number, -1 if the source has none
+    bool readOnly = false, system = false, archive = false;
+    quint8 interfaceAttrs = 0;         // F1'-F4' as bits 0-3 (CP/M sources)
+};
 
-QList<MainWindow *> MainWindow::windows() {
-    QList<MainWindow *> l;
-    for (DiscWindow *w : DiscWindow::all()) if (auto *m = qobject_cast<MainWindow *>(w)) l << m;
-    return l;
+Incoming incomingOf(const dw::TransferItem &t) {
+    Incoming x;
+    x.name = t.name;
+    x.srcFs = t.sourceFs;
+    const QJsonObject cpm = t.attrs.value("cpm"), fat = t.attrs.value("fat"), acorn = t.attrs.value("acorn");
+    if (!cpm.isEmpty()) {
+        x.user = cpm.contains("user") ? cpm["user"].toInt() : -1;
+        x.readOnly = cpm["readonly"].toBool();
+        x.system = cpm["system"].toBool();
+        x.archive = cpm["archive"].toBool();
+        for (int k = 0; k < 4; ++k) if (cpm[QString("f%1").arg(k + 1)].toBool()) x.interfaceAttrs |= quint8(1 << k);
+    } else if (!fat.isEmpty()) {
+        x.readOnly = fat["readonly"].toBool();
+        x.system = fat["system"].toBool() || fat["hidden"].toBool();     // CP/M SYS files are hidden from DIR
+        x.archive = fat["archive"].toBool();
+    } else if (!acorn.isEmpty()) {
+        x.readOnly = acorn["access"].toString().contains('L');         // case-sensitive: 'l' is public
+    }
+    if (t.sourceFs == "dfs" && x.name.size() >= 3 && x.name[1] == '.') x.name = x.name.mid(2);   // "D.NAME": drop D
+    return x;
 }
+} // namespace
+
+MainWindow *MainWindow::byId(quint64 id) { return qobject_cast<MainWindow *>(DiscWindow::byId(id)); }
 
 dw::app::AppInfo MainWindow::appInfo() const { return Cpm::appInfo(QApplication::applicationVersion()); }
 
@@ -359,10 +386,15 @@ int MainWindow::maxUser() const { return vol(0).format().os == Cpm::Os::V3 ? 15 
 
 void MainWindow::detachAll() { m_doc.detach(); }
 
-QVector<const Cpm::Volume *> MainWindow::volumePtrs() const {
-    QVector<const Cpm::Volume *> v;
+QVector<const Cpm::Store *> MainWindow::volumePtrs() const {
+    QVector<const Cpm::Store *> v;
     for (int i = 0; i < sides(); ++i) v << &vol(i);
     return v;
+}
+
+Cpm::Store &MainWindow::vol(int side) const {
+    if (Cpm::Store *s = m_doc.store(side)) return *s;
+    return const_cast<Cpm::Volume &>(m_noSide);
 }
 
 void MainWindow::applyNameRules() {
@@ -461,7 +493,7 @@ void MainWindow::setNat(const QString &id, bool remember) {
 
 void MainWindow::natDialog() {
     if (!sides()) return;
-    QVector<const Cpm::Volume *> vols;
+    QVector<const Cpm::Store *> vols;
     for (int side = 0; side < sides(); ++side) vols << &vol(side);
     Nat::Dialog d(vols, m_natId, this);
     d.setLowerNames(m_lowerOk);
@@ -479,7 +511,6 @@ bool MainWindow::attachFormat(const Detect::Candidate &c, QString *err) {
     return true;
 }
 
-bool MainWindow::openImage(const QString &path) { return openFile(path); }
 
 // The open pipeline (the kit's openFile): the file read and detected here, the verdict decided by the kit (asked
 // about, or handed to Acorn Disk Wrangler), the reading attached here.
@@ -628,7 +659,7 @@ void MainWindow::newImageDialog() {
 
 void MainWindow::revertDocument() {
     image().discardPending();
-    openImage(image().path());
+    openFile(image().path());
 }
 
 // ------------------------------------------------------------------------------------------- saving
@@ -677,7 +708,7 @@ bool MainWindow::askSaveAs(QString *path, dw::device::Kind *kind) {
 // ------------------------------------------------------------------------------------------- the tree
 
 QString MainWindow::rootLabel(int side) const {
-    const Cpm::Volume &v = vol(side);
+    const Cpm::Store &v = vol(side);
     QString title = v.label().present ? toHostName(v.label().name) : (sides() == 1 ? QFileInfo(image().path()).fileName() : QString());
     return dw::rootLabel(sides() == 1 ? QString("A:") : QString("Side %1").arg(side), title);
 }
@@ -950,7 +981,7 @@ bool MainWindow::askNatForNames(const QVector<dw::TransferItem> &items) {
     box.exec();
     if (box.clickedButton() == plain) return true;
     if (box.clickedButton() != choose) return false;
-    QVector<const Cpm::Volume *> vols;
+    QVector<const Cpm::Store *> vols;
     for (int s = 0; s < sides(); ++s) vols << &vol(s);
     Nat::Dialog d(vols, m_natId, this, names);
     d.setLowerNames(m_lowerOk);
@@ -989,7 +1020,7 @@ dw::ui::ImportHooks MainWindow::importHooks(int) {
     };
     h.place = [this](const dw::TransferItem &item, const dw::fs::Path &target) { return placeIncoming(item, target); };
     h.attrs = [](const dw::TransferItem &item, const dw::fs::Entry *) {
-        const XItem x = RetroFiles::fromTransfer(item);      // the attributes the window reads from each source
+        const Incoming x = incomingOf(item);      // the attributes the window reads from each source
         dw::fs::AttrValues a{{"readonly", x.readOnly}, {"system", x.system}, {"archive", x.archive}};
         for (int k = 0; k < 4; ++k) a[QString("f%1").arg(k + 1)] = bool(x.interfaceAttrs & (1 << k));
         return a;
@@ -998,7 +1029,7 @@ dw::ui::ImportHooks MainWindow::importHooks(int) {
 }
 
 dw::fs::Placement MainWindow::placeIncoming(const dw::TransferItem &item, const dw::fs::Path &target) {
-    const XItem x = RetroFiles::fromTransfer(item);          // the user and name the window reads from each source
+    const Incoming x = incomingOf(item);          // the user and name the window reads from each source
     int user = target.isRoot() ? (x.user >= 0 ? x.user : 0) : Cpm::CpmVolume::userOf(target.parts.value(0));
     if (user > maxUser() || user < 0) user = 0;
     // A name from another CP/M disc is kept exactly (its [ \ ] | were letters there); only a host file name is read as
@@ -1143,19 +1174,13 @@ bool MainWindow::pasteItems(const QMimeData *m, int user, int side) {
 
 // ------------------------------------------------------------------------------------------- changing files
 
-bool MainWindow::deleteFiles(const QVector<FileRef> &refs, QString *err) {
-    QVector<Item> items;
-    for (const FileRef &r : refs) items << itemOf(r);
-    return DiscWindow::deleteFiles(items, err);
-}
-
 QString MainWindow::deleteQuestion(const QVector<Item> &items) const {
     return items.size() == 1 ? QString("Delete %1:%2?").arg(Cpm::CpmVolume::userOf(items[0].path.parts.value(0))).arg(items[0].path.name())
                              : QString("Delete %1 files?").arg(items.size());
 }
 
 bool MainWindow::canRemove(const Item &item, QString *err) const {        // a read-only file stays
-    const Cpm::Volume &v = vol(item.mount);
+    const Cpm::Store &v = vol(item.mount);
     const int i = v.indexOf(Cpm::CpmVolume::userOf(item.path.parts.value(0)), item.path.name());
     if (i >= 0 && (v.files()[i].attrs & Cpm::AttrRO)) { *err = item.path.name() + " is read-only"; return false; }
     return true;
@@ -1336,9 +1361,10 @@ void MainWindow::discInfo() {
             for (int v : f.xlat) xl += QString::number(v + 1) + " ";
             l << "<b>Sector order on a track:</b> " + xl;
             for (int side = 0; side < sides(); ++side) {
-                const Cpm::Volume &v = vol(side);
+                const Cpm::Store &v = vol(side);
+                const auto *cv = dynamic_cast<const Cpm::Volume *>(&v);     // only a CP/M directory has time stamps
                 l << QString("<b>Directory%5:</b> %1 of %2 entries used; %3; label %4")
-                         .arg(v.usedEntries()).arg(f.maxdir).arg(v.hasStamps() ? "time stamps: " + v.stampKinds() : QString("no time stamps"))
+                         .arg(v.usedEntries()).arg(f.maxdir).arg((v.hasStamps() && cv) ? "time stamps: " + cv->stampKinds() : QString("no time stamps"))
                          .arg(v.label().present ? "'" + v.label().name.toHtmlEscaped() + "'" : QString("none"))
                          .arg(sides() > 1 ? QString(" (side %1)").arg(side) : QString());
             }

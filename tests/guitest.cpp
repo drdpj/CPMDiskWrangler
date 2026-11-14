@@ -86,7 +86,23 @@ static void dropOn(QTreeWidget *t, QTreeWidgetItem *target, QMimeData *m) {
     pump();
 }
 
-static QByteArray fileData(Cpm::Volume &v, int user, const QString &name) {
+// The disc's filesystem on a side (through the kit's document), and the open CP/M windows (the kit's list).
+static Cpm::Store &V(MainWindow &w, int side = 0) { return *w.document()->store(side); }
+static QList<MainWindow *> openWindows() {
+    QList<MainWindow *> l;
+    for (dw::ui::DiscWindow *w : dw::ui::DiscWindow::all()) if (auto *m = qobject_cast<MainWindow *>(w)) l << m;
+    return l;
+}
+
+// The window's tree (its one pane).
+static DropTree *Tree(MainWindow &w) { return static_cast<DropTree *>(w.pane()); }
+
+// A file of a disc as the kit names it.
+static dw::ui::DiscWindow::Item ItemOf(int side, int user, const QString &name) {
+    return dw::ui::DiscWindow::Item(side, dw::fs::Path({Cpm::CpmVolume::userName(user), name}));
+}
+
+static QByteArray fileData(Cpm::Store &v, int user, const QString &name) {
     int i = v.indexOf(user, name);
     if (i < 0) return QByteArray("<missing>");
     QByteArray d;
@@ -120,10 +136,10 @@ int main(int argc, char **argv) {
     printf("== new discs\n");
     MainWindow A, B;
     A.show(); B.show();
-    CHECK(A.newImage(wd + "/a.dsk", Disk::Kind::Edsk, *Cpm::findFormat("pcw"), true, "DISCA"), "new PCW disc (EDSK, CP/M 3 stamps)");
-    CHECK(B.newImage(wd + "/b.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "new IBM 3740 disc (IMD)");
-    CHECK(A.writable() && B.writable(), "new discs are writable");
-    CHECK(A.volume().label().name == "DISCA", "label on the new CP/M 3 disc");
+    CHECK(A.newImage(wd + "/a.dsk", dw::device::Kind::Edsk, *Cpm::findFormat("pcw"), true, "DISCA"), "new PCW disc (EDSK, CP/M 3 stamps)");
+    CHECK(B.newImage(wd + "/b.imd", dw::device::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "new IBM 3740 disc (IMD)");
+    CHECK(A.writable(0) && B.writable(0), "new discs are writable");
+    CHECK(V(A).label().name == "DISCA", "label on the new CP/M 3 disc");
 
     printf("== new Research Machines double-sided disc: a separate filesystem on each side\n");
     {
@@ -144,21 +160,21 @@ int main(int argc, char **argv) {
         Cpm::Format ds = *Cpm::findFormat("rm-qd");
         ds.separateSides = true; ds.heads = 2; ds.derived = false;
         CHECK(ds.derive(&err), err);
-        for (Disk::Kind k : {Disk::Kind::Imd, Disk::Kind::Raw}) {
-            const QString p = wd + (k == Disk::Kind::Imd ? "/rmds.imd" : "/rmds.img");
+        for (dw::device::Kind k : {dw::device::Kind::Imd, dw::device::Kind::Raw}) {
+            const QString p = wd + (k == dw::device::Kind::Imd ? "/rmds.imd" : "/rmds.img");
             MainWindow R;
             R.show();
             CHECK(R.newImage(p, k, ds, false, QString()), "new double-sided rm-qd disc");
-            CHECK(R.sides() == 2 && R.writable(), "two filesystems, writable");
+            CHECK(R.document()->sides() == 2 && R.writable(0), "two filesystems, writable");
             QFile::remove(wd + "/side1.txt");
             QFile f1(wd + "/side1.txt"); f1.open(QIODevice::WriteOnly); f1.write("on the second side\r\n"); f1.close();
-            CHECK(R.volume(0).files().isEmpty() && R.volume(1).files().isEmpty(), "both sides empty");
-            CHECK(R.volume(1).addFile(0, "SIDE1.TXT", "on the second side\r\n", 0, QDateTime(), false, &err), "a file on side 1: " + err);
-            CHECK(R.volume(0).files().isEmpty() && R.volume(1).files().size() == 1, "side 0 untouched by it");
+            CHECK(V(R, 0).files().isEmpty() && V(R, 1).files().isEmpty(), "both sides empty");
+            CHECK(V(R, 1).addFile(0, "SIDE1.TXT", "on the second side\r\n", 0, QDateTime(), false, &err), "a file on side 1: " + err);
+            CHECK(V(R, 0).files().isEmpty() && V(R, 1).files().size() == 1, "side 0 untouched by it");
             CHECK(R.save(), "save");
             MainWindow R2;
-            CHECK(R2.openImage(p), "reopen it");
-            CHECK(R2.sides() == 2 && R2.volume(0).files().isEmpty() && R2.volume(1).files().size() == 1, "reopened: a disc on each side, the file on side 1");
+            CHECK(R2.openFile(p), "reopen it");
+            CHECK(R2.document()->sides() == 2 && V(R2, 0).files().isEmpty() && V(R2, 1).files().size() == 1, "reopened: a disc on each side, the file on side 1");
         }
     }
 
@@ -173,7 +189,7 @@ int main(int argc, char **argv) {
     put("prog.inf", "PROG FFFF1900 FFFF8023\n");        // an Acorn sidecar: must be ignored
     A.importPaths({wd + "/host/readme.txt", wd + "/host/A very long name.document", wd + "/host/user3",
                    wd + "/host/misc", wd + "/host/prog.inf"}, -1);
-    Cpm::Volume &va = A.volume();
+    Cpm::Store &va = V(A);
     CHECK(va.indexOf(0, "README.TXT") >= 0, "readme.txt -> 0:README.TXT");
     CHECK(va.indexOf(0, "AVERYLON.DOC") >= 0, "a long host name becomes AVERYLON.DOC");
     CHECK(va.indexOf(3, "GAME.COM") >= 0, "a host folder called user3 puts its files in user 3");
@@ -186,7 +202,7 @@ int main(int argc, char **argv) {
     put("drop.txt", "dropped\r\n");
     auto *m = new QMimeData;
     m->setUrls({QUrl::fromLocalFile(wd + "/host/drop.txt")});
-    dropOn(A.tree(), findRow(A.tree(), RowUser, 3), m);
+    dropOn(Tree(A), findRow(Tree(A), RowUser, 3), m);
     pump();
     CHECK(va.indexOf(3, "DROP.TXT") >= 0, "a file dropped on the User 3 row lands in user 3");
     delete m;
@@ -196,19 +212,19 @@ int main(int argc, char **argv) {
     CHECK(va.rename(0, "NOTES.TXT", 7, "NOTES.TXT", &err), "move NOTES.TXT to user 7");
     A.refresh();
     QString e2;
-    CHECK(!A.deleteFiles({FileRef(0, 3, "GAME.COM")}, &e2), "deleting a read-only file is refused: " + e2);
+    CHECK(!A.deleteFiles({ItemOf(0, 3, "GAME.COM")}, &e2), "deleting a read-only file is refused: " + e2);
     CHECK(A.save(), "save disc A");
-    CHECK(!A.image().hasPending(), "nothing pending after the save");
+    CHECK(!A.document()->container().hasPending(), "nothing pending after the save");
 
     printf("== dragging between windows (real drag events)\n");
-    A.tree()->clearSelection();
-    findRow(A.tree(), RowUser, 3)->setSelected(true);                 // the whole of user 3
-    findRow(A.tree(), RowFile, 0, "README.TXT")->setSelected(true);
-    QMimeData *dm = A.tree()->makeMime(A.tree()->selectedItems());
+    Tree(A)->clearSelection();
+    findRow(Tree(A), RowUser, 3)->setSelected(true);                 // the whole of user 3
+    findRow(Tree(A), RowFile, 0, "README.TXT")->setSelected(true);
+    QMimeData *dm = Tree(A)->makeMime(Tree(A)->selectedItems());
     CHECK(dm && DropTree::fromThisProcess(dm), "the drag carries this program's private format");
-    dropOn(B.tree(), findRow(B.tree(), RowRoot, -1), dm);             // onto the root: users are kept
+    dropOn(Tree(B), findRow(Tree(B), RowRoot, -1), dm);             // onto the root: users are kept
     pump();
-    Cpm::Volume &vb = B.volume();
+    Cpm::Store &vb = V(B);
     CHECK(vb.indexOf(3, "GAME.COM") >= 0 && vb.indexOf(3, "DROP.TXT") >= 0 && vb.indexOf(0, "README.TXT") >= 0,
           "files copied with their user numbers");
     int g = vb.indexOf(3, "GAME.COM");
@@ -217,19 +233,19 @@ int main(int argc, char **argv) {
     CHECK(fileData(vb, 0, "README.TXT") == "Read me first\r\n", "exact size survives a CP/M 2.2 disc too");
     delete dm;
     // dropping again onto user 5 puts copies in user 5
-    A.tree()->clearSelection();
-    findRow(A.tree(), RowFile, 0, "README.TXT")->setSelected(true);
-    dm = A.tree()->makeMime(A.tree()->selectedItems());
-    findRow(B.tree(), RowRoot, -1)->setExpanded(true);
-    dropOn(B.tree(), findRow(B.tree(), RowUser, 3), dm);
+    Tree(A)->clearSelection();
+    findRow(Tree(A), RowFile, 0, "README.TXT")->setSelected(true);
+    dm = Tree(A)->makeMime(Tree(A)->selectedItems());
+    findRow(Tree(B), RowRoot, -1)->setExpanded(true);
+    dropOn(Tree(B), findRow(Tree(B), RowUser, 3), dm);
     pump();
     CHECK(vb.indexOf(3, "README.TXT") >= 0, "a drop on the User 3 row overrides the source's user");
     delete dm;
 
     printf("== dragging out: files and retro-files JSON\n");
-    A.tree()->clearSelection();
-    findRow(A.tree(), RowRoot, -1)->setSelected(true);                 // everything
-    QMimeData *out = A.tree()->makeMime(A.tree()->selectedItems());
+    Tree(A)->clearSelection();
+    findRow(Tree(A), RowRoot, -1)->setSelected(true);                 // everything
+    QMimeData *out = Tree(A)->makeMime(Tree(A)->selectedItems());
     QByteArray json = out->data(RetroFiles::MimeType);
     QList<QUrl> urls = out->urls();
     QJsonObject o = QJsonDocument::fromJson(json).object();
@@ -265,12 +281,12 @@ int main(int argc, char **argv) {
     printf("== a retro-files drop from another program (not this process)\n");
     MainWindow C;
     C.show();
-    CHECK(C.newImage(wd + "/c.img", Disk::Kind::Raw, *Cpm::findFormat("kpiv"), false, QString()), "new Kaypro 4 raw disc");
+    CHECK(C.newImage(wd + "/c.img", dw::device::Kind::Raw, *Cpm::findFormat("kpiv"), false, QString()), "new Kaypro 4 raw disc");
     auto *rm = new QMimeData;
     rm->setData(RetroFiles::MimeType, json);
-    dropOn(C.tree(), findRow(C.tree(), RowRoot, -1), rm);
+    dropOn(Tree(C), findRow(Tree(C), RowRoot, -1), rm);
     pump();
-    CHECK(C.volume().indexOf(3, "GAME.COM") >= 0 && C.volume().indexOf(7, "NOTES.TXT") >= 0, "JSON drop keeps user numbers");
+    CHECK(V(C).indexOf(3, "GAME.COM") >= 0 && V(C).indexOf(7, "NOTES.TXT") >= 0, "JSON drop keeps user numbers");
     delete rm;
     if (!adwDir.isEmpty()) {
         printf("== drops made by Acorn Disk Wrangler's own code\n");
@@ -278,7 +294,7 @@ int main(int argc, char **argv) {
             QFile f(adwDir + "/" + n + ".json");
             CHECK(f.open(QIODevice::ReadOnly) && C.importRetroFiles(f.readAll(), -1), "import " + n + ".json");
         }
-        Cpm::Volume &vc = C.volume();
+        Cpm::Store &vc = V(C);
         int e = vc.indexOf(0, "ELITE");
         CHECK(e >= 0 && (vc.files()[e].attrs & Cpm::AttrRO), "ADFS Elite (locked) -> 0:ELITE, read-only");
         CHECK(vc.indexOf(0, "README") >= 0, "ADFS directory Games flattened: README");
@@ -295,14 +311,14 @@ int main(int argc, char **argv) {
     printf("== format dialog on a disc made here and filled since (Acorn Z80: side 1 runs back)\n");
     {
         MainWindow Z;
-        CHECK(Z.newImage(wd + "/z.img", Disk::Kind::Raw, *Cpm::findFormat("acorn-z80"), false, QString()), "new Acorn Z80 raw disc");
+        CHECK(Z.newImage(wd + "/z.img", dw::device::Kind::Raw, *Cpm::findFormat("acorn-z80"), false, QString()), "new Acorn Z80 raw disc");
         Z.importPaths({wd + "/host/readme.txt"}, -1);
-        int n = Z.volume().files().size();
+        int n = V(Z).files().size();
         CHECK(n > 0 && Z.save(), "add a file and save");
         CHECK(Z.detection().ranked.first().files == 0, "the reading was scored when the disc was empty");
         Z.rescoreReadings();
         CHECK(Z.detection().ranked.first().files == n, QString("scored again it lists the files (%1 of %2)").arg(Z.detection().ranked.first().files).arg(n));
-        FormatDialog fd(&Z.image(), Z.detection(), 0, true, &Z);
+        FormatDialog fd(&Z.document()->container(), Z.detection(), 0, true, &Z);
         {   // "How scoring works": the help covers the search, the tie-breaks and the Sharp inversion
             QPushButton *help = nullptr;
             for (QPushButton *b : fd.findChildren<QPushButton *>()) if (b->text().contains("How scoring works")) help = b;
@@ -355,31 +371,31 @@ int main(int argc, char **argv) {
     if (a.size() >= 2) {
         QFile::copy(a[1], wd + "/osborne.imd");
         MainWindow D;
-        CHECK(D.openImage(wd + "/osborne.imd"), "open a real Osborne single-density IMD");
-        CHECK(D.volume().format().name == "osb1sssd" && D.writable(), "detected as osb1sssd and writable: " + D.readOnlyReason());
+        CHECK(D.openFile(wd + "/osborne.imd"), "open a real Osborne single-density IMD");
+        CHECK(V(D).format().name == "osb1sssd" && D.writable(0), "detected as osb1sssd and writable: " + D.readOnlyReason(0));
         shot(&D, wd + "/shots/osborne.png");
         // try a wrong format by hand in the format dialog: the reading is different and not writable
-        FormatDialog fd(&D.image(), D.detection(), 0, false, &D);
+        FormatDialog fd(&D.document()->container(), D.detection(), 0, false, &D);
         CHECK(fd.tryDiskdef("diskdef wrong\n seclen 256\n tracks 40\n sectrk 10\n blocksize 2048\n maxdir 64\n skew 0\n boottrk 3\nend\n", &err),
               "the format dialog evaluates a hand-made format");
         Detect::Candidate wrong = fd.chosen();
         CHECK(wrong.score < D.detection().ranked.first().score, QString("the hand-made (no skew) reading scores lower (%1 vs %2)")
               .arg(wrong.score).arg(D.detection().ranked.first().score));
-        CHECK(D.useFormat(wrong, false) && !D.writable(), "reading with an unconfirmed format is read-only");
-        CHECK(D.useFormat(D.detection().ranked.first(), true) && D.writable(), "back to the detected format");
+        CHECK(D.useFormat(wrong, false) && !D.writable(0), "reading with an unconfirmed format is read-only");
+        CHECK(D.useFormat(D.detection().ranked.first(), true) && D.writable(0), "back to the detected format");
         shot(&fd, wd + "/shots/formatdialog.png");
     }
     if (a.size() >= 3) {
         MainWindow T;
-        CHECK(T.openImage(a[2]), "open a TeleDisk image");
-        CHECK(!T.writable() && T.readOnlyReason().contains("TeleDisk"), "TeleDisk is read-only: " + T.readOnlyReason());
-        int before = T.volume().files().size();
+        CHECK(T.openFile(a[2]), "open a TeleDisk image");
+        CHECK(!T.writable(0) && T.readOnlyReason(0).contains("TeleDisk"), "TeleDisk is read-only: " + T.readOnlyReason(0));
+        int before = V(T).files().size();
         T.importPaths({wd + "/host/readme.txt"}, -1);
-        CHECK(T.volume().files().size() == before && !T.image().hasPending(), "adding to a read-only disc does nothing");
-        CHECK(T.saveAs(wd + "/fromtd0.imd", Disk::Kind::Imd), "Save As ImageDisk from TeleDisk");
+        CHECK(V(T).files().size() == before && !T.document()->container().hasPending(), "adding to a read-only disc does nothing");
+        CHECK(T.saveAs(wd + "/fromtd0.imd", dw::device::Kind::Imd), "Save As ImageDisk from TeleDisk");
         MainWindow T2;
-        CHECK(T2.openImage(wd + "/fromtd0.imd") && T2.volume().files().size() == before, "the converted image reads the same files");
-        CHECK(T2.writable(), "and is writable: " + T2.readOnlyReason());
+        CHECK(T2.openFile(wd + "/fromtd0.imd") && V(T2).files().size() == before, "the converted image reads the same files");
+        CHECK(T2.writable(0), "and is writable: " + T2.readOnlyReason(0));
     }
     if (!rmImage.isEmpty()) {
         printf("== a Research Machines raw image: FM track 0 on each side, a disc on each side\n");
@@ -392,41 +408,41 @@ int main(int argc, char **argv) {
         auto *om = new QMimeData;
         om->setUrls({QUrl::fromLocalFile(wd + "/rm.img")});
         QDragEnterEvent enter(QPoint(50, 50), Qt::CopyAction, om, Qt::LeftButton, Qt::NoModifier);
-        QCoreApplication::sendEvent(R.tree()->viewport(), &enter);
+        QCoreApplication::sendEvent(Tree(R)->viewport(), &enter);
         CHECK(enter.isAccepted(), "an empty window accepts a dropped image");
         QDragMoveEvent mv(QPoint(50, 50), Qt::CopyAction, om, Qt::LeftButton, Qt::NoModifier);
-        QCoreApplication::sendEvent(R.tree()->viewport(), &mv);
+        QCoreApplication::sendEvent(Tree(R)->viewport(), &mv);
         QDropEvent dr(QPoint(50, 50), Qt::CopyAction, om, Qt::LeftButton, Qt::NoModifier);
-        QCoreApplication::sendEvent(R.tree()->viewport(), &dr);
+        QCoreApplication::sendEvent(Tree(R)->viewport(), &dr);
         pump();
         delete om;
-        CHECK(R.image().isOpen() && R.image().path() == wd + "/rm.img", "dropping the image on the empty window opens it");
-        CHECK(R.sides() == 2 && R.volume(0).format().name == "rm-qd", QString("two sides of rm-qd (%1 sides, %2)").arg(R.sides()).arg(R.volume(0).format().name));
-        CHECK(R.writable(), "writable: " + R.readOnlyReason());
-        CHECK(R.tree()->topLevelItemCount() == 2, "a root row per side");
-        int n0 = R.volume(0).files().size(), n1 = R.volume(1).files().size();
+        CHECK(R.document()->container().isOpen() && R.document()->container().path() == wd + "/rm.img", "dropping the image on the empty window opens it");
+        CHECK(R.document()->sides() == 2 && V(R, 0).format().name == "rm-qd", QString("two sides of rm-qd (%1 sides, %2)").arg(R.document()->sides()).arg(V(R, 0).format().name));
+        CHECK(R.writable(0), "writable: " + R.readOnlyReason(0));
+        CHECK(Tree(R)->topLevelItemCount() == 2, "a root row per side");
+        int n0 = V(R, 0).files().size(), n1 = V(R, 1).files().size();
         put("rmnote.txt", "added to side 1\r\n");
         auto *rmm = new QMimeData;
         rmm->setUrls({QUrl::fromLocalFile(wd + "/host/rmnote.txt")});
-        dropOn(R.tree(), findRow(R.tree(), RowRoot, -1) ? R.tree()->topLevelItem(1) : nullptr, rmm);
+        dropOn(Tree(R), findRow(Tree(R), RowRoot, -1) ? Tree(R)->topLevelItem(1) : nullptr, rmm);
         delete rmm;
-        CHECK(R.volume(1).indexOf(0, "RMNOTE.TXT") >= 0 && R.volume(0).indexOf(0, "RMNOTE.TXT") < 0, "a file dropped on side 1 goes to side 1 only");
+        CHECK(V(R, 1).indexOf(0, "RMNOTE.TXT") >= 0 && V(R, 0).indexOf(0, "RMNOTE.TXT") < 0, "a file dropped on side 1 goes to side 1 only");
         // drag BASIC.COM from side 0 onto side 1 in the same window
-        R.tree()->clearSelection();
+        Tree(R)->clearSelection();
         QTreeWidgetItem *basic = nullptr;
-        for (QTreeWidgetItem *it : R.tree()->findItems("BASIC.COM", Qt::MatchExactly | Qt::MatchRecursive))
+        for (QTreeWidgetItem *it : Tree(R)->findItems("BASIC.COM", Qt::MatchExactly | Qt::MatchRecursive))
             if (it->data(0, RoleSide).toInt() == 0) basic = it;
         CHECK(basic != nullptr, "BASIC.COM on side 0");
         if (basic) {
             basic->setSelected(true);
-            QMimeData *bm = R.tree()->makeMime(R.tree()->selectedItems());
-            dropOn(R.tree(), R.tree()->topLevelItem(1), bm);
+            QMimeData *bm = Tree(R)->makeMime(Tree(R)->selectedItems());
+            dropOn(Tree(R), Tree(R)->topLevelItem(1), bm);
             delete bm;
             pump();
-            CHECK(R.volume(1).indexOf(0, "BASIC.COM") >= 0 && fileData(R.volume(1), 0, "BASIC.COM") == fileData(R.volume(0), 0, "BASIC.COM"),
+            CHECK(V(R, 1).indexOf(0, "BASIC.COM") >= 0 && fileData(V(R, 1), 0, "BASIC.COM") == fileData(V(R, 0), 0, "BASIC.COM"),
                   "BASIC.COM copied from side 0 to side 1 within the window");
         }
-        CHECK(R.volume(0).files().size() == n0, "side 0 unchanged");
+        CHECK(V(R, 0).files().size() == n0, "side 0 unchanged");
         CHECK(R.save(), "save");
         QFile after(wd + "/rm.img");
         after.open(QIODevice::ReadOnly);
@@ -436,7 +452,7 @@ int main(int argc, char **argv) {
         CHECK(b.left(2048) == before.left(2048) && b.mid(side, 2048) == before.mid(side, 2048), "both FM track 0s unchanged");
         CHECK(b.left(side) == before.left(side), "side 0 byte-identical (nothing was written to it)");
         MainWindow R2;
-        CHECK(R2.openImage(wd + "/rm.img") && R2.sides() == 2 && R2.volume(1).files().size() == n1 + 2, "reopened: side 1 has the two new files");
+        CHECK(R2.openFile(wd + "/rm.img") && R2.document()->sides() == 2 && V(R2, 1).files().size() == n1 + 2, "reopened: side 1 has the two new files");
         shot(&R2, wd + "/shots/rm.png");
     }
     printf("== Torch CP/N: a new disc, files in, a paste from another disc, saved and reopened\n");
@@ -444,26 +460,26 @@ int main(int argc, char **argv) {
         MainWindow T;
         T.show();
         QString tp = wd + "/torch.dsd";
-        CHECK(T.newImage(tp, Disk::Kind::Raw, *Cpm::findFormat("torch-cpn"), false, QString()), "new Torch CP/N disc");
-        CHECK(T.writable() && T.volume().format().torch, "the new Torch disc is writable");
+        CHECK(T.newImage(tp, dw::device::Kind::Raw, *Cpm::findFormat("torch-cpn"), false, QString()), "new Torch CP/N disc");
+        CHECK(T.writable(0) && V(T).format().torch, "the new Torch disc is writable");
         T.importPaths({wd + "/host/readme.txt", wd + "/host/user3"}, -1);
-        CHECK(T.volume().indexOf(0, "README.TXT") >= 0 && T.volume().indexOf(3, "GAME.COM") >= 0, "host files added, user3 folder into user 3");
+        CHECK(V(T).indexOf(0, "README.TXT") >= 0 && V(T).indexOf(3, "GAME.COM") >= 0, "host files added, user3 folder into user 3");
         QAction *label = nullptr;
         for (QAction *x : T.findChildren<QAction *>()) if (x->text() == "Disc &label...") label = x;
         CHECK(label && !label->isEnabled(), "Torch discs have no label: Disc label is off");
-        B.tree()->clearSelection();
-        findRow(B.tree(), RowFile, 0, "README.TXT")->setSelected(true);
+        Tree(B)->clearSelection();
+        findRow(Tree(B), RowFile, 0, "README.TXT")->setSelected(true);
         QMetaObject::invokeMethod(&B, "copySelected", Qt::DirectConnection);
         QString e2;
-        CHECK(T.deleteFiles({FileRef(0, 0, "README.TXT")}, &e2), "delete README.TXT from the Torch disc: " + e2);
-        T.tree()->clearSelection();
+        CHECK(T.deleteFiles({ItemOf(0, 0, "README.TXT")}, &e2), "delete README.TXT from the Torch disc: " + e2);
+        Tree(T)->clearSelection();
         QMetaObject::invokeMethod(&T, "paste", Qt::DirectConnection);
-        CHECK(T.volume().indexOf(0, "README.TXT") >= 0, "pasted from the IBM 3740 disc onto the Torch disc");
-        CHECK(T.volume().check().ok(), "the Torch disc checks clean: " + T.volume().check().errors.join("; "));
+        CHECK(V(T).indexOf(0, "README.TXT") >= 0, "pasted from the IBM 3740 disc onto the Torch disc");
+        CHECK(V(T).check().ok(), "the Torch disc checks clean: " + V(T).check().errors.join("; "));
         CHECK(T.save(), "saved");
         MainWindow T2;
-        CHECK(T2.openImage(tp) && T2.volume().format().torch && T2.writable(), "reopened by detection as Torch CP/N, writable");
-        CHECK(T2.volume().files().size() == 2, QString("2 files after reopening (README.TXT, 3:GAME.COM), %1 found").arg(T2.volume().files().size()));
+        CHECK(T2.openFile(tp) && V(T2).format().torch && T2.writable(0), "reopened by detection as Torch CP/N, writable");
+        CHECK(V(T2).files().size() == 2, QString("2 files after reopening (README.TXT, 3:GAME.COM), %1 found").arg(V(T2).files().size()));
         QMetaObject::invokeMethod(&T2, "discInfo", Qt::DirectConnection);      // autoAnswer: no dialog, just no crash
         shot(&T2, wd + "/shots/torch.png");
     }
@@ -486,44 +502,44 @@ int main(int argc, char **argv) {
     printf("== copy and paste, with the platform's keys\n");
     {
         auto key = [](MainWindow *w, QKeySequence::StandardKey k) {
-            w->activateWindow(); QTest::qWaitForWindowActive(w); w->tree()->setFocus(); pump();
-            QTest::keySequence(w->tree(), QKeySequence(k)); pump();
+            w->activateWindow(); QTest::qWaitForWindowActive(w); Tree(*w)->setFocus(); pump();
+            QTest::keySequence(Tree(*w), QKeySequence(k)); pump();
         };
         QClipboard *cb = QApplication::clipboard();
-        int ia = A.volume().indexOf(0, "AVERYLON.DOC");
-        CHECK(ia >= 0 && B.volume().indexOf(0, "AVERYLON.DOC") < 0, "0:AVERYLON.DOC is on disc A, not on B");
-        QByteArray doc = fileData(A.volume(), 0, "AVERYLON.DOC");
-        A.tree()->clearSelection();
-        findRow(A.tree(), RowFile, 0, "AVERYLON.DOC")->setSelected(true);
+        int ia = V(A).indexOf(0, "AVERYLON.DOC");
+        CHECK(ia >= 0 && V(B).indexOf(0, "AVERYLON.DOC") < 0, "0:AVERYLON.DOC is on disc A, not on B");
+        QByteArray doc = fileData(V(A), 0, "AVERYLON.DOC");
+        Tree(A)->clearSelection();
+        findRow(Tree(A), RowFile, 0, "AVERYLON.DOC")->setSelected(true);
         key(&A, QKeySequence::Copy);       // the tree's own Ctrl+C (a row's text) must not get it
         const QMimeData *cm = cb->mimeData();
         CHECK(cm && cm->hasFormat(DW_MIME_CLIP) && cm->hasFormat(RetroFiles::MimeType) && cm->hasUrls() &&
               cm->hasFormat("x-special/gnome-copied-files"), "Ctrl+C puts the files on the clipboard");
         // what was copied is kept: delete it from A, then paste into B
         QString e;
-        CHECK(A.deleteFiles({FileRef(0, 0, "AVERYLON.DOC")}, &e), "delete the copied file from disc A: " + e);
+        CHECK(A.deleteFiles({ItemOf(0, 0, "AVERYLON.DOC")}, &e), "delete the copied file from disc A: " + e);
         A.refresh();
-        B.tree()->clearSelection();
-        findRow(B.tree(), RowUser, 3)->setSelected(true);
+        Tree(B)->clearSelection();
+        findRow(Tree(B), RowUser, 3)->setSelected(true);
         key(&B, QKeySequence::Paste);
-        CHECK(fileData(B.volume(), 3, "AVERYLON.DOC") == doc, "Ctrl+V pastes it into disc B, into the selected User 3, unchanged");
-        B.tree()->clearSelection();
+        CHECK(fileData(V(B), 3, "AVERYLON.DOC") == doc, "Ctrl+V pastes it into disc B, into the selected User 3, unchanged");
+        Tree(B)->clearSelection();
         // files copied in a file manager: a URL list, or GNOME Files' own list (nothing selected: user 0)
         auto *u = new QMimeData;
         u->setUrls({QUrl::fromLocalFile(wd + "/host/misc/notes.txt")});
         cb->setMimeData(u);
         pump();
         QMetaObject::invokeMethod(&B, "paste", Qt::DirectConnection);
-        CHECK(fileData(B.volume(), 0, "NOTES.TXT") == "notes\r\n", "a file copied in a file manager is pasted");
+        CHECK(fileData(V(B), 0, "NOTES.TXT") == "notes\r\n", "a file copied in a file manager is pasted");
         auto *g = new QMimeData;
         g->setData("x-special/gnome-copied-files", "copy\n" + QUrl::fromLocalFile(wd + "/host/drop.txt").toEncoded());
         cb->setMimeData(g);
         pump();
         QMetaObject::invokeMethod(&B, "paste", Qt::DirectConnection);
-        CHECK(fileData(B.volume(), 0, "DROP.TXT") == "dropped\r\n", "GNOME Files' list is pasted");
+        CHECK(fileData(V(B), 0, "DROP.TXT") == "dropped\r\n", "GNOME Files' list is pasted");
         // copied here, pasted in a file manager: the files are written when it asks, as for a drag
-        B.tree()->clearSelection();
-        findRow(B.tree(), RowFile, 3, "AVERYLON.DOC")->setSelected(true);
+        Tree(B)->clearSelection();
+        findRow(Tree(B), RowFile, 3, "AVERYLON.DOC")->setSelected(true);
         QMetaObject::invokeMethod(&B, "copySelected", Qt::DirectConnection);
         QList<QUrl> urls = cb->mimeData() ? cb->mimeData()->urls() : QList<QUrl>();
         QFile out(urls.value(0).toLocalFile());
@@ -535,25 +551,25 @@ int main(int argc, char **argv) {
     printf("== national character sets\n");
     {
         MainWindow N;
-        CHECK(N.newImage(wd + "/nat.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "new disc for the character set test");
+        CHECK(N.newImage(wd + "/nat.imd", dw::device::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "new disc for the character set test");
         CHECK(N.natId() == "ascii", "a new disc starts on plain ASCII");
         N.setNat("dk-no", false);
         QDir().mkpath(wd + "/host/nat");
         { QFile f(wd + "/host/nat/" + QString::fromUtf8("br\xC3\xB8" "d.txt")); f.open(QIODevice::WriteOnly); f.write("m\xC3\xA6lk\r\n"); }
         N.importPaths({wd + "/host/nat/" + QString::fromUtf8("br\xC3\xB8" "d.txt")}, -1);
-        CHECK(N.volume().indexOf(0, "BR\\D.TXT") >= 0, "brød.txt is stored as BR\\D.TXT with Danish chosen");
+        CHECK(V(N).indexOf(0, "BR\\D.TXT") >= 0, "brød.txt is stored as BR\\D.TXT with Danish chosen");
         N.setNat("ascii", false);
         QDir().mkpath(wd + "/host/nat2");
         { QFile f(wd + "/host/nat2/" + QString::fromUtf8("br\xC3\xB8" "e.txt")); f.open(QIODevice::WriteOnly); f.write("x\r\n"); }
         N.importPaths({wd + "/host/nat2/" + QString::fromUtf8("br\xC3\xB8" "e.txt")}, -1);
-        CHECK(N.volume().indexOf(0, "BR-E.TXT") >= 0, "without a set the same sort of name becomes BR-E.TXT as before");
-        CHECK(N.volume().indexOf(0, "BR\\D.TXT") >= 0, "the earlier file is untouched");
+        CHECK(V(N).indexOf(0, "BR-E.TXT") >= 0, "without a set the same sort of name becomes BR-E.TXT as before");
+        CHECK(V(N).indexOf(0, "BR\\D.TXT") >= 0, "the earlier file is untouched");
         N.setNat("dk-no", false);
         // retro-files: a name travels as the disc holds it; only the host file takes the national letters
         {
-            N.tree()->clearSelection();
-            findRow(N.tree(), RowRoot, -1)->setSelected(true);
-            QMimeData *dm = N.tree()->makeMime(N.tree()->selectedItems());
+            Tree(N)->clearSelection();
+            findRow(Tree(N), RowRoot, -1)->setSelected(true);
+            QMimeData *dm = Tree(N)->makeMime(Tree(N)->selectedItems());
             QByteArray dj = dm->data(RetroFiles::MimeType);
             QList<QUrl> du = dm->urls();
             bool rawName = false, hostName = false;
@@ -570,19 +586,19 @@ int main(int argc, char **argv) {
             CHECK(hostName, "...while the file written to the host is brød.txt (" + hostPath + ")");
             CHECK(!du.isEmpty(), "dragged files listed");
             MainWindow P;                                       // a disc using plain ASCII
-            CHECK(P.newImage(wd + "/natp.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "an ASCII disc to drop on");
+            CHECK(P.newImage(wd + "/natp.imd", dw::device::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "an ASCII disc to drop on");
             CHECK(P.importRetroFiles(dj, -1), "drop on the ASCII disc");
-            CHECK(P.volume().indexOf(0, "BR\\D.TXT") >= 0, "a name moved between CP/M discs stays exactly as it was");
+            CHECK(V(P).indexOf(0, "BR\\D.TXT") >= 0, "a name moved between CP/M discs stays exactly as it was");
             MainWindow Q;
-            CHECK(Q.newImage(wd + "/natq.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a Swedish disc to drop on");
+            CHECK(Q.newImage(wd + "/natq.imd", dw::device::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a Swedish disc to drop on");
             Q.setNat("se-fi", false);
-            CHECK(Q.importRetroFiles(dj, -1) && Q.volume().indexOf(0, "BR\\D.TXT") >= 0, "...and the same on a disc with another set chosen");
+            CHECK(Q.importRetroFiles(dj, -1) && V(Q).indexOf(0, "BR\\D.TXT") >= 0, "...and the same on a disc with another set chosen");
             delete dm;
         }
         // dropping a host file whose name has letters ASCII can't hold offers the national set (answered here by a timer)
         {
             MainWindow H;
-            CHECK(H.newImage(wd + "/nath.imd", Disk::Kind::Imd, *Cpm::findFormat("rm-dd"), false, QString()), "an RM disc to drop a Danish name on");
+            CHECK(H.newImage(wd + "/nath.imd", dw::device::Kind::Imd, *Cpm::findFormat("rm-dd"), false, QString()), "an RM disc to drop a Danish name on");
             QDir().mkpath(wd + "/host/nat3");
             const QString hp = wd + "/host/nat3/" + QString::fromUtf8("l\xC3\xB8nsedd.l");
             { QFile f(hp); f.open(QIODevice::WriteOnly); f.write("x"); }
@@ -604,19 +620,19 @@ int main(int argc, char **argv) {
                 auto *um = new QMimeData;
                 um->setUrls({QUrl::fromLocalFile(hp)});
                 H.show();
-                dropOn(H.tree(), findRow(H.tree(), RowRoot, -1), um);
-                for (int i = 0; i < 40 && H.volume().files().isEmpty(); ++i) { QTest::qWait(50); pump(); }
+                dropOn(Tree(H), findRow(Tree(H), RowRoot, -1), um);
+                for (int i = 0; i < 40 && V(H).files().isEmpty(); ++i) { QTest::qWait(50); pump(); }
                 delete um;
             }
             MainWindow::autoAnswer = true;
             t.stop();
             CHECK(asked && offered, "it asked, and offered Danish/Norwegian as the likely set");
-            CHECK(H.natId() == "dk-no" && H.volume().indexOf(0, "L\\NSEDD.L") >= 0, "lønsedd.l comes onto the disc as L\\NSEDD.L");
+            CHECK(H.natId() == "dk-no" && V(H).indexOf(0, "L\\NSEDD.L") >= 0, "lønsedd.l comes onto the disc as L\\NSEDD.L");
         }
         // Tools > Allow lower-case file names: off for a new disc, so names are made upper case; on, they keep their case
         {
             MainWindow L;
-            CHECK(L.newImage(wd + "/natl.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a disc for lower-case names");
+            CHECK(L.newImage(wd + "/natl.imd", dw::device::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a disc for lower-case names");
             L.setNat("dk-no", false);
             CHECK(!L.lowerNames(), "lower-case names are not allowed on a new disc");
             QDir().mkpath(wd + "/host/low");
@@ -624,16 +640,16 @@ int main(int argc, char **argv) {
             { QFile f(lp); f.open(QIODevice::WriteOnly); f.write("again"); }
             MainWindow::autoAnswer = true;
             L.importPaths({lp}, -1, 0);
-            CHECK(L.volume().indexOf(0, "L\\NSEDDE.L") >= 0 && L.volume().indexOf(0, "l|nsedde.l") < 0, "unticked: lønsedde.l becomes L\\NSEDDE.L");
+            CHECK(V(L).indexOf(0, "L\\NSEDDE.L") >= 0 && V(L).indexOf(0, "l|nsedde.l") < 0, "unticked: lønsedde.l becomes L\\NSEDDE.L");
             L.setLowerNames(true, false);
             L.importPaths({lp}, -1, 0);
-            CHECK(L.volume().indexOf(0, "l|nsedde.l") >= 0 && L.volume().files().size() == 2, "ticked: lønsedde.l is written as l|nsedde.l, in lower case");
+            CHECK(V(L).indexOf(0, "l|nsedde.l") >= 0 && V(L).files().size() == 2, "ticked: lønsedde.l is written as l|nsedde.l, in lower case");
             QString e;
-            CHECK(L.volume().rename(0, "l|nsedde.l", 0, "l|nsede2.l", &e) && L.volume().indexOf(0, "l|nsede2.l") >= 0, "a rename keeps lower case when allowed: " + e);
-            CHECK(L.volume().rename(0, "l|nsede2.l", 0, "l|nsedde.l", &e), "...and back: " + e);
-            L.tree()->clearSelection();
-            findRow(L.tree(), RowRoot, -1)->setSelected(true);
-            QMimeData *lm = L.tree()->makeMime(L.tree()->selectedItems());
+            CHECK(V(L).rename(0, "l|nsedde.l", 0, "l|nsede2.l", &e) && V(L).indexOf(0, "l|nsede2.l") >= 0, "a rename keeps lower case when allowed: " + e);
+            CHECK(V(L).rename(0, "l|nsede2.l", 0, "l|nsedde.l", &e), "...and back: " + e);
+            Tree(L)->clearSelection();
+            findRow(Tree(L), RowRoot, -1)->setSelected(true);
+            QMimeData *lm = Tree(L)->makeMime(Tree(L)->selectedItems());
             QByteArray lj = lm->data(RetroFiles::MimeType);
             bool lowName = false, lowPath = false;
             for (const QJsonValue &v : QJsonDocument::fromJson(lj).object()["items"].toArray())
@@ -644,13 +660,13 @@ int main(int argc, char **argv) {
             L.resize(430, 300); pump(); L.grab().save(wd + "/shots/narrow.png");
             CHECK(L.save(), "save the disc with a lower-case name");
             MainWindow L2;
-            CHECK(L2.openImage(wd + "/natl.imd") && L2.lowerNames(), "reopened: ticked automatically because a name is lower case");
+            CHECK(L2.openFile(wd + "/natl.imd") && L2.lowerNames(), "reopened: ticked automatically because a name is lower case");
             L2.setLowerNames(false, true);
             MainWindow L3;
-            CHECK(L3.openImage(wd + "/natl.imd") && !L3.lowerNames(), "an untick is remembered for that disc");
+            CHECK(L3.openFile(wd + "/natl.imd") && !L3.lowerNames(), "an untick is remembered for that disc");
             L3.setLowerNames(true, true);
             MainWindow L4;
-            CHECK(L4.openImage(wd + "/natl.imd") && L4.lowerNames(), "...and so is ticking it again");
+            CHECK(L4.openFile(wd + "/natl.imd") && L4.lowerNames(), "...and so is ticking it again");
             QAction *act = nullptr;
             for (QAction *x : L4.findChildren<QAction *>()) if (x->text().contains("lower-case file names")) act = x;
             CHECK(act && act->isCheckable() && act->isChecked(), "the Tools menu has the ticked 'Allow lower-case file names'");
@@ -665,13 +681,17 @@ int main(int argc, char **argv) {
         }
         // two names that differ only in case, written to the host and dropped back
         {
-            QVector<XItem> xi;
-            auto mk = [&](const QString &name, const QString &host) { XItem x; x.name = name; x.hostName = host; x.srcFs = "cpm"; x.user = 0; x.data = "z"; return x; };
+            QVector<dw::TransferItem> xi;
+            auto mk = [&](const QString &name, const QString &host) {
+                dw::TransferItem x; x.name = name; x.hostName = host; x.sourceFs = "cpm"; x.data = "z";
+                QJsonObject a; a["user"] = 0; x.attrs["cpm"] = a;
+                return x;
+            };
             xi << mk("L\\NSEDDE.L", QString::fromUtf8("L\xC3\x98NSEDDE.L")) << mk("l|nsedde.l", QString::fromUtf8("l\xC3\xB8nsedde.l")) << mk("PLAIN.TXT", "PLAIN.TXT");
             QDir().mkpath(wd + "/host/out");
             QStringList top, errs;
             QJsonArray ja;
-            RetroFiles::writeHost(xi, wd + "/host/out", false, false, &top, &ja, &errs);
+            dw::xfer::writeHost(xi, wd + "/host/out", RetroFiles::CpmPolicy(false, false), &top, &ja, &errs);
             QDir od(wd + "/host/out");
             const QStringList got = od.entryList(QDir::Files, QDir::Name);
             const bool sensitive = got.size() == 3 && got.contains(QString::fromUtf8("l\xC3\xB8nsedde.l")) && got.contains(QString::fromUtf8("L\xC3\x98NSEDDE.L"));
@@ -680,7 +700,7 @@ int main(int argc, char **argv) {
             CHECK(sensitive || got.contains(QString::fromUtf8("L\xC3\x98NSEDDE_2.L")), "the upper-case one keeps its case too, and gets _2 only if the host can't tell them apart");
             // dropped back with the suffix the host needed
             MainWindow B2;
-            CHECK(B2.newImage(wd + "/natsuf.imd", Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a disc for the dropped-back names");
+            CHECK(B2.newImage(wd + "/natsuf.imd", dw::device::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString()), "a disc for the dropped-back names");
             B2.setNat("dk-no", false);
             B2.setLowerNames(true, false);
             const QString p1 = wd + "/host/out/" + QString::fromUtf8("l\xC3\xB8nsedde.l");
@@ -690,22 +710,22 @@ int main(int argc, char **argv) {
             { QFile f(wd + "/host/out2/foo_1.txt"); f.open(QIODevice::WriteOnly); f.write("z"); }
             MainWindow::autoAnswer = true;
             B2.importPaths({wd + "/host/out2/" + QString::fromUtf8("l\xC3\xB8nsedde.l"), wd + "/host/out2/" + QString::fromUtf8("L\xC3\x98NSEDDE_2.L"), wd + "/host/out2/foo_1.txt"}, -1, 0);
-            CHECK(B2.volume().indexOf(0, "l|nsedde.l") >= 0 && B2.volume().indexOf(0, "L\\NSEDDE.L") >= 0, "the _2 is taken off again and the case kept: l|nsedde.l and L\\NSEDDE.L");
-            CHECK(B2.volume().indexOf(0, "foo-1.txt") >= 0, "a real foo_1.txt is left alone (becomes foo-1.txt)");
+            CHECK(V(B2).indexOf(0, "l|nsedde.l") >= 0 && V(B2).indexOf(0, "L\\NSEDDE.L") >= 0, "the _2 is taken off again and the case kept: l|nsedde.l and L\\NSEDDE.L");
+            CHECK(V(B2).indexOf(0, "foo-1.txt") >= 0, "a real foo_1.txt is left alone (becomes foo-1.txt)");
         }
         N.setNat("dk-no", true);
         {
             QToolButton *nb = nullptr;
             for (QToolButton *b : N.findChildren<QToolButton *>()) if (b->text().startsWith("Names:")) nb = b;
             {   // the character set dialog: the list is as wide as its entries, the preview takes the rest
-                QVector<const Cpm::Volume *> vs{&N.volume()};
+                QVector<const Cpm::Store *> vs{&V(N)};
                 Nat::Dialog dlg(vs, "dk-no");
                 shot(&dlg, wd + "/shots/natdialog.png");
                 QListWidget *lw = dlg.findChild<QListWidget *>();
                 CHECK(lw && lw->width() < 340 && lw->horizontalScrollBar()->maximum() == 0, "character set list fits its entries, no sideways scrolling");
             }
             {   // adding lønsedde.l: the dialog names the likely set, selects it, and previews the name on the disc
-                QVector<const Cpm::Volume *> vs{&N.volume()};
+                QVector<const Cpm::Store *> vs{&V(N)};
                 Nat::Dialog dlg(vs, "ascii", nullptr, {QString::fromUtf8("l\xC3\xB8nsedde.l")});
                 QListWidget *lw = dlg.findChild<QListWidget *>();
                 QPlainTextEdit *pv = dlg.findChild<QPlainTextEdit *>();
@@ -718,11 +738,11 @@ int main(int argc, char **argv) {
         shot(&N, wd + "/shots/nat.png");
         CHECK(N.save(), "save");
         MainWindow N2;
-        CHECK(N2.openImage(wd + "/nat.imd"), "reopen it");
+        CHECK(N2.openFile(wd + "/nat.imd"), "reopen it");
         CHECK(N2.natId() == "dk-no", "the choice is remembered for that disc");
         N2.setNat("ascii", true);
         MainWindow N3;
-        CHECK(N3.openImage(wd + "/nat.imd") && N3.natId() == "ascii", "choosing ASCII again forgets it");
+        CHECK(N3.openFile(wd + "/nat.imd") && N3.natId() == "ascii", "choosing ASCII again forgets it");
     }
 
     printf("== file dialog filters match upper-case names too\n");
@@ -752,23 +772,23 @@ int main(int argc, char **argv) {
         qApp->installEventFilter(&filter);
         auto holding = [](const QString &p) {
             QList<MainWindow *> r;
-            for (MainWindow *w : MainWindow::windows())
-                if (w->image().isOpen() && QFileInfo(w->image().path()).canonicalFilePath() == QFileInfo(p).canonicalFilePath()) r << w;
+            for (MainWindow *w : openWindows())
+                if (w->document()->container().isOpen() && QFileInfo(w->document()->container().path()).canonicalFilePath() == QFileInfo(p).canonicalFilePath()) r << w;
             return r;
         };
         auto finderOpen = [](const QString &p) { QFileOpenEvent ev(p); QCoreApplication::sendEvent(qApp, &ev); pump(); };
         CHECK(QFile::copy(wd + "/b.imd", wd + "/fo1.imd") && QFile::copy(wd + "/b.imd", wd + "/fo2.imd"), "two copies of b.imd to open");
-        const int n = MainWindow::windows().size();
+        const int n = openWindows().size();
         finderOpen(wd + "/b.imd");
-        CHECK(MainWindow::windows().size() == n && holding(wd + "/b.imd").size() == 1, "an image already open is brought forward, not opened twice");
+        CHECK(openWindows().size() == n && holding(wd + "/b.imd").size() == 1, "an image already open is brought forward, not opened twice");
         finderOpen(wd + "/fo1.imd");
-        CHECK(MainWindow::windows().size() == n + 1 && holding(wd + "/fo1.imd").size() == 1, "with every window holding a disc, it gets a window of its own");
+        CHECK(openWindows().size() == n + 1 && holding(wd + "/fo1.imd").size() == 1, "with every window holding a disc, it gets a window of its own");
         auto *empty = new MainWindow;
         empty->setAttribute(Qt::WA_DeleteOnClose);
         empty->show();
         pump();
         finderOpen(wd + "/fo2.imd");
-        CHECK(MainWindow::windows().size() == n + 2 && holding(wd + "/fo2.imd").value(0) == empty, "an empty window takes it");
+        CHECK(openWindows().size() == n + 2 && holding(wd + "/fo2.imd").value(0) == empty, "an empty window takes it");
     }
 
     shot(&A, wd + "/shots/pcw.png");

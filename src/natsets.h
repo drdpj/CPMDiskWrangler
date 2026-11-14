@@ -27,7 +27,7 @@
 #include <QStringList>
 #include <QVector>
 
-namespace Cpm { class Store; class Volume; }
+namespace Cpm { class Store; }
 
 namespace Nat {
 
@@ -51,6 +51,5 @@ QString extraNameChars(const Set &set);
 // name is offered "Allow lower-case file names" (ticked), and names then go back exactly as they came out.
 QString lowerLetters();                                          // "a".."z": allowed in names on such a disc
 bool usesLowerCase(const QVector<const Cpm::Store *> &vols);
-bool usesLowerCase(const QVector<const Cpm::Volume *> &vols);
 
 } // namespace Nat

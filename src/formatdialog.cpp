@@ -283,9 +283,10 @@ void FormatDialog::selectionChanged() {
     out << "" << "Files this reading lists:";
     QString err;
     if (m_img->kind() == dw::device::Kind::Raw && c.raw.valid()) m_img->setRawLayout(c.raw, &err);
-    Cpm::Volume v;
-    if (!v.attach(m_img, c.fmt, &err)) out << "  (can't read: " + err + ")";
+    std::unique_ptr<Cpm::Store> vp = Cpm::openStore(m_img, c.fmt, &err);
+    if (!vp) out << "  (can't read: " + err + ")";
     else {
+        const Cpm::Store &v = *vp;
         int n = 0;
         for (const Cpm::File &f : v.files()) {
             if (++n > 200) { out << QString("  ... and %1 more").arg(v.files().size() - 200); break; }

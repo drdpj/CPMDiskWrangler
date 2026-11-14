@@ -35,7 +35,7 @@
 #include <cstdio>
 #include "../src/cpmfs.h"
 #include "../src/detect.h"
-#include "../src/diskimage.h"
+#include <diskwrangler/device/container.h>
 #include "../src/torchfs.h"
 
 static int failures = 0;
@@ -57,7 +57,7 @@ static QByteArray asStored(const Cpm::Format &f, const QByteArray &data) {
     return data + QByteArray(128 - data.size() % 128, char(0x1A));   // empty: one record of ^Z
 }
 
-static bool verify(Cpm::Volume &v, const QVector<Expect> &ex, const QString &what) {
+static bool verify(Cpm::Store &v, const QVector<Expect> &ex, const QString &what) {
     int before = failures;
     CHECK(v.files().size() == ex.size(), QString("%1: %2 files, expected %3").arg(what).arg(v.files().size()).arg(ex.size()));
     for (const Expect &e : ex) {
@@ -77,11 +77,11 @@ static bool verify(Cpm::Volume &v, const QVector<Expect> &ex, const QString &wha
     return failures == before;
 }
 
-static Disk::Kind kindOf(const QString &k) {
-    if (k == "imd") return Disk::Kind::Imd;
-    if (k == "edsk") return Disk::Kind::Edsk;
-    if (k == "dsk") return Disk::Kind::Dsk;                   // the standard CPCEMU header
-    return Disk::Kind::Raw;
+static dw::device::Kind kindOf(const QString &k) {
+    if (k == "imd") return dw::device::Kind::Imd;
+    if (k == "edsk") return dw::device::Kind::Edsk;
+    if (k == "dsk") return dw::device::Kind::Dsk;                   // the standard CPCEMU header
+    return dw::device::Kind::Raw;
 }
 
 static int formatTest(const QString &outdir, const QString &fname, const QString &kname) {
@@ -97,52 +97,54 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         f.heads = 2;
     }
     f.derive(&err);
-    Disk::Kind kind = kindOf(kname);
+    dw::device::Kind kind = kindOf(kname);
     QString ext = kname == "raw" ? "img" : kname == "imd" ? "imd" : "dsk";
     QString path = outdir + "/" + fname + "." + ext;
     QDir().mkpath(outdir);
     printf("== %s as %s: %s\n", qPrintable(fname), qPrintable(kname), qPrintable(f.summary()));
     bool stamps = f.os == Cpm::Os::V3;
-    Disk::Image img;
+    dw::device::Container img;
     if (!Cpm::makeBlank(&img, kind, f, stamps, "TESTDISC", &err)) {
-        if (f.t0sectrk > 0 && kind == Disk::Kind::Raw && !ds) { printf("  refused as raw, as it should be: %s\nok\n", qPrintable(err)); return 0; }
+        if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && !ds) { printf("  refused as raw, as it should be: %s\nok\n", qPrintable(err)); return 0; }
         printf("  FAIL makeBlank: %s\n", qPrintable(err));
         return 1;
     }
     if (!img.saveAs(path, kind, &err)) {
         // a standard DSK has one track size: a disc whose track 0 is another shape (or a boot track of its own) can't be one
-        if (kind == Disk::Kind::Dsk && err.contains("standard DSK")) { printf("  refused as a standard DSK, as it should be: %s\nok\n", qPrintable(err)); return 0; }
+        if (kind == dw::device::Kind::Dsk && err.contains("standard DSK")) { printf("  refused as a standard DSK, as it should be: %s\nok\n", qPrintable(err)); return 0; }
         printf("  FAIL saveAs: %s\n", qPrintable(err)); return 1;
     }
 
     // reopen with the named format
-    Disk::Image im2;
+    dw::device::Container im2;
     CHECK(im2.open(path, &err), "open: " + err);
-    if (kind == Disk::Kind::Raw) {
-        Disk::RawLayout l;
+    if (kind == dw::device::Kind::Raw) {
+        dw::device::RawLayout l;
         l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
         if (ds) { l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }
         CHECK(im2.setRawLayout(l, &err), err);
     }
     if (f.t0sectrk > 0)
         for (int h = 0; h < (ds ? 2 : 1); ++h) {
-            const Disk::Track *t0 = im2.track(0, h), *t1 = im2.track(1, h);
+            const dw::device::Track *t0 = im2.track(0, h), *t1 = im2.track(1, h);
             CHECK(t0 && t0->secs.size() == f.t0sectrk && t0->secs[0].size == f.t0seclen, QString("track 0 of side %1 has its own shape").arg(h));
-            if (kind == Disk::Kind::Imd) CHECK(t0 && t1 && (t0->mode <= 2) == f.t0fm && t1->mode >= 3, QString("side %1: track 0 mode %2, track 1 mode %3").arg(h).arg(t0 ? t0->mode : -1).arg(t1 ? t1->mode : -1));
+            if (kind == dw::device::Kind::Imd) CHECK(t0 && t1 && (t0->mode <= 2) == f.t0fm && t1->mode >= 3, QString("side %1: track 0 mode %2, track 1 mode %3").arg(h).arg(t0 ? t0->mode : -1).arg(t1 ? t1->mode : -1));
         }
-    if (f.dataId >= 0 && kind != Disk::Kind::Raw) {                // reserved tracks numbered from secbase, data tracks from datasect
+    if (f.dataId >= 0 && kind != dw::device::Kind::Raw) {                // reserved tracks numbered from secbase, data tracks from datasect
         const int heads = qMax(1, f.physHeads);
         bool okRes = true, okData = true;
         for (int t = 0; t < f.cylinders * heads; ++t) {
-            const Disk::Track *tr = im2.track(t / heads, t % heads);
+            const dw::device::Track *tr = im2.track(t / heads, t % heads);
             const int want = t < f.boottrk ? (f.secbase >= 0 ? f.secbase : 1) : f.dataId;
             if (!tr || tr->secs.isEmpty() || tr->secs.first().r != want) (t < f.boottrk ? okRes : okData) = false;
         }
         CHECK(okRes, QString("reserved tracks have sector IDs from %1").arg(f.secbase >= 0 ? f.secbase : 1));
         CHECK(okData, QString("data tracks have sector IDs from %1 (datasect)").arg(f.dataId));
     }
-    Cpm::Volume v;
-    CHECK(v.attach(&im2, f, &err), "attach: " + err);
+    std::unique_ptr<Cpm::Store> vp = Cpm::openStore(&im2, f, &err);       // the filesystem the format says: a Torch::Fs for Torch CP/N
+    CHECK(vp != nullptr, "attach: " + err);
+    if (!vp) return 1;
+    Cpm::Store &v = *vp;
     CHECK(v.files().isEmpty(), "blank disc has files");
     CHECK(v.check().ok(), "blank disc check: " + v.check().errors.join("; "));
     if (stamps) CHECK(v.hasStamps() && v.label().present && v.label().name == "TESTDISC", "stamps/label missing on new CP/M 3 disc");
@@ -175,13 +177,14 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     CHECK(v.deleteFile(ex[2].user, ex[2].name, &err), "delete: " + err);
     if (f.torch) {
         // CP/N's deletion: index address FFFF, the name kept; a new file takes the first unused or deleted slot
+        const Torch::Fs &tf = dynamic_cast<Torch::Fs &>(v);
         int dead = -1;
-        for (int i = 0; i < v.directory().size() && dead < 0; ++i) if (Torch::entryIsDeleted(v.directory()[i])) dead = i;
-        CHECK(dead >= 0 && v.directory()[dead].mid(5, 2) == "F2", "Torch: the deleted file's entry isn't marked FFFF with its name kept");
+        for (int i = 0; i < tf.directory().size() && dead < 0; ++i) if (Torch::entryIsDeleted(tf.directory()[i])) dead = i;
+        CHECK(dead >= 0 && tf.directory()[dead].mid(5, 2) == "F2", "Torch: the deleted file's entry isn't marked FFFF with its name kept");
         bool earlierFree = false;
-        for (int i = 0; i < dead; ++i) earlierFree |= Torch::entryIsFree(v.directory()[i]);
+        for (int i = 0; i < dead; ++i) earlierFree |= Torch::entryIsFree(tf.directory()[i]);
         CHECK(v.addFile(0, "REUSE.TMP", "x", 0, when, false, &err), "Torch: add after delete: " + err);
-        if (dead >= 0 && !earlierFree) CHECK(v.directory()[dead].mid(5, 5) == "REUSE", "Torch: a new file didn't reuse the deleted entry");
+        if (dead >= 0 && !earlierFree) CHECK(tf.directory()[dead].mid(5, 5) == "REUSE", "Torch: a new file didn't reuse the deleted entry");
         CHECK(v.deleteFile(0, "REUSE.TMP", &err), "Torch: delete again: " + err);
     }
     ex.removeAt(2);
@@ -198,32 +201,32 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     CHECK(im2.commit(&err, false), "commit: " + err);
 
     // reopen by detection
-    Disk::Image im3;
+    dw::device::Container im3;
     CHECK(im3.open(path, &err), "reopen: " + err);
     Detect::Result r = Detect::detect(im3);
     CHECK(!r.ranked.isEmpty(), "detection found nothing: " + r.why);
     if (!r.ranked.isEmpty()) {
         const Cpm::Format &got = r.ranked.first().fmt;
         // A raw file can't tell Microbee DS40 (40 cylinders x 2) from SS80 (80 x 1): the same bytes, so either is right.
-        const bool rawDs40AsSs80 = fname == "microbee-ds40" && got.name == "microbee-ss80" && im3.kind() == Disk::Kind::Raw;
+        const bool rawDs40AsSs80 = fname == "microbee-ds40" && got.name == "microbee-ss80" && im3.kind() == dw::device::Kind::Raw;
         CHECK(got.sameLayout(f) || rawDs40AsSs80, QString("detection chose %1 (%2), not %3").arg(got.name, got.summary(), fname));
         printf("  detected: %s, confidence %s, %s\n", qPrintable(got.name), qPrintable(r.confidence), r.safeToWrite ? "writable" : "read-only");
-        Cpm::Volume v3;
-        if (v3.attach(&im3, r.ranked.first().fmt, &err)) verify(v3, ex, "after reopening by detection");
+        std::unique_ptr<Cpm::Store> v3 = Cpm::openStore(&im3, r.ranked.first().fmt, &err);
+        if (v3) verify(*v3, ex, "after reopening by detection");
         else CHECK(false, "attach after detection: " + err);
     }
 
     QVector<Expect> ex1;                                   // what side 1 of a two-sided disc holds
     if (ds) {
         // the other side is a disc of its own: untouched so far, empty, and takes files without disturbing side 0
-        auto rawLayout = [&](Disk::Image &im) {        // a raw file has no tracks until it is given its layout
-            if (kind != Disk::Kind::Raw) return;
-            Disk::RawLayout l;
+        auto rawLayout = [&](dw::device::Container &im) {        // a raw file has no tracks until it is given its layout
+            if (kind != dw::device::Kind::Raw) return;
+            dw::device::RawLayout l;
             l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
             l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen;
             CHECK(im.setRawLayout(l, &err), err);
         };
-        Disk::Image im4;
+        dw::device::Container im4;
         CHECK(im4.open(path, &err), "open for side 1: " + err);
         rawLayout(im4);
         Cpm::Format g = f;
@@ -245,7 +248,7 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         }
         CHECK(verify(w, ex1, "side 1 after adding"), "");
         CHECK(im4.commit(&err, false), "commit side 1: " + err);
-        Disk::Image im5;
+        dw::device::Container im5;
         CHECK(im5.open(path, &err), "reopen both sides: " + err);
         rawLayout(im5);
         Cpm::Volume a0, a1;
@@ -253,7 +256,7 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
         CHECK(a1.attach(&im5, g, &err), "attach side 1 again: " + err);
         CHECK(verify(a0, ex, "side 0 after side 1 was written"), "");
         CHECK(verify(a1, ex1, "side 1 after reopening"), "");
-        Disk::Image im6;
+        dw::device::Container im6;
         CHECK(im6.open(path, &err), "open for detection: " + err);
         Detect::Result rr = Detect::detect(im6);
         CHECK(!rr.ranked.isEmpty() && rr.ranked.first().fmt.separateSides && rr.ranked.first().fmt.sameLayout(f),
@@ -270,10 +273,10 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     // Read the disc with the layout it was made with, not im3's: im3 was opened by detection, which may have chosen another
     // layout with the same bytes (a raw Microbee DS40 file reads as SS80, 80 cylinders x 1 head, so half the tracks
     // were missing and the rest at the wrong cylinders).
-    Disk::Image imL;
+    dw::device::Container imL;
     CHECK(imL.open(path, &err), "open for the .logical image: " + err);
-    if (kind == Disk::Kind::Raw) {
-        Disk::RawLayout l;                     // as makeBlank lays out a raw file
+    if (kind == dw::device::Kind::Raw) {
+        dw::device::RawLayout l;                     // as makeBlank lays out a raw file
         l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
         if (f.separateSides) { l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }
         CHECK(imL.setRawLayout(l, &err), "raw layout for the .logical image: " + err);
@@ -310,7 +313,7 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
 }
 
 static int roundtrip(const QString &path) {
-    Disk::Image img;
+    dw::device::Container img;
     QString err;
     if (!img.open(path, &err)) { printf("FAIL open %s: %s\n", qPrintable(path), qPrintable(err)); return 1; }
     QByteArray out;
@@ -318,7 +321,7 @@ static int roundtrip(const QString &path) {
     QFile f(path);
     f.open(QIODevice::ReadOnly);
     bool same = f.readAll() == out;
-    printf("%s %s (%s)\n", same ? "same" : "FAIL differs:", qPrintable(QFileInfo(path).fileName()), qPrintable(Disk::kindName(img.kind())));
+    printf("%s %s (%s)\n", same ? "same" : "FAIL differs:", qPrintable(QFileInfo(path).fileName()), qPrintable(dw::device::kindName(img.kind())));
     return same ? 0 : 1;
 }
 
@@ -326,13 +329,14 @@ static int atomic(const QString &outdir) {
     QString err;
     Cpm::Format f = *Cpm::findFormat("ibm-3740");
     f.derive(&err);
-    Disk::Image img;
-    Cpm::makeBlank(&img, Disk::Kind::Imd, f, false, QString(), &err);
+    dw::device::Container img;
+    Cpm::makeBlank(&img, dw::device::Kind::Imd, f, false, QString(), &err);
     QString p = outdir + "/atomic.imd";
     QDir().mkpath(outdir);
-    img.saveAs(p, Disk::Kind::Imd, &err);
-    Cpm::Volume v;
-    v.attach(&img, f, &err);
+    img.saveAs(p, dw::device::Kind::Imd, &err);
+    std::unique_ptr<Cpm::Store> vp = Cpm::openStore(&img, f, &err);
+    if (!vp) { printf("FAIL attach: %s\n", qPrintable(err)); return 1; }
+    Cpm::Store &v = *vp;
     CHECK(v.addFile(0, "A.BIN", content(100000, 1, false), 0, QDateTime(), false, &err), "first add: " + err);
     auto snap = img.snapshot();
     int freeB = v.freeBlocks(), freeE = v.freeEntries();
@@ -362,13 +366,14 @@ int main(int argc, char **argv) {
     bool force = a.removeAll("--force") > 0;      // addto: write with the best reading even if not confirmed
     if (a.size() == 4 && a[0] == "addto") {
         // addto <image> <NAME.EXT> <size>: detect, add a file, save; writes <image>.added (the content) beside it
-        Disk::Image img;
+        dw::device::Container img;
         QString err;
         if (!img.open(a[1], &err)) { printf("FAIL open: %s\n", qPrintable(err)); return 1; }
         Detect::Result r = Detect::detect(img);
         if (r.ranked.isEmpty() || (!r.safeToWrite && !force)) { printf("FAIL: detection not confident enough to write (%s)\n", qPrintable(r.why)); return 1; }
-        Cpm::Volume v;
-        if (!v.attach(&img, r.ranked.first().fmt, &err)) { printf("FAIL attach: %s\n", qPrintable(err)); return 1; }
+        std::unique_ptr<Cpm::Store> vp = Cpm::openStore(&img, r.ranked.first().fmt, &err);
+        if (!vp) { printf("FAIL attach: %s\n", qPrintable(err)); return 1; }
+        Cpm::Store &v = *vp;
         QByteArray d = content(a[3].toInt(), 4242, true);
         if (!v.addFile(0, a[2], d, 0, QDateTime(), true, &err)) { printf("FAIL add: %s\n", qPrintable(err)); return 1; }
         if (!img.commit(&err, true)) { printf("FAIL commit: %s\n", qPrintable(err)); return 1; }
@@ -413,9 +418,9 @@ int main(int argc, char **argv) {
         // inverse of what an ordinary disc holds for the same file.
         QString err;
         const Cpm::Format *base = Cpm::findFormat("ibm-3740");
-        Disk::Image plain, inv;
-        CHECK(Cpm::makeBlank(&plain, Disk::Kind::Imd, *base, false, QString(), &err), err);
-        CHECK(Cpm::makeBlank(&inv, Disk::Kind::Imd, *base, false, QString(), &err), err);
+        dw::device::Container plain, inv;
+        CHECK(Cpm::makeBlank(&plain, dw::device::Kind::Imd, *base, false, QString(), &err), err);
+        CHECK(Cpm::makeBlank(&inv, dw::device::Kind::Imd, *base, false, QString(), &err), err);
         for (int c = 0; c < inv.cylinders(); ++c)
             for (int h = 0; h < inv.heads(); ++h)
                 for (int i = 0; i < inv.sectorCount(c, h); ++i) {

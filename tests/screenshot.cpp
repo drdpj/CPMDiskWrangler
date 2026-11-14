@@ -95,18 +95,18 @@ int main(int argc, char **argv) {
     bool ok = true;
     for (int i = 2; i < argc; ++i) {
         MainWindow w; w.resize(1300, 560); w.show();
-        if (!w.openImage(argv[i])) { printf("FAIL: %s did not open\n", argv[i]); ok = false; continue; }
+        if (!w.openFile(argv[i])) { printf("FAIL: %s did not open\n", argv[i]); ok = false; continue; }
         pump();
         QString base = out + "/" + QFileInfo(argv[i]).fileName();
         shoot(&w, base + ".png");
         if (i == 2) {
             // the dialogs, for the first image; a file row is selected first for those that act on one
-            selectFirstFile(w.tree());
+            selectFirstFile(w.pane());
             for (const char *slot : {"newImageDialog", "formatDialog", "natDialog", "setLabelDialog", "viewSelected", "editProperties", "about"})
                 ok = dialogShot(w, slot, out) && ok;
         }
         MainWindow n; n.show();                  // default size, clamped to the minimum width
-        n.openImage(argv[i]); pump();
+        n.openFile(argv[i]); pump();
         shoot(&n, base + "_narrow.png");
     }
     return ok ? 0 : 1;

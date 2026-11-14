@@ -43,21 +43,6 @@
 enum Roles { RoleKind = Qt::UserRole, RoleUser, RoleName, RoleSide };
 enum RowKind { RowRoot = 0, RowUser = 1, RowFile = 2 };
 
-// A file (or a host folder) read out of a disc or the host, ready to be written to a CP/M disc - or a CP/M file
-// ready to be written to the host. The attribute fields are filled from whatever the source knows.
-struct XItem {
-    QString name;               // the name in the source (CP/M "NAME.EXT", an Acorn or DOS name, a host file name)
-    QString hostName;           // what to call it on the host when that differs from name (a CP/M name shown in a national set)
-    QString srcFs;              // "cpm", "adfs", "dfs", "fat", or empty for a host file
-    bool isDir = false;
-    QByteArray data;
-    int user = -1;              // CP/M user number, -1 if the source has none
-    bool readOnly = false, system = false, archive = false;
-    quint8 interfaceAttrs = 0;  // F1'-F4' as bits 0-3 (CP/M sources)
-    QDateTime when;             // the source's date (invalid if none); local, no zone
-    QVector<XItem> kids;
-};
-
 // The status line: one line that never makes the window wider. It is given several versions of the text, longest first,
 // shows the longest that fits, and cuts the last with "..." if even that doesn't; the longest is always in the tooltip.
 class StatusLabel : public QLabel {

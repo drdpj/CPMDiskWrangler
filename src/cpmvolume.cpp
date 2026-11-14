@@ -362,7 +362,7 @@ void OpenedDisc::noteFileState() {
 
 void OpenedDisc::detach() {
     m_disc.clearMounts();
-    for (int side = 0; side < 2; ++side) { m_facades[side].detach(); m_stores[side].reset(); }
+    for (int side = 0; side < 2; ++side) m_stores[side].reset();
     m_checkOk = true;
 }
 
@@ -378,18 +378,11 @@ bool OpenedDisc::attach(const Detect::Candidate &c, QString *err) {
         m_stores[side] = openStore(&m_img, f, err);
         if (!m_stores[side]) { if (n > 1) *err = QString("side %1: %2").arg(side).arg(*err); detach(); return false; }
         auto *t = dynamic_cast<Torch::Fs *>(m_stores[side].get());
-        if (t) m_facades[side].wrap(t);
         std::shared_ptr<CpmVolume> vol = t ? std::make_shared<TorchVolume>(t) : std::make_shared<CpmVolume>(m_stores[side].get());
         m_disc.addMount({n > 1 ? QString("side %1").arg(side) : QString("CP/M"), vol, !m_roWhy.isEmpty(), m_roWhy, "cpm"});
     }
     for (int side = 0; side < n; ++side) m_checkOk = m_checkOk && m_stores[side]->check().ok();
     return true;
-}
-
-Volume &OpenedDisc::legacy(int side) {
-    side = qBound(0, side, 1);
-    if (auto *v = dynamic_cast<Volume *>(m_stores[side].get())) return *v;
-    return m_facades[side];
 }
 
 QString OpenedDisc::readOnlyWhy(int mount) const {

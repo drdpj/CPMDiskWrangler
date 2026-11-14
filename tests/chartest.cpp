@@ -25,7 +25,7 @@
 #include "../src/cpmformat.h"
 #include "../src/cpmfs.h"
 #include "../src/detect.h"
-#include "../src/diskimage.h"
+#include <diskwrangler/device/container.h>
 #include "../src/natchars.h"
 
 static int failures = 0;
@@ -74,8 +74,8 @@ int main(int argc, char **argv) {
 
     printf("== names on a disc\n");
     QString err;
-    Disk::Image img;
-    CHECK(Cpm::makeBlank(&img, Disk::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString(), &err), err);
+    dw::device::Container img;
+    CHECK(Cpm::makeBlank(&img, dw::device::Kind::Imd, *Cpm::findFormat("ibm-3740"), false, QString(), &err), err);
     Cpm::Volume v;
     CHECK(v.attach(&img, *Cpm::findFormat("ibm-3740"), &err), err);
     CHECK(!v.addFile(0, "BR\\D.TXT", "x", 0, QDateTime(), false, &err), "a name with \\ is refused when no set is chosen");
@@ -92,11 +92,11 @@ int main(int argc, char **argv) {
 
     for (int i = 1; i + 1 < argc; i += 2) {
         printf("== %s (expect %s)\n", argv[i], argv[i + 1]);
-        Disk::Image im;
+        dw::device::Container im;
         if (!im.open(argv[i], &err)) { CHECK(false, QString("open: ") + err); continue; }
         Detect::Result r = Detect::detect(im);
         Cpm::Volume a, b;
-        QVector<const Cpm::Volume *> vols;
+        QVector<const Cpm::Store *> vols;
         if (!r.ranked.isEmpty()) {
             Cpm::Format f = r.ranked.first().fmt;
             f.fixedHead = 0; f.derived = false;

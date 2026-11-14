@@ -33,62 +33,6 @@ namespace RetroFiles {
 const char *const MimeType = "application/x-retro-files+json";
 const char *const Generator = "CP/M Disk Wrangler";
 
-// ------------------------------------------------------------------------------ XItem <-> dw::TransferItem
-
-dw::TransferItem toTransfer(const XItem &x) {
-    dw::TransferItem t;
-    t.name = x.name;
-    t.hostName = x.hostName;
-    t.isDir = x.isDir;
-    t.data = x.data;
-    t.when = x.when;
-    t.sourceFs = x.srcFs;
-    QJsonObject a;
-    a["user"] = qMax(0, x.user);
-    a["readonly"] = x.readOnly;
-    a["system"] = x.system;
-    a["archive"] = x.archive;
-    for (int k = 0; k < 4; ++k) if (x.interfaceAttrs & (1 << k)) a[QString("f%1").arg(k + 1)] = true;
-    t.attrs["cpm"] = a;
-    for (const XItem &k : x.kids) t.kids.append(toTransfer(k));
-    return t;
-}
-
-XItem fromTransfer(const dw::TransferItem &t) {
-    XItem x;
-    x.isDir = t.isDir;
-    x.name = t.name;
-    x.srcFs = t.sourceFs;
-    x.when = t.when;
-    x.data = t.data;
-    const QJsonObject cpm = t.attrs.value("cpm"), fat = t.attrs.value("fat"), acorn = t.attrs.value("acorn");
-    if (!cpm.isEmpty()) {
-        x.user = cpm.contains("user") ? cpm["user"].toInt() : -1;
-        x.readOnly = cpm["readonly"].toBool();
-        x.system = cpm["system"].toBool();
-        x.archive = cpm["archive"].toBool();
-        for (int k = 0; k < 4; ++k) if (cpm[QString("f%1").arg(k + 1)].toBool()) x.interfaceAttrs |= quint8(1 << k);
-    } else if (!fat.isEmpty()) {
-        x.readOnly = fat["readonly"].toBool();
-        x.system = fat["system"].toBool() || fat["hidden"].toBool();     // CP/M SYS files are hidden from DIR
-        x.archive = fat["archive"].toBool();
-    } else if (!acorn.isEmpty()) {
-        x.readOnly = acorn["access"].toString().contains('L');         // case-sensitive: 'l' is public
-    }
-    if (t.sourceFs == "dfs" && x.name.size() >= 3 && x.name[1] == '.') x.name = x.name.mid(2);   // "D.NAME": drop D
-    for (const dw::TransferItem &k : t.kids) x.kids.append(fromTransfer(k));
-    return x;
-}
-
-// ------------------------------------------------------------------------------ writing to the host
-
-void writeHost(const QVector<XItem> &items, const QString &hostDir, bool folderPerUser, bool trimText,
-               QStringList *topLevel, QJsonArray *jsonItems, QStringList *errors) {
-    QVector<dw::TransferItem> t;
-    for (const XItem &x : items) t.append(toTransfer(x));
-    dw::xfer::writeHost(t, hostDir, CpmPolicy(folderPerUser, trimText), topLevel, jsonItems, errors);
-}
-
 // ------------------------------------------------------------------------------ temporary folders
 
 QString dragDirPrefix() { return QDir::temp().filePath("cpmdiskwrangler-drag-"); }

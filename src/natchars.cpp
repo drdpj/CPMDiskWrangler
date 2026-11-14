@@ -76,14 +76,14 @@ static bool plainText(const QByteArray &d) {      // 7-bit text: nothing but pri
     return n >= 32;
 }
 
-Evidence scan(const QVector<const Cpm::Volume *> &vols) {
+Evidence scan(const QVector<const Cpm::Store *> &vols) {
     Evidence ev;
     static const QRegularExpression inName("[A-Za-z][\\[\\\\\\]{|}]|[\\[\\\\\\]{|}][A-Za-z]");
     static const QRegularExpression inLower("[a-z][{|}][a-z]");
     static const QRegularExpression inUpper("[A-Z][\\[\\\\\\]][A-Z]");
     QString allText;
     int textFiles = 0;
-    for (const Cpm::Volume *v : vols) {
+    for (const Cpm::Store *v : vols) {
         if (!v) continue;
         for (const Cpm::File &f : v->files()) {
             if (inName.match(f.name).hasMatch()) {
@@ -154,7 +154,7 @@ QString guessSet(const QString &discText) {
 
 // ------------------------------------------------------------------------------------------- the dialog
 
-Dialog::Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent,
+Dialog::Dialog(const QVector<const Cpm::Store *> &vols, const QString &current, QWidget *parent,
                const QStringList &incoming) : QDialog(parent), m_incoming(incoming), m_vols(vols), m_lower(usesLowerCase(vols)) {
     setWindowTitle("Character set for names and text");
     resize(720, 480);

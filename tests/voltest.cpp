@@ -134,29 +134,30 @@ int main(int argc, char **argv) {
                   d.startsWith("hello"), "detected and read back: " + err);
     }
 
-    printf("Torch CP/N: TorchVolume over Torch::Fs, and the Cpm::Volume facade gives the same bytes\n");
+    printf("Torch CP/N: TorchVolume over Torch::Fs, and Torch::Fs used directly (through openStore) gives the same bytes\n");
     {
-        const QString pa = W + "/torch-facade.imd", pb = W + "/torch-volume.imd";
+        const QString pa = W + "/torch-store.imd", pb = W + "/torch-volume.imd";
         err.clear();
         CHECK(blank(pa, "torch-cpn", dw::device::Kind::Imd, &err) && blank(pb, "torch-cpn", dw::device::Kind::Imd, &err),
               "two blank Torch discs: " + err);
         QByteArray big;
         for (int i = 0; i < 70 * 1024; ++i) big += char(i * 7 + i / 251);          // over 128 sectors: an L2 index
         const QByteArray one("one\r\n\x1a"), two(300, 't'), reuse("again\x1a");
-        // through the facade (as fstest, guitest and detection use it)
+        // through the store (Cpm::openStore: what the window and the tools use for a disc that is not read as a Volume)
         {
             dw::device::Container img;
             Cpm::Format f = *Cpm::findFormat("torch-cpn");
-            Cpm::Volume v;
-            const bool attached = img.open(pa, &err) && f.derive(&err) && v.attach(&img, f, &err);
-            CHECK(attached, "facade attached: " + err);
+            std::unique_ptr<Cpm::Store> sp;
+            const bool attached = img.open(pa, &err) && f.derive(&err) && (sp = Cpm::openStore(&img, f, &err)) != nullptr;
+            CHECK(attached && dynamic_cast<Torch::Fs *>(sp.get()), "store attached, a Torch::Fs: " + err);
+            Cpm::Store &v = *sp;
             CHECK(attached && v.addFile(0, "ONE.TXT", one, 0, QDateTime(), false, &err) && v.addFile(3, "BIG.DAT", big, 0, QDateTime(), false, &err) &&
                       v.addFile(0, "TWO.COM", two, 0, QDateTime(), false, &err) && v.deleteFile(0, "ONE.TXT", &err) &&
                       v.addFile(0, "REUSE.TXT", reuse, 0, QDateTime(), false, &err) &&
                       v.rename(3, "BIG.DAT", 5, "MOVED.DAT", &err) &&
                       v.setAttrs(0, "TWO.COM", Cpm::AttrRO | Cpm::AttrSYS | Cpm::AttrF2, &err) &&
                       v.addFile(0, "TWO.COM", "x", 0, QDateTime(), true, &err) == false && img.commit(&err, false),
-                  "facade: add, delete, add (reusing the entry), rename to another user, attributes, a read-only file not replaced: " + err);
+                  "store: add, delete, add (reusing the entry), rename to another user, attributes, a read-only file not replaced: " + err);
         }
         // through the adapter
         Cpm::OpenedDisc o;

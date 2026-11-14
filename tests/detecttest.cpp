@@ -25,7 +25,7 @@
 #include "../src/cpmfs.h"
 #include "../src/detect.h"
 #include "../src/cpmvolume.h"
-#include "../src/diskimage.h"
+#include <diskwrangler/device/container.h>
 
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     printf("library: %d formats\n", Cpm::library().size());
     int failures = 0;
     for (const QString &p : args) {
-        Disk::Image img;
+        dw::device::Container img;
         QString err;
         printf("\n=== %s\n", qPrintable(p));
         if (!img.open(p, &err)) { printf("  open failed: %s\n", qPrintable(err)); ++failures; continue; }
@@ -69,12 +69,14 @@ int main(int argc, char **argv) {
         Cpm::Format fmt = r.ranked.first().fmt;
         fmt.fixedHead = side;
         fmt.derived = false;
-        Cpm::Volume v;
-        if (!v.attach(&img, fmt, &err)) { printf("  attach failed: %s\n", qPrintable(err)); ++failures; continue; }
+        std::unique_ptr<Cpm::Store> vp = Cpm::openStore(&img, fmt, &err);
+        if (!vp) { printf("  attach failed: %s\n", qPrintable(err)); ++failures; continue; }
+        Cpm::Store &v = *vp;
+        const auto *cv = dynamic_cast<const Cpm::Volume *>(&v);        // only a CP/M directory has time stamps
         Cpm::Report rep = v.check();
         printf("  %d files, %d free blocks, %lldK free, label '%s', stamps %s; check: %d errors, %d warnings\n",
                v.files().size(), v.freeBlocks(), v.freeBytes() / 1024, qPrintable(v.label().name),
-               v.hasStamps() ? qPrintable(v.stampKinds()) : "none", rep.errors.size(), rep.warnings.size());
+               (v.hasStamps() && cv) ? qPrintable(cv->stampKinds()) : "none", rep.errors.size(), rep.warnings.size());
         for (const QString &e : rep.errors.mid(0, 5)) printf("    error: %s\n", qPrintable(e));
         if (verbose) for (const QString &e : rep.warnings.mid(0, 5)) printf("    warning: %s\n", qPrintable(e));
         int shown = 0;

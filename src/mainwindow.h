@@ -30,7 +30,6 @@
 #include "cpmfs.h"
 #include "cpmvolume.h"
 #include "detect.h"
-#include "diskimage.h"          // dw::device::Container, and the Disk:: names guitest still uses
 #include "natchars.h"
 #include "dragout.h"
 #include "mainwindow_p.h"
@@ -40,8 +39,8 @@ class QLabel;
 class QMimeData;
 
 // A file on the disc: which side's filesystem (0 unless the disc has a separate one on each side), user, name.
-// (The window kit's DiscWindow::Item is the same as (mount = side, Path {"user N", name}); FileRef stays for the code
-// and the tests that use it.)
+// (The window kit's DiscWindow::Item is the same as (mount = side, Path {"user N", name}); FileRef is what a drag
+// carries between windows.)
 struct FileRef {
     int side = 0, user = 0;
     QString name;
@@ -96,17 +95,16 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
     static MainWindow *byId(quint64 id);
-    static QList<MainWindow *> windows();                // every main window, oldest first (the kit's DiscWindow::all())
 
-    dw::app::Document *document() const override { return const_cast<Cpm::OpenedDisc *>(&m_doc); }
+    // The document, typed: the container, the filesystem of each side (store(side)), the number of sides.
+    Cpm::OpenedDisc *document() const override { return const_cast<Cpm::OpenedDisc *>(&m_doc); }
     dw::app::AppInfo appInfo() const override;
 
-    // ----- for the menus, and for tests
+    // ----- this program's own functions (the menus, the drops and the tests all use them)
     void setLowerNames(bool on, bool remember);       // allow lower-case file names on this disc
     bool lowerNames() const { return m_lowerOk; }
     void setNat(const QString &id, bool remember);     // the disc's national character set (natchars.h)
     QString natId() const { return m_natId; }
-    bool openImage(const QString &path);                // the kit's openFile (the open pipeline)
     bool newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label);
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
     // user -1: each file's own user number (0 for files without one); side: which side's filesystem
@@ -117,26 +115,12 @@ public:
                                       const QVector<dw::xfer::ImportError> &readErrors = {});
     // Copying out (View, Copy, a drag, a drop on another window): the kit's exportItems, as CP/M's copy-out wants it.
     bool exportForCopy(const QVector<Item> &items, QVector<dw::TransferItem> *out, QString *err) const;
-    QVector<FileRef> selectedRefs() const;
-    static Item itemOf(const FileRef &r) { return Item(r.side, dw::fs::Path({Cpm::CpmVolume::userName(r.user), r.name})); }
-    static FileRef refOf(const Item &i) { return FileRef(i.mount, Cpm::CpmVolume::userOf(i.path.parts.value(0)), i.path.name()); }
-    bool deleteFiles(const QVector<FileRef> &refs, QString *err);     // the kit's deleteFiles, by FileRef
-    using DiscWindow::deleteFiles;
-
-    dw::device::Container &image() { return m_doc.container(); }
-    const dw::device::Container &image() const { return m_doc.container(); }
-    Cpm::Volume &volume(int side = 0) { return m_doc.legacy(side); }
-    int sides() const { return m_doc.sides(); }          // filesystems shown: 1, or 2 for a disc on each side
-    bool dropOpensImage() const { return sides() == 0; }   // nothing read as CP/M here: a drop opens an image
     const Detect::Result &detection() const { return m_det; }
     // Scores the readings again on the disc as it is now (done before Tools > Disc format shows them).
     void rescoreReadings();
-    DropTree *tree() const { return static_cast<DropTree *>(pane()); }
-    bool writable() const { return DiscWindow::writable(0); }
-    QString readOnlyReason() const { return DiscWindow::readOnlyReason(0); }
-    using DiscWindow::writable;
-    using DiscWindow::readOnlyReason;
     bool trimTextOnExtract() const;
+    using DiscWindow::writable;                        // writable(mount), readOnlyReason(mount): the kit's, per side
+    using DiscWindow::readOnlyReason;
 
     // ----- the kit's slots this program fills (until later series of step 5 make them the kit's)
     void newWindow() override;
@@ -197,6 +181,21 @@ private slots:
     void onRetroFilesDropped(const QByteArray &json, QTreeWidgetItem *target);
 
 private:
+    friend class DropTree;
+    // Short names for what the window uses all the time: the document's container, the filesystem of a side (an empty
+    // one when the disc has no such side), the number of sides, the tree, and the kit's writable / readOnlyReason of
+    // the first side. (Tests go through document(), pane() and writable(mount) / readOnlyReason(mount).)
+    dw::device::Container &image() { return m_doc.container(); }
+    const dw::device::Container &image() const { return m_doc.container(); }
+    Cpm::Store &vol(int side) const;
+    int sides() const { return m_doc.sides(); }          // filesystems shown: 1, or 2 for a disc on each side
+    bool dropOpensImage() const { return sides() == 0; }   // nothing read as CP/M here: a drop opens an image
+    DropTree *tree() const { return static_cast<DropTree *>(pane()); }
+    bool writable() const { return DiscWindow::writable(0); }
+    QString readOnlyReason() const { return DiscWindow::readOnlyReason(0); }
+    QVector<FileRef> selectedRefs() const;
+    static Item itemOf(const FileRef &r) { return Item(r.side, dw::fs::Path({Cpm::CpmVolume::userName(r.user), r.name})); }
+    static FileRef refOf(const Item &i) { return FileRef(i.mount, Cpm::CpmVolume::userOf(i.path.parts.value(0)), i.path.name()); }
     const Cpm::File *fileOf(int side, int user, const QString &name) const;   // the side's file of that user and name
     bool attachFormat(const Detect::Candidate &c, QString *err);
     NotOpened notOpened(const QString &path) const;    // "<file>, how it was read, why it isn't CP/M" with Choose a format...
@@ -209,7 +208,7 @@ private:
     void showLower(bool on);
     void refreshNamesButton();
     void autoLower();                  // set it from what the disc holds, or from what was chosen for this disc before
-    QVector<const Cpm::Volume *> volumePtrs() const;
+    QVector<const Cpm::Store *> volumePtrs() const;
     QString nameRules() const { return Nat::extraNameChars(nat()) + (lowerDisc() ? Nat::lowerLetters() : QString()); }
     void applyNameRules();             // the character set and case rule, to every side's volume
     bool askNatForNames(const QVector<dw::TransferItem> &items);
@@ -228,9 +227,9 @@ private:
     QStringList m_importRenamed;       // "name -> NAME" for each name made valid in the current import (its summary lists them)
     bool clipboardUsable() const;                       // something Paste can add
     bool pasteItems(const QMimeData *m, int user, int side);
-    Cpm::Volume &vol(int side) const { return const_cast<Cpm::OpenedDisc &>(m_doc).legacy(side); }
 
     Cpm::OpenedDisc m_doc;
+    Cpm::Volume m_noSide;              // what vol() gives when the disc has no such side: detached, so no files
     Detect::Result m_det;
     int m_detIndex = 0;                // which ranked reading is in use (-1: one set by hand)
     StatusLabel *m_status = nullptr;

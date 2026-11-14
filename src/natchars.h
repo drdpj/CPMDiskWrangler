@@ -32,7 +32,7 @@
 class QListWidget;
 class QPlainTextEdit;
 class QLabel;
-namespace Cpm { class Volume; }
+namespace Cpm { class Store; }
 
 namespace Nat {
 
@@ -52,7 +52,7 @@ struct Evidence {
     bool any() const { return nameFiles >= 1 || textHits >= 3; }
 };
 // Looks at the file names and the start of the text files of these volumes.
-Evidence scan(const QVector<const Cpm::Volume *> &vols);
+Evidence scan(const QVector<const Cpm::Store *> &vols);
 // Which set's common words the text reads best with: its id, or empty if none stands out.
 QString guessSet(const QString &discText);
 
@@ -62,7 +62,7 @@ class Dialog : public QDialog {
 public:
     // incoming: host file names about to be added; the dialog says which set their letters belong to, preselects it and
     // previews how each name would be written to the disc in the chosen set.
-    Dialog(const QVector<const Cpm::Volume *> &vols, const QString &current, QWidget *parent = nullptr,
+    Dialog(const QVector<const Cpm::Store *> &vols, const QString &current, QWidget *parent = nullptr,
            const QStringList &incoming = QStringList());
     QString chosen() const;
     void setLowerNames(bool on) { m_lower = on; render(); }   // the preview writes names in lower case                // the set's id
@@ -71,7 +71,7 @@ private slots:
 private:
     Evidence m_ev;
     QStringList m_incoming;
-    QVector<const Cpm::Volume *> m_vols;
+    QVector<const Cpm::Store *> m_vols;
     bool m_lower = false;
     QListWidget *m_list;
     QPlainTextEdit *m_preview;

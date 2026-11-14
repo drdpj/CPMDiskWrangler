@@ -158,10 +158,6 @@ public:
     const Detect::Result &detection() const { return m_det; }
     int sides() const { return m_disc.mounts().size(); }
     Store *store(int side) const { return side >= 0 && side < 2 ? m_stores[side].get() : nullptr; }
-    // The side as a Cpm::Volume: the store itself for a CP/M directory, the facade over it for a Torch CP/N disc (for
-    // the window's code that still takes a Cpm::Volume, and its tests; removed with the facade in step 6). A detached
-    // Volume when there is no such side.
-    Volume &legacy(int side);
     bool save(QString *err, bool backup = false) { return save(backup, err); }
     // Call before open(path, candidate): the mounts are read-only, for this reason (the format isn't confirmed).
     void setReadOnly(const QString &why) { m_roWhy = why; }
@@ -185,7 +181,6 @@ private:
     dw::device::Container m_img;
     Detect::Result m_det;
     std::unique_ptr<Store> m_stores[2];               // the filesystem on each side (openStore); outlive the mounts
-    Volume m_facades[2];                              // legacy(): a Torch::Fs side's facade
     QString m_roWhy;
     bool m_safe = true, m_checkOk = true;
     QDateTime m_fileTime;
