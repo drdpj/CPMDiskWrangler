@@ -37,7 +37,13 @@ checked on. Read this before changing `core/diskwrangler/device/` (the container
 - **Acorn Z80 second processor**: from Acorn Application Note 007: 80 track double-sided, 10 x 256-byte sectors
   (FM), side 1 runs back from track 79, 3 reserved tracks, 128 entries, logical 512-byte sectors from physical
   pairs 0/1 4/5 8/9 2/3 6/7 (skew table `0,1,4,5,8,9,2,3,6,7`), sector IDs 0-9. The 2K block size is inferred from
-  the 388K the note states. **Checked on three real discs** (the owner's, raw, interleaved, 409,600 bytes, not in
+  the 388K the note states. Real discs are kept as raw 409,600-byte files in two ways: interleaved (cylinder 0 side 0, cylinder 0 side 1, ...:
+  `cave.dsd`, `cpm1.dsd`) or **side after side** (all of side 0, then all of side 1, so the files on side 1 run back
+  from the end of the file: `cpm2.dsd`-`cpm7.dsd`, the owner's installation and application discs). Detection tries
+  both (see [detection.md](detection.md), step 1) and a save keeps the file's order. The six side-after-side discs
+  (47, 46, 64, 37, 40 and 32 files) each detect as acorn-z80 with high confidence, every file identical to
+  `tests/acornz80_check.py`'s, and a file added to a copy reads back with it, the others unchanged. Before that:
+  **Checked on three real discs** (the owner's, raw, interleaved, 409,600 bytes, not in
   the repo: Colossal Cave `cave.dsd`, CP/M installation discs 1 and 2 `cpm1.dsd`, `cpm2.dsd`): each detected as
   acorn-z80 with no rival and a clean Check, every file (12, 48, 47) identical to `tests/acornz80_check.py`'s (an
   independent reader written from the note alone); an added file reads back with it, and tracks 0-2 of side 0

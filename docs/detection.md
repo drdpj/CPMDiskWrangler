@@ -8,7 +8,13 @@ relies on are in [disc-formats.md](disc-formats.md).
 ## The steps
 1. Physical layouts: the container's own; for raw images every library format whose size fits (exactly, or
    a truncated image at least 60% of it) and every factorisation into 128-1024-byte sectors, common sectors per
-   track, 30-86 cylinders, 1-2 heads.
+   track, 30-86 cylinders, 1-2 heads. A raw file exactly the size of a two-sided **outback** library format (Acorn Z80)
+   is also tried side after side (`RawLayout::sideBySide`: all of side 0, then all of side 1), the way some Acorn Z80
+   discs were saved (`cpm2.dsd`-`cpm7.dsd`). Only the known formats (and a remembered one) are tried on that layout:
+   no searching, which would only find again what the cylinder-by-cylinder layout reads (side after side in order
+   `outout` is the same bytes as `alt`). The physical description then ends "side 0 then side 1", and so does the
+   reading's evidence. Before, such a disc read as a 5 x 512 `alt` layout found by searching: the directory and the
+   files on side 0 right, but every file reaching side 1 wrong, and read-only.
 2. Library candidates that fit physically are evaluated directly (+3 for being known; +4 / -6 if the format
    has a sector-ID base and the disc's IDs match / don't). The PCW spec (+15) and a remembered format (+20) too.
    A Torch CP/N format (`torchcpn`) is scored by `evaluateTorch` instead: its map's fixed bits are required (else

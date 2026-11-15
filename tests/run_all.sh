@@ -35,6 +35,17 @@ echo "independent checks: $(grep -c '^ok' "$W/verify.log") passed, $(grep -c '^F
 "$b/fstest/fstest" library | tail -1 | grep -q ok || { echo "FAIL library"; fail=1; }
 "$b/fstest/fstest" complement | tail -1 | grep -q ok || { echo "FAIL complement (Sharp inverted data)"; fail=1; }
 "$b/fstest/fstest" roundtrip "$W"/fs/imd/*.imd "$W"/fs/edsk/*.dsk "$W"/fs/dsk/*.dsk | grep -v "^same" && fail=1
+step "Acorn Z80 kept side after side (all of side 0, then all of side 1): the same disc, the same files"
+mkdir -p "$W/sas/a" "$W/sas/b"
+python3 -I -c "import sys; d = open(sys.argv[1], 'rb').read(); t = [d[i * 2560:(i + 1) * 2560] for i in range(160)]
+open(sys.argv[2], 'wb').write(b''.join(t[0::2] + t[1::2]))" "$W/fs/raw/acorn-z80.img" "$W/sas/sides.img"
+"$b/detecttest/detecttest" -x "$W/sas/a" "$W/fs/raw/acorn-z80.img" > "$W/sas/a.log" 2>&1
+"$b/detecttest/detecttest" -x "$W/sas/b" "$W/sas/sides.img" > "$W/sas/b.log" 2>&1
+if grep -q "acorn-z80" "$W/sas/b.log" && grep -q "confidence high; writable" "$W/sas/b.log" && grep -q "side 0 then side 1" "$W/sas/b.log" &&
+   ! grep -q "side 0 then side 1" "$W/sas/a.log" && [ -n "$(ls -A "$W/sas/a/acorn-z80.img" 2>/dev/null)" ] &&
+   diff -r "$W/sas/a/acorn-z80.img" "$W/sas/b/sides.img" > /dev/null; then
+  echo "acorn-z80 side after side: detected, high, writable; $(find "$W/sas/b/sides.img" -type f | wc -l) files as the interleaved disc's"
+else echo "FAIL acorn-z80 side after side"; sed -n 1,12p "$W/sas/b.log"; fail=1; fi
 step "Research Machines double-sided discs: a separate filesystem on each side, made new"
 for k in raw imd edsk; do
   for f in rm-dd+ds rm-qd+ds; do
@@ -114,9 +125,24 @@ $(grep -c 'verdict: ask' "$W/detect.log") would ask"
     n=$(basename "$z"); rm -rf "$W/az"; mkdir -p "$W/az/py"
     "$b/detecttest/detecttest" -x "$W/az" "$z" > "$W/az.log" 2>&1
     grep -q "confidence high; writable" "$W/az.log" && grep -q "acorn-z80" "$W/az.log" || { echo "FAIL $n: not detected as acorn-z80, high, writable"; fail=1; }
-    python3 "$src/tests/acornz80_check.py" "$z" "$W/az/py" > /dev/null
+    # the file holds the sides interleaved (cpm1.dsd) or side after side (cpm2-7.dsd): the reader works it out for itself
+    stored=$(python3 "$src/tests/acornz80_check.py" "$z" "$W/az/py" | head -1)
+    case "$stored" in
+      "stored: interleaved") grep -q "side 0 then side 1" "$W/az.log" && { echo "FAIL $n: read side after side, but the file is interleaved"; fail=1; } ;;
+      "stored: side after side") grep -q "side 0 then side 1" "$W/az.log" || { echo "FAIL $n: not read side after side, as the file is stored"; fail=1; } ;;
+      *) echo "FAIL $n: acornz80_check.py: $stored"; fail=1 ;;
+    esac
     d=0; for f in "$W/az/py"/*; do l=$(basename "$f" | tr A-Z a-z); cmp -s "$f" "$W/az/$n/0/$l" || { echo "FAIL $n: $l differs"; d=1; }; done
-    [ $d -eq 0 ] && echo "$n: $(ls "$W/az/py" | wc -l) files match the independent Acorn Z80 reader" || fail=1
+    [ $d -eq 0 ] && echo "$n: $(ls "$W/az/py" | wc -l) files match the independent Acorn Z80 reader (${stored#stored: })" || fail=1
+    # side after side: a file added to a copy lands where the independent reader finds it, the others unchanged
+    if [ "$stored" = "stored: side after side" ]; then
+      cp "$z" "$W/az/edit.dsd"; mkdir -p "$W/az/py2"
+      "$b/fstest/fstest" addto "$W/az/edit.dsd" ADDED.TXT 20480 > "$W/az/add.log" 2>&1 || { echo "FAIL $n: adding a file: $(head -3 "$W/az/add.log")"; fail=1; }
+      python3 "$src/tests/acornz80_check.py" "$W/az/edit.dsd" "$W/az/py2" > /dev/null
+      d=0; for f in "$W/az/py"/*; do cmp -s "$f" "$W/az/py2/$(basename "$f")" || { echo "FAIL $n: $(basename "$f") changed by adding a file"; d=1; }; done
+      cmp -s "$W/az/edit.dsd.added" "$W/az/py2/ADDED.TXT" || { echo "FAIL $n: the added file doesn't read back with the independent reader"; d=1; }
+      [ $d -eq 0 ] && echo "$n: a file added to a copy reads back with the independent reader, the others unchanged" || fail=1
+    fi
   done
   # Torch CP/N discs (the owner's, not in the repo): detected as torch-cpn, and every file as the independent reader
   # (torch_check.py, from the format notes alone) reads it; then a file added to a copy, checked the same way

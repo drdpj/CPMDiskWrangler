@@ -352,8 +352,12 @@ bool physicallyFits(const Cpm::Format &f, const dw::device::Container &img, cons
     if (img.kind() == dw::device::Kind::Raw) {
         const dw::device::RawLayout &l = img.rawLayout();
         if (f.t0sectrk > 0 && l.t0sectrk > 0 && (f.t0sectrk != l.t0sectrk || f.t0seclen != l.t0seclen)) return false;
+        // side after side: a disc with a filesystem per side (each with its own track 0), or a two-sided outback one
+        if (l.sideBySide && l.heads == 2) {
+            if (l.t0sectrk > 0) { if (!f.separateSides) return false; }
+            else if (f.separateSides || f.physHeads != 2 || f.sides != Cpm::SideOrder::OutBack) return false;
+        }
         if (f.separateSides) return f.seclen == l.seclen && f.sectrk == l.sectrk && l.heads == 2 && f.cylinders <= l.cyls;
-        if (l.sideBySide && l.heads == 2) return false;          // side after side: only for discs with a filesystem per side
         return f.seclen == l.seclen && f.sectrk == l.sectrk && f.physHeads == l.heads && f.cylinders <= l.cyls &&
                qint64(f.tracks) * f.sectrk + f.offsetSectors <= qint64(l.cyls) * l.heads * l.sectrk;
     }
@@ -745,6 +749,13 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
             l.seclen = f.seclen; l.sectrk = f.sectrk; l.heads = f.physHeads;
             l.cyls = int((qint64(f.tracks) * f.sectrk + f.offsetSectors + qint64(f.sectrk) * f.physHeads - 1) / (qint64(f.sectrk) * f.physHeads));
             addLayout(l);
+            // An outback disc (side 0 out, side 1 back) is sometimes kept as all of side 0, then all of side 1: Acorn
+            // Z80 discs saved that way (installation and application discs). No search over the cylinder-by-cylinder
+            // layout can read that, so the whole-size image is tried side after side as well.
+            if (f.physHeads == 2 && f.sides == Cpm::SideOrder::OutBack && !f.offsetSectors && size == full) {
+                l.sideBySide = true;
+                addLayout(l);
+            }
         }
         static const int seclens[] = {128, 256, 512, 1024};
         static const int spts[] = {5, 8, 9, 10, 11, 15, 16, 17, 18, 26, 32};
@@ -801,6 +812,9 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         }
         dw::device::Shape sh = img.shape();
         const bool haveIds = !raw;
+        // a raw file read side after side for an outback format (see above): only the known formats are tried on it
+        const bool sideAfterSide = raw && layout.sideBySide && layout.heads == 2 && layout.t0sectrk == 0;
+        const QString sideAfterSideNote = "the image file holds all of side 0, then all of side 1";
         int heads = raw ? layout.heads : sh.heads;
         int cyls = raw ? layout.cyls : sh.cyls;
         int seclen = raw ? layout.seclen : sh.seclen;
@@ -811,7 +825,7 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         for (const Cpm::Format &lf : Cpm::library()) {
             Cpm::Format f = lf;
             // a single-sided format on a two-sided disc: perhaps a separate disc on each side
-            if (lf.physHeads == 1 && (raw ? layout.heads : sh.heads) == 2) {
+            if (!sideAfterSide && lf.physHeads == 1 && (raw ? layout.heads : sh.heads) == 2) {
                 Cpm::Format s = lf;
                 s.separateSides = true;
                 s.heads = 2;
@@ -853,6 +867,7 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
             Candidate c = evaluate(img, f, true);
             if (c.score < -1e8) continue;
             scoreKnownFormat(&c, f, img);
+            if (sideAfterSide) c.evidence << sideAfterSideNote;
             all.append(c);
         }
         // ----- the Amstrad boot-sector spec
@@ -864,15 +879,24 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         // ----- remembered
         if (haveRemembered && physicallyFits(rememberedFmt, img, sh)) {
             Candidate c = evaluate(img, rememberedFmt, true);
-            if (c.score > -1e8) { c.remembered = true; c.score += 20; c.evidence << "the format chosen for this image before"; all.append(c); }
+            if (c.score > -1e8) {
+                c.remembered = true;
+                c.score += 20;
+                c.evidence << "the format chosen for this image before";
+                if (sideAfterSide) c.evidence << sideAfterSideNote;
+                all.append(c);
+            }
         }
 
         // ----- the search: reserved tracks x skew x side order, then block size x directory size
         QVector<Candidate> generic;
         int totalTracks = cyls * heads;
         int maxBoot = qMin(6, totalTracks / 4);
-        QVector<Cpm::SideOrder> orders = {Cpm::SideOrder::Alt};
-        if (heads == 2) orders << Cpm::SideOrder::OutBack << Cpm::SideOrder::OutOut << Cpm::SideOrder::AltRev;
+        // (none side after side: in side order outout that is the same bytes as alt cylinder by cylinder, and the
+        // other orders are no layout a disc was ever kept in)
+        QVector<Cpm::SideOrder> orders;
+        if (!sideAfterSide) orders << Cpm::SideOrder::Alt;
+        if (!sideAfterSide && heads == 2) orders << Cpm::SideOrder::OutBack << Cpm::SideOrder::OutOut << Cpm::SideOrder::AltRev;
         const bool inverted = looksInverted(img);
         QVector<bool> complements = {false};
         if (inverted) complements << true;
@@ -1036,7 +1060,8 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
     if (sh.oddTracks) res.physical += QString(", %1 track%2 of another shape").arg(sh.oddTracks).arg(sh.oddTracks == 1 ? "" : "s");
     if (sh.allHeads > sh.heads) res.physical += QString(" (side %1 has only odd tracks)").arg(sh.allHeads - 1);
     if (sh.badSectors) res.physical += QString(", %1 bad or missing sector%2").arg(sh.badSectors).arg(sh.badSectors == 1 ? "" : "s");
-    if (raw) res.physical += QString(" (raw: %1 bytes)").arg(img.rawFileSize());
+    if (raw) res.physical += QString(" (raw: %1 bytes%2)").arg(img.rawFileSize())
+                                 .arg(img.rawLayout().sideBySide && sh.heads == 2 ? ", side 0 then side 1" : "");
 
     // (a Torch CP/N reading has its own structures to go by; its directory could pass for something else's)
     const QString foreign = !res.ranked.isEmpty() && res.ranked.first().fmt.torch ? QString() : foreignFilesystem(img);
