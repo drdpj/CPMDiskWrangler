@@ -117,7 +117,10 @@ int main(int argc, char **argv) {
         QElapsedTimer t; t.start();               // the target may ask after the drop; "nothing" waits for it a while
         while (msg.isEmpty() && !nothing && t.elapsed() < 2 * dw::ui::VolumePane::DragOutWaitMs) wait(50);
         wait(300);
-        const QString status = w.findChild<StatusLabel *>() ? w.findChild<StatusLabel *>()->toolTip() : QString();
+        // StatusLabel has no Q_OBJECT, so findChild can't look for it by type (Qt 6.10 refuses to compile that): by RTTI
+        QString status;
+        for (QLabel *l : w.findChildren<QLabel *>())
+            if (StatusLabel *sl = dynamic_cast<StatusLabel *>(l)) { status = sl->toolTip(); break; }
         tg.kill(); tg.waitForFinished();
         QFile l(log); l.open(QIODevice::ReadOnly);
         const QString got = QString::fromUtf8(l.readAll()).trimmed().replace('\n', " | ");

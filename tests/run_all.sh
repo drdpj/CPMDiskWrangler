@@ -71,7 +71,8 @@ nd=$(grep -c 'verdict: none' "$W/foreign.log"); echo "handed to Acorn Disk Wrang
 step "DiskWranglerCore's filesystem interface: Volume, Disc, detection by tiers (voltest)"
 "$b/voltest/voltest" "$W/voltest" > "$W/voltest.log" 2>&1 && tail -1 "$W/voltest.log" | grep -q "all ok" && echo "voltest: ok" || { grep FAIL "$W/voltest.log"; echo "FAIL voltest"; fail=1; }
 step "dragging out to other programs on a real X server (xdragtest: Xvfb, xdotool)"
-mkdir -p "$W/xd"; (unset QT_QPA_PLATFORM; timeout 300 xvfb-run -a -s "-screen 0 1280x800x24" "$b/xdragtest/xdragtest" "$W/xd" > "$W/xdrag.log" 2>&1)
+# X11 on Xvfb, even when run from a Wayland desktop (Qt would otherwise open its windows there)
+mkdir -p "$W/xd"; (export QT_QPA_PLATFORM=xcb; unset WAYLAND_DISPLAY; timeout 300 xvfb-run -a -s "-screen 0 1280x800x24" "$b/xdragtest/xdragtest" "$W/xd" > "$W/xdrag.log" 2>&1)
 grep -v "^QStandardPaths" "$W/xdrag.log"; grep -q "^ALL OK" "$W/xdrag.log" || { echo "FAIL xdragtest"; fail=1; }
 if [ -n "$real" ]; then
   O="$real/Myrcurial_o1next/research"; Z="$real/udo-munk_z80pack/cpmsim/disks/library"
