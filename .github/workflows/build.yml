@@ -1,5 +1,5 @@
-# Shared, unchanged, by Acorn Disk Wrangler and CP/M Disk Wrangler: the program is whichever *.pro is at the root that doesn't end in dw.pro;
-# that one (acorndw.pro, cpmdw.pro) is its console program, built, tested and shipped beside it.
+# Shared, unchanged, by Acorn Disk Wrangler, CP/M Disk Wrangler and FLEX Disk Wrangler: the program is whichever *.pro is at the root that doesn't end
+# in dw.pro; that one (acorndw.pro, cpmdw.pro, flexdw.pro) is its console program, built, tested and shipped beside it.
 #
 # Builds Windows (x64 zip; for a release tag or Run workflow also an installer, core/ci/installer.iss), macOS (universal .dmg, Intel and Apple Silicon, macOS 12 and later) and Linux (x86_64
 # AppImage, and a .deb that uses the system's Qt for Ubuntu 22.04+ / Debian 12+), each linked to Qt's shared libraries, with the licence of everything shipped compiled into the
@@ -64,7 +64,7 @@ jobs:
           app=$(basename "$(ls ./*.pro | grep -v 'dw\.pro$')" .pro)
           {
             echo "APP=$app"
-            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw
+            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw, flexdw
             echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
@@ -90,7 +90,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "C:\Windows\System32;C:\Windows"
-          $fmt = if ($env:CLI -eq 'cpmdw') { 'ibm-3740' } else { 'adfs-m' }
+          $fmt = switch ($env:CLI) { 'cpmdw' { 'ibm-3740' } 'flexdw' { 'flex-40x10' } default { 'adfs-m' } }
           & "deploy\$env:CLI.exe" --version
           if ($LASTEXITCODE) { throw "$env:CLI --version failed (exit code $LASTEXITCODE)" }
           & "deploy\$env:CLI.exe" new "$env:RUNNER_TEMP\t.img" "--format=$fmt" --quiet
@@ -199,7 +199,7 @@ jobs:
           app=$(basename "$(ls ./*.pro | grep -v 'dw\.pro$')" .pro)
           {
             echo "APP=$app"
-            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw
+            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw, flexdw
             # A file name can't contain "/", but the Finder shows ":" as "/", so "CP:M Disk Wrangler.app"
             # appears as "CP/M Disk Wrangler". The disk image's name just drops the slash.
             name=$(sed -n 's/^QMAKE_TARGET_PRODUCT *= *//p' "$app.pro")
@@ -237,7 +237,7 @@ jobs:
           hdiutil create -volname "$VOLUME" -srcfolder dmg -format UDZO -ov "dist/$APP-$VERSION-macos-$MACARCH.dmg"
       - name: Check the console program in the bundle
         run: |
-          fmt=adfs-m; [ "$CLI" = cpmdw ] && fmt=ibm-3740
+          case "$CLI" in cpmdw) fmt=ibm-3740 ;; flexdw) fmt=flex-40x10 ;; *) fmt=adfs-m ;; esac
           cli="dmg/$BUNDLE.app/Contents/MacOS/$CLI"
           "$cli" --version
           "$cli" new "$RUNNER_TEMP/t.img" "--format=$fmt" --quiet
@@ -281,7 +281,7 @@ jobs:
           app=$(basename "$(ls ./*.pro | grep -v 'dw\.pro$')" .pro)
           {
             echo "APP=$app"
-            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw
+            echo "CLI=$(ls ./*dw.pro | head -1 | xargs basename -s .pro)"      # the console program: acorndw, cpmdw, flexdw
             echo "VERSION=$(git describe --tags --always)$([ "$QT" = 5 ] && echo -qt5)"
           } >> "$GITHUB_ENV"
       - name: Build and deploy
@@ -316,7 +316,7 @@ jobs:
       - name: Check the console program in the AppImage
         run: |
           # started under the console program's name (a symlink to the AppImage) it is that program
-          fmt=adfs-m; [ "$CLI" = cpmdw ] && fmt=ibm-3740
+          case "$CLI" in cpmdw) fmt=ibm-3740 ;; flexdw) fmt=flex-40x10 ;; *) fmt=adfs-m ;; esac
           ln -s "$PWD/dist/$APP-$VERSION-linux-x86_64.AppImage" "$RUNNER_TEMP/$CLI"
           "$RUNNER_TEMP/$CLI" --version
           "$RUNNER_TEMP/$CLI" new "$RUNNER_TEMP/t.img" "--format=$fmt" --quiet
