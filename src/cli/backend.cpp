@@ -134,7 +134,10 @@ public:
             }
             return true;
         };
-        if (!x.saveAs(out, to, err, verify)) { *exit = ExitSave; return false; }
+        if (!(to == Kind::Raw && !fmts.isEmpty() ? Cpm::saveAsRaw(&x, fmts.first(), out, verify, err) : x.saveAs(out, to, err, verify))) {
+            *exit = ExitSave;
+            return false;
+        }
         QJsonObject r;
         r["container"] = dw::device::kindName(to);
         r["size"] = double(QFileInfo(out).size());

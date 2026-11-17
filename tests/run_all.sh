@@ -56,6 +56,9 @@ for f in rm-dd rm-qd; do   # independent: cpmtools reads each side of the raw fi
   python3 -I "$src/tests/verify_rm_sides.py" "$W/fsds/raw/$f+ds.img" "$W/fsds/raw/$f+ds.diskdef" $f "$W/rmout/$f" \
       "$W/fsds/raw/$f+ds.expect" "$W/fsds/raw/$f+ds.expect1" || { echo "FAIL independent check of $f+ds"; fail=1; }
 done
+step "a track 0 of its own shape in raw images (core v1.2.0): new, from ImageDisk, and the real Research Machines discs both ways"
+timeout 900 "$src/tests/track0_raw.sh" "$b/cpmdw/cpmdw" "$W/t0raw" $( [ -n "$real" ] && ls "$real"/rm/*.img 2>/dev/null) || fail=1
+
 step "national character sets: mappings, names, and the evidence scan"
 if [ -n "$real" ] && ls "$real"/nat/*.imd >/dev/null 2>&1; then
   args=(); for z in "$real"/nat/*.imd; do args+=("$z" dk-no); done

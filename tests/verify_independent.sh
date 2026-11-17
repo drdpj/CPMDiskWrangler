@@ -56,7 +56,17 @@ PY
         logical=$t/py.logical ;;
       *) logical="$base".logical
          if [ -z "$real_sides" ] || [ "$real_sides" = alt ]; then
-           cmp -s "$img" "$base".logical && echo "ok   $name: raw image is in logical order" || { echo "FAIL $name: raw image is not the logical image"; fail=1; }
+           t0=$(awk '/^ *track0/{print $2 * $3}' "$dd")
+           if [ -n "$t0" ]; then
+             # track 0 stored at its own size (core v1.2.0): in the logical image it is a full track of E5 filler
+             # (the boot area, not part of the filesystem), so the rest of the file must be the rest of that image
+             if [ "$(stat -c %s "$img")" = $(( t0 + (tracks - 1) * sectrk * seclen )) ] &&
+                cmp -s <(tail -c +$((t0 + 1)) "$img") <(tail -c +$((sectrk * seclen + 1)) "$base".logical); then
+               echo "ok   $name: raw image is in logical order, track 0 at its own $t0 bytes"
+             else echo "FAIL $name: raw image is not the logical image (track 0 at its own size)"; fail=1; fi
+           else
+             cmp -s "$img" "$base".logical && echo "ok   $name: raw image is in logical order" || { echo "FAIL $name: raw image is not the logical image"; fail=1; }
+           fi
          fi ;;
     esac
     if grep -q "^ *torchcpn yes" "$dd"; then       # Torch CP/N: cpmtools can't read it; the independent reader instead

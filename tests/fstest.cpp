@@ -105,7 +105,9 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     bool stamps = f.os == Cpm::Os::V3;
     dw::device::Container img;
     if (!Cpm::makeBlank(&img, kind, f, stamps, "TESTDISC", &err)) {
-        if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && !ds) { printf("  refused as raw, as it should be: %s\nok\n", qPrintable(err)); return 0; }
+        // a raw image holds a one-sided disc's track 0 at its own size (core v1.2.0, deliberate change 13); only two
+        // sides of one disc giving side 0 alone its own track 0 are refused
+        if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && !ds && f.physHeads == 2) { printf("  refused as raw, as it should be: %s\nok\n", qPrintable(err)); return 0; }
         printf("  FAIL makeBlank: %s\n", qPrintable(err));
         return 1;
     }
@@ -121,7 +123,8 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     if (kind == dw::device::Kind::Raw) {
         dw::device::RawLayout l;
         l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
-        if (ds) { l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }
+        if (f.t0sectrk > 0) { l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }   // track 0 at its own size
+        if (ds) l.sideBySide = true;
         CHECK(im2.setRawLayout(l, &err), err);
     }
     if (f.t0sectrk > 0)
@@ -278,7 +281,8 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
     if (kind == dw::device::Kind::Raw) {
         dw::device::RawLayout l;                     // as makeBlank lays out a raw file
         l.seclen = f.seclen; l.sectrk = f.sectrk; l.cyls = f.cylinders; l.heads = f.physHeads;
-        if (f.separateSides) { l.sideBySide = true; l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }
+        if (f.t0sectrk > 0) { l.t0sectrk = f.t0sectrk; l.t0seclen = f.t0seclen; }   // track 0 at its own size
+        if (f.separateSides) l.sideBySide = true;
         CHECK(imL.setRawLayout(l, &err), "raw layout for the .logical image: " + err);
     }
     QFile lg(outdir + "/" + fname + ".logical");

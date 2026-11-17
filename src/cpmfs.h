@@ -24,6 +24,7 @@
 // The file types and the Store interface are in cpmstore.h; Torch CP/N's filesystem is Torch::Fs (torchfs.h).
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include "cpmstore.h"
@@ -113,6 +114,9 @@ std::unique_ptr<Store> openStore(dw::device::Container *img, const Format &f, QS
 // A new, empty disc in the given container: every sector E5 (the format's sector IDs and ImageDisk mode), then an
 // empty directory (with CP/M 3 time stamp entries and a label when stamps is set).
 bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &f, bool stamps, const QString &label, QString *err);
+// Save As / convert to a raw image, a disc whose format gives track 0 its own shape kept as such raw images are (cpmfs.cpp).
+bool saveAsRaw(dw::device::Container *img, const Format &f, const QString &path,
+               const std::function<bool(dw::device::Container &, QString *)> &verify, QString *err);
 int defaultImdMode(const Format &f);
 
 // CP/M 3 dates: days since 31 Dec 1977 (day 1 = 1 Jan 1978), hours and minutes in BCD.

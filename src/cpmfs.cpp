@@ -700,9 +700,15 @@ bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &
     l.firstId = f.secbase >= 0 ? f.secbase : 1;
     l.mode = defaultImdMode(f);
     if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && !f.separateSides) {
-        *err = QString("%1 has a track 0 of its own shape (%2 x %3 %4), which a raw image can't hold: make it as ImageDisk or DSK")
-                   .arg(f.name).arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM");
-        return false;
+        // one side: track 0 stored at its own size, as detection reads such a raw image (core v1.2.0). Two sides of
+        // one disc give only cylinder 0 side 0 that shape, which a raw image (every side's cylinder 0 alike) can't hold.
+        if (f.physHeads != 1) {
+            *err = QString("%1 gives cylinder 0 side 0 a shape of its own (%2 x %3 %4), which a raw image can't hold: make it as ImageDisk or DSK")
+                       .arg(f.name).arg(f.t0sectrk).arg(f.t0seclen).arg(f.t0fm ? "FM" : "MFM");
+            return false;
+        }
+        l.t0sectrk = f.t0sectrk;
+        l.t0seclen = f.t0seclen;
     }
     if (kind == dw::device::Kind::Raw && f.separateSides) {
         // a disc with a filesystem per side: the file holds all of side 0, then all of side 1, each side with its own
@@ -754,6 +760,50 @@ bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &
         if (!img->write(0, 0, 0, cat.left(256), err) || !img->write(0, 0, 1, cat.mid(256), err)) return false;
     }
     img->markForSave();
+    return true;
+}
+
+// Save As (and cpmdw convert) to a raw image. A disc in an ImageDisk, DSK or TeleDisk file whose format gives track 0
+// a shape of its own is written as such a raw image is kept and read: one side, track 0 at its own size (the core's
+// setOwnTrack0); a disc on each side (Research Machines'), all of side 0 then all of side 1, each with its own track 0,
+// built sector by sector (as makeBlank lays a new one out). Any other disc is saved as it always was. On success img is
+// the new file.
+bool saveAsRaw(dw::device::Container *img, const Format &f, const QString &path, const std::function<bool(dw::device::Container &, QString *)> &verify,
+               QString *err) {
+    using dw::device::Kind;
+    if (img->kind() == Kind::Raw || f.t0sectrk == 0) return img->saveAs(path, Kind::Raw, err, verify);
+    if (!f.separateSides) {
+        img->setOwnTrack0(true);
+        return img->saveAs(path, Kind::Raw, err, verify);
+    }
+    dw::device::RawLayout l;
+    l.seclen = f.seclen;
+    l.sectrk = f.sectrk;
+    l.heads = 2;
+    l.cyls = img->cylinders();
+    l.firstId = 1;
+    l.t0sectrk = f.t0sectrk;
+    l.t0seclen = f.t0seclen;
+    l.sideBySide = true;
+    dw::device::Container out;
+    out.createBlank(Kind::Raw, l, img->comment());
+    for (int c = 0; c < l.cyls; ++c)
+        for (int h = 0; h < 2; ++h) {
+            if (out.sectorCount(c, h) != img->sectorCount(c, h)) {
+                *err = QString("cylinder %1 side %2 doesn't have the format's sectors, so it can't be saved as a raw image").arg(c).arg(h);
+                return false;
+            }
+            for (int i = 0; i < img->sectorCount(c, h); ++i) {
+                QByteArray s;
+                if (!img->read(c, h, i, &s) || s.size() != img->sector(c, h, i)->size) {
+                    *err = QString("cylinder %1 side %2 sector %3 can't be read, so the disc can't be saved as a raw image").arg(c).arg(h).arg(i);
+                    return false;
+                }
+                if (!out.write(c, h, i, s, err)) return false;
+            }
+        }
+    if (!out.saveAs(path, Kind::Raw, err, verify)) return false;
+    *img = out;
     return true;
 }
 

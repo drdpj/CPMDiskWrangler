@@ -203,7 +203,10 @@ The full reference, with every command and option, is in
 
 ## Limitations
 * TeleDisk images can't be saved as TeleDisk, and TeleDisk 1.x "advanced compression" isn't supported.
-* A raw image can't hold a disc whose track 0 differs from the rest; use ImageDisk or DSK for those.
+* A raw image holds a disc whose track 0 differs from the rest (Research Machines, Osborne 8-inch double density,
+  Vector Graphic) with track 0 at its own size, as such images are kept, but it can't say that track 0 was single
+  density: Save As ImageDisk from a raw image records it as double density (the data is the same). A double-sided
+  disc that gives only side 0 its own track 0 needs ImageDisk or DSK.
 * Copy-protected tracks (duplicate sector numbers) are read but never written.
 * DateStamper's `!!!TIME&.DAT` time stamps are kept but not shown; CP/M 3 passwords are kept but not checked.
 * Deleted Torch CP/N files can't be recovered yet, and discs written here haven't yet been checked by a real Torch.
