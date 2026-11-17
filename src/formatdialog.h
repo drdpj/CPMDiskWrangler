@@ -61,7 +61,7 @@ private:
     QPlainTextEdit *m_details;
     QCheckBox *m_allow, *m_ptr16, *m_complement;
     QLabel *m_formErr;
-    QComboBox *m_seclen, *m_sides, *m_bls, *m_os;
-    QSpinBox *m_sectrk, *m_tracks, *m_heads, *m_boot, *m_skew, *m_maxdir, *m_dirblks;
+    QComboBox *m_seclen, *m_sides, *m_bls, *m_os, *m_t0seclen, *m_t0fm;
+    QSpinBox *m_sectrk, *m_tracks, *m_heads, *m_boot, *m_skew, *m_maxdir, *m_dirblks, *m_t0sectrk;
     QLineEdit *m_skewtab;
 };

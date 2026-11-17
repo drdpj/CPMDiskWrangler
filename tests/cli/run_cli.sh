@@ -65,6 +65,7 @@ for c in "$HERE"/cases/*/; do
     fi
     if [ -d "$W/out" ]; then (cd "$W/out" && find . -type f | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r f; do sha256sum -- "$f"; done) >"$A/hostfiles.txt"; fi
     [ -f "$c/cleanup" ] && (cd "$W" && bash -e "$c/cleanup") >"$A/cleanup.log" 2>&1
+    chmod -R u+w "$W" 2>/dev/null                 # a case that made its folder read-only (28) leaves it deletable
     left=$(cd "$W" && find . -name '.dw*' | head -3)
     [ -n "$left" ] && why="temporary files left behind: $left"
     if [ -f "$c/expect-unchanged" ] && ! cmp -s "$A/setup.sha" "$A/image.sha256"; then why="the image changed, and this case says it must not"; fi

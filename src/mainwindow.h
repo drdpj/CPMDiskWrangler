@@ -87,7 +87,8 @@ public:
     bool lowerNames() const { return m_lowerOk; }
     void setNat(const QString &id, bool remember);     // the disc's national character set (natchars.h)
     QString natId() const { return m_natId; }
-    bool newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label);
+    bool newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label,
+                  Cpm::Track0Raw track0 = Cpm::Track0Raw::Own);
     bool useFormat(const Detect::Candidate &c, bool allowChanges);     // re-read with another format
     // user -1: each file's own user number (0 for files without one); side: which side's filesystem
     void importPaths(const QStringList &paths, int user, int side = 0);

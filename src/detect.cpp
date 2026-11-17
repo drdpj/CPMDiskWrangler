@@ -354,8 +354,9 @@ bool physicallyFits(const Cpm::Format &f, const dw::device::Container &img, cons
         if (f.t0sectrk > 0 && l.t0sectrk > 0 && (f.t0sectrk != l.t0sectrk || f.t0seclen != l.t0seclen)) return false;
         // side after side: a disc with a filesystem per side (each with its own track 0), or a two-sided outback one
         if (l.sideBySide && l.heads == 2) {
+            // (every track alike: an outback disc, or one per side whose track 0 is padded to a full track)
             if (l.t0sectrk > 0) { if (!f.separateSides) return false; }
-            else if (f.separateSides || f.physHeads != 2 || f.sides != Cpm::SideOrder::OutBack) return false;
+            else if (f.separateSides ? f.t0sectrk == 0 : (f.physHeads != 2 || f.sides != Cpm::SideOrder::OutBack)) return false;
         }
         if (f.separateSides) return f.seclen == l.seclen && f.sectrk == l.sectrk && l.heads == 2 && f.cylinders <= l.cyls;
         return f.seclen == l.seclen && f.sectrk == l.sectrk && f.physHeads == l.heads && f.cylinders <= l.cyls &&
@@ -630,7 +631,12 @@ void scoreKnownFormat(Candidate *cp, const Cpm::Format &lib, const dw::device::C
         const dw::device::Track *t0 = img.track(0, 0);
         bool same = t0 && t0->secs.size() == lib.t0sectrk && !t0->secs.isEmpty() && t0->secs[0].size == lib.t0seclen &&
                     (t0->mode < 0 || (t0->mode <= 2) == lib.t0fm);
+        // A raw image may keep track 0 padded to a full track. Nothing in the bytes tells padding from empty sectors,
+        // and a raw file has no IDs or density, so a track 0 of full size counts neither for nor against the format.
+        const bool padded = !same && !haveIds && img.rawLayout().t0sectrk == 0 && t0 && !t0->secs.isEmpty() &&
+                            qint64(t0->secs.size()) * t0->secs[0].size >= qint64(lib.t0sectrk) * lib.t0seclen;
         if (same) { c.score += 3; c.evidence << QString("track 0 is %1 x %2 %3, as this format's is").arg(lib.t0sectrk).arg(lib.t0seclen).arg(lib.t0fm ? "FM" : "MFM"); }
+        else if (padded) c.evidence << QString("track 0 is a full track: this format's %1 x %2 bytes, padded, or not this format").arg(lib.t0sectrk).arg(lib.t0seclen);
         else { c.score -= 3; c.evidence << "track 0 is not the shape this format gives it"; }
     }
     if (lib.acornDfs) {
@@ -738,6 +744,17 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
                     l.sideBySide = false;
                     addLayout(l);
                 }
+                // track 0 padded to a full track (cpmdw --track0=padded, and other tools'): every track alike
+                l.t0sectrk = l.t0seclen = 0;
+                l.heads = 1;
+                if (f.physHeads == 1 && size == l.bytes()) addLayout(l);
+                l.heads = 2;
+                if (size == l.bytes()) {
+                    l.sideBySide = true;
+                    addLayout(l);
+                    l.sideBySide = false;
+                    addLayout(l);
+                }
                 continue;
             }
             qint64 full = (qint64(f.tracks) * f.sectrk + f.offsetSectors) * f.seclen;
@@ -825,7 +842,8 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         for (const Cpm::Format &lf : Cpm::library()) {
             Cpm::Format f = lf;
             // a single-sided format on a two-sided disc: perhaps a separate disc on each side
-            if (!sideAfterSide && lf.physHeads == 1 && (raw ? layout.heads : sh.heads) == 2) {
+            // (side after side with every track alike: only one whose track 0 is padded to a full track)
+            if ((!sideAfterSide || lf.t0sectrk > 0) && lf.physHeads == 1 && (raw ? layout.heads : sh.heads) == 2) {
                 Cpm::Format s = lf;
                 s.separateSides = true;
                 s.heads = 2;
@@ -977,6 +995,38 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
     int emptyButUsedCount = 0;
     const dw::device::RawLayout lastLayout = raw ? img.rawLayout() : dw::device::RawLayout();
     for (Candidate &c : all) c.raw = raw && !c.raw.valid() ? lastLayout : c.raw;
+    // A reading of a disc whose track 0 has a shape of its own records that shape in its format, as the library's
+    // track0 formats do (Tools > Disc format's form shows it; Save As gives it back): a raw layout's short track 0 (FM,
+    // as such tracks are - a raw file can't say), or an ImageDisk or DSK file's own track 0 (its sectors all one size).
+    // Any reading, a library format's too: amp1's layout read with a single-density track 0 is that disc's. Only when
+    // track 0 lies in the boot area, where the filesystem never reads.
+    for (Candidate &c : all) {
+        Cpm::Format &f = c.fmt;
+        if (f.torch || f.t0sectrk > 0 || f.offsetSectors || f.separateSides || f.boottrk < 1) continue;
+        int n = 0, len = 0;
+        bool fm = true;
+        if (raw) {
+            n = c.raw.t0sectrk;
+            len = c.raw.t0seclen;
+        } else if (const dw::device::Track *t0 = img.track(0, 0)) {
+            const dw::device::Shape sh = img.shape();
+            bool oneSize = !t0->secs.isEmpty();
+            for (const auto &x : t0->secs) oneSize = oneSize && x.size == t0->secs[0].size;
+            if (oneSize && (t0->secs.size() != sh.sectrk || t0->secs[0].size != sh.seclen)) {
+                n = t0->secs.size();
+                len = t0->secs[0].size;
+                fm = t0->mode >= 0 && t0->mode <= 2;
+            }
+        }
+        if (n <= 0) continue;
+        Cpm::Format g = f;
+        g.t0sectrk = n;
+        g.t0seclen = len;
+        g.t0fm = fm;
+        g.derived = false;
+        QString e;
+        if (g.derive(&e)) f = g;
+    }
     // an empty reading of a disc that holds data: not this format (see emptyButUsed)
     auto usedButEmpty = [&](const Candidate &c) {
         if (c.files != 0 || c.remembered || c.score < -1e8 || c.fmt.torch) return false;   // Torch: its map says

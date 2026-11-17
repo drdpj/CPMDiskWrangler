@@ -134,7 +134,9 @@ public:
             }
             return true;
         };
-        if (!(to == Kind::Raw && !fmts.isEmpty() ? Cpm::saveAsRaw(&x, fmts.first(), out, verify, err) : x.saveAs(out, to, err, verify))) {
+        if (!o.track0.isEmpty() && to != Kind::Raw) { *err = "--track0 is for a raw image (--container=raw)"; *exit = ExitUsage; return false; }
+        const Cpm::Track0Raw t0 = o.track0 == "own" ? Cpm::Track0Raw::Own : o.track0 == "padded" ? Cpm::Track0Raw::Padded : Cpm::Track0Raw::Keep;
+        if (!(!fmts.isEmpty() ? Cpm::saveDiscAs(&x, fmts.first(), out, to, t0, verify, err) : x.saveAs(out, to, err, verify))) {
             *exit = ExitSave;
             return false;
         }
@@ -191,8 +193,8 @@ OpenOutcome Backend::open(const QString &path, const OpenOptions &o) {
         Cpm::Format f = *lib;
         if (!f.derived && !f.derive(&err)) { out.status = OpenOutcome::Failed; out.message = err; return out; }
         if (c.kind() == dw::device::Kind::Raw) {
-            dw::device::RawLayout l;
-            l.seclen = f.seclen; l.sectrk = f.sectrk; l.heads = f.physHeads; l.cyls = f.cylinders;
+            // track 0 at its own size if the file is that size (as detection reads it), else every track alike
+            const dw::device::RawLayout l = Cpm::rawLayoutFor(f, c.rawFileSize());
             if (!c.setRawLayout(l, &err)) { out.status = OpenOutcome::Failed; out.message = QString("--format %1: %2").arg(o.format, err); return out; }
         } else {
             const dw::device::Shape sh = c.shape();
@@ -265,7 +267,11 @@ bool Backend::create(const QString &file, const NewOptions &n, QString *err, int
     }
     if (!n.label.isEmpty() && !n.stamps) { *err = "--label needs --stamps (a label belongs to a CP/M 3 disc with time stamps)"; *exit = ExitUsage; return false; }
     dw::device::Container img;
-    if (!Cpm::makeBlank(&img, kind, f, n.stamps, n.label.toUpper(), err)) { *exit = ExitFailed; return false; }
+    if (!n.track0.isEmpty() && kind != Kind::Raw) { *err = "--track0 is for a raw image (--container=raw)"; *exit = ExitUsage; return false; }
+    if (!Cpm::makeBlank(&img, kind, f, n.stamps, n.label.toUpper(), err, n.track0 == "padded" ? Cpm::Track0Raw::Padded : Cpm::Track0Raw::Own)) {
+        *exit = ExitFailed;
+        return false;
+    }
     const QString tmp = tempBeside(file);
     if (!img.saveAs(tmp, kind, err)) { QFile::remove(tmp); *exit = ExitSave; return false; }
     QFile::remove(file);

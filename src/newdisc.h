@@ -19,6 +19,7 @@
 #pragma once
 #include <QDialog>
 #include "cpmformat.h"
+#include "cpmfs.h"
 #include <diskwrangler/device/container.h>
 
 class QCheckBox;
@@ -35,6 +36,7 @@ public:
     dw::device::Kind kind() const;
     bool stamps() const;
     QString label() const;
+    Cpm::Track0Raw track0() const;                    // a raw image's track 0 of its own shape: own size or padded
     bool selectFormat(const QString &name);           // for tests
 private slots:
     void filter(const QString &text);
@@ -44,5 +46,5 @@ private:
     QListWidget *m_list;
     QLabel *m_info;
     QComboBox *m_kind;
-    QCheckBox *m_stamps, *m_twoSided;
+    QCheckBox *m_stamps, *m_twoSided, *m_padT0;
 };

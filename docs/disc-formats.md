@@ -73,10 +73,25 @@ checked on. Read this before changing `core/diskwrangler/device/` (the container
   other tracks: IMD mode 0/1/2 for 3/4/5). As a raw image (since core v1.2.0, series `containers`) a one-sided disc
   keeps track 0 at its own size (`RawLayout::t0sectrk`), and a Research Machines disc with a disc on each side keeps
   all of side 0 then all of side 1, each with its own track 0, as real RM images are; a double-sided disc that gives
-  only side 0 its own track 0 is refused (a raw layout gives every side's cylinder 0 the same shape). Save As and
-  `cpmdw convert` to raw (`Cpm::saveAsRaw`) write the same: one side through the core's `Container::setOwnTrack0`, RM's
-  separate sides sector by sector; detection reads both back (its raw layouts with a track 0 of the format's own). Detection: +3 when the disc's track 0
-  matches a format's `track0`, -3 when it doesn't. `sameLayout` ignores it (it doesn't affect the filesystem).
+  only side 0 its own track 0 is refused at its own size (a raw layout gives every side's cylinder 0 the same shape).
+  Or track 0 is **padded** with zeros to a full track (`Track0Raw::Padded`: New disc image's tick box, Save As's
+  "track 0 padded" file type, `--track0=padded`, core v1.3.0), every track the same length, which any format can be
+  kept as. Save As and `cpmdw convert` (`Cpm::saveDiscAs`) cut the disc into its tracks as the format lays them out
+  (`formatTracks`: a container's own tracks, or a raw file's bytes at either size, chosen by the file's size - nothing
+  in the bytes tells padding from blank sectors) and write them out: to raw at its own size or padded (unnamed, as the
+  raw file it came from was, else its own size); to ImageDisk or DSK laid out as `makeBlank` lays out a new disc
+  (`shapeBlank`), so a raw disc's track 0 is FM again and a raw Microbee DS80's data tracks get IDs 21-30. A disc not
+  in its format's shape is saved as it always was. `--format` (and Tools > Disc format) reads a raw file of the own-size
+  length with track 0 at its own size (`rawLayoutFor`); before, it read it with every track alike and saving padded the
+  end of the file. Detection reads all of these back: its raw layouts include track 0 at the format's own size and
+  padded (one side, or two sides side after side or cylinder by cylinder; side after side with every track alike fits
+  a disc on each side only for a format with its own track 0). Detection: +3 when the disc's track 0 matches a
+  format's `track0`, -3 when it doesn't, 0 when a raw file's track 0 is a full track (padded, or not this format: the
+  bytes can't say). `sameLayout` ignores it (it doesn't affect the filesystem). After ranking, every reading of a disc
+  whose track 0 has a shape of its own records it in its format (`detect()`): a raw layout's short track 0 (as FM),
+  or an ImageDisk / DSK file's track 0 when its sectors are one size, a library format's reading included (`amp1`'s
+  layout on a disc with a single-density track 0); only inside the boot tracks. So Save As keeps it whatever the
+  reading. Tools > Disc format's form has a "Track 0 sectors" row (count, size, FM/MFM) that sets it by hand.
   - Microbee: `microbee-ds80` data tracks (after the reserved ones) are numbered from 21 (`datasect 21`), the reserved ones from 1. `makeBlank` reshapes the data tracks to `dataId` (DSK/IMD only; a raw file has no IDs) - without it a new DS80 disc was "Bad Sector" in ubee512. `microbee-ss80` is `microbee40`'s layout on 80 cylinders, one side (IDs 1-10 everywhere); `microbee-ds40` is `microbee40`'s layout on 40 cylinders x 2 sides (`heads 2`; cpmtools' `microbee40` has no sides key, so on its own it is read as one side of 80 cylinders, which is what a DS40 made from it used to be. No Microbee disc is 40 track on one side of 80 cylinders, so `microbee40` is withdrawn from the library by a `withdraw` line in the built-in diskdefs) and, as a raw file, the same bytes as SS80, so a raw file is detected as either. Checked on `dtoolkit_disk_3_ds40.dsk` (35 files, detected as `microbee-ds40` with high confidence).
   - DSK containers: `Kind::Edsk` ("EXTENDED CPC DSK File", per-track size table) and `Kind::Dsk` (the original "MV - CPCEMU Disk-File", one track size, which the Microbee repository's discs use and some older emulators read (ubee512's own DSK code doesn't check the header at all: it reads both the same, as long as every track is the same size)). New discs and Save As offer both; `writeStandardDsk` refuses a disc whose tracks differ in size (a boot track of its own shape, mixed sector sizes) and says to use an extended DSK. Opening and saving a file keeps its kind (the data is patched in place).
   - Sharp (only *some* Sharp formats are inverted; the MZ-800 P-CP/M disc below is ordinary): `sharp-sds400` (40 cylinders x 2 x 10 x 512, 2K blocks, 128 entries): the sectors are stored inverted (`complement yes`, libdsk's "complement"; empty space reads 1A, not E5) and a cylinder is read side 1 first (`sides altrev`; IDs 1-10 on side 1, 11-20 on side 0), cylinder 0 (both sides, one track 16 x 256) reserved. The inversion is applied in `readLogical` (detect.cpp) and `Volume::readBytes/writeBytes`; detection tries inverted readings when the image is mostly 1A with hardly any E5 (`looksInverted`). New discs of it can't be made yet (per-side sector IDs). A raw file of one (408576 bytes: the odd 16 x 256 track makes it not a uniform layout) isn't read. The MZ-800 P-CP/M disc (`PCPM.SYS`, 40 cylinders x 2 x 8 x 512, boot track 16 x 256 on cylinder 0 side 1) is outback: `oddTrackPenalty` marks down readings that put a track of another shape in the middle of the data (outout), so outback ranks first. S2 bit 7 (BDOS's "written to" flag) is tolerated in directory entries.

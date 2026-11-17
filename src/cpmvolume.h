@@ -170,6 +170,10 @@ public:
     // Save As: the copy is checked as save() checks it, unless the directory already has errors (a TeleDisk image
     // that fails its check can still be copied to a writable kind, as it is).
     bool saveAs(const QString &path, dw::device::Kind kind, QString *err) override;
+    // How the next Save As to a raw image holds a track 0 of its own shape (the window's file filter says).
+    void setTrack0Raw(Cpm::Track0Raw t) { m_track0 = t; }
+    // A raw image whose format's own track 0 is padded to a full track.
+    bool rawTrack0Padded() const { return m_stores[0] && Cpm::rawTrack0Padded(m_img, m_stores[0]->format()); }
     // The window's reasons, the same for every side: a TeleDisk image, a directory with errors, a format not
     // confirmed (setSafe(false)); then the mount's own (setReadOnly).
     QString readOnlyWhy(int mount) const override;
@@ -183,6 +187,7 @@ private:
     std::unique_ptr<Store> m_stores[2];               // the filesystem on each side (openStore); outlive the mounts
     QString m_roWhy;
     bool m_safe = true, m_checkOk = true;
+    Cpm::Track0Raw m_track0 = Cpm::Track0Raw::Keep;
     QDateTime m_fileTime;
     qint64 m_fileSize = -1;
     dw::fs::Disc m_disc;

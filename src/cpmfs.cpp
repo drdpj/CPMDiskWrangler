@@ -687,19 +687,52 @@ int defaultImdMode(const Format &f) {
     return eightInch ? 3 : 5;
 }
 
-bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &fIn, bool stamps, const QString &label, QString *err) {
-    Format f = fIn;
-    if (!f.derived && !f.derive(err)) return false;
-    if (f.offsetSectors) { *err = "formats with an image offset (hard disc partitions) can't be made as new discs"; return false; }
-    if (f.complement) { *err = QString("%1 stores its data inverted and numbers its sectors differently on each side: new discs of it can't be made here yet").arg(f.name); return false; }
+// Cylinder 0's tracks of a format that gives track 0 a shape of its own: side 0's only, or each side's on a disc
+// with a filesystem per side (Research Machines').
+static bool ownTrack0(const Format &f, int c, int h) { return f.t0sectrk > 0 && c == 0 && (f.separateSides || h == 0); }
+
+// The raw file of a disc of format f with cyls cylinders: each track's place in it, in the file's order (side after
+// side for a disc with a filesystem per side, else cylinder by cylinder), with track 0 at its own size or padded with
+// zeros to a full track.
+struct RawSlot { int c, h; qint64 off, len; int nsec, seclen; };
+static QVector<RawSlot> rawSlots(const Format &f, int cyls, bool padded) {
+    QVector<RawSlot> v;
+    qint64 off = 0;
+    const qint64 full = qint64(f.sectrk) * f.seclen;
+    auto add = [&](int c, int h) {
+        RawSlot t{c, h, off, full, f.sectrk, f.seclen};
+        if (ownTrack0(f, c, h)) {
+            t.nsec = f.t0sectrk;
+            t.seclen = f.t0seclen;
+            t.len = padded ? qMax(full, qint64(t.nsec) * t.seclen) : qint64(t.nsec) * t.seclen;
+        }
+        off += t.len;
+        v << t;
+    };
+    const int heads = qMax(1, f.physHeads);
+    if (f.separateSides)
+        for (int h = 0; h < heads; ++h)
+            for (int c = 0; c < cyls; ++c) add(c, h);
+    else
+        for (int c = 0; c < cyls; ++c)
+            for (int h = 0; h < heads; ++h) add(c, h);
+    return v;
+}
+
+static qint64 rawSize(const QVector<RawSlot> &v) { return v.isEmpty() ? 0 : v.last().off + v.last().len; }
+
+// The empty container a format's disc is laid out in: its tracks, sector IDs and ImageDisk modes (track 0's own shape
+// and density, the data tracks' own IDs), every sector E5, nothing written to it. cyls < 0: the format's cylinders.
+static bool shapeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &f, int cyls, const QString &comment, QString *err,
+                       bool padded = false) {
     dw::device::RawLayout l;
     l.seclen = f.seclen;
     l.sectrk = f.sectrk;
     l.heads = f.physHeads;
-    l.cyls = f.cylinders;
+    l.cyls = cyls >= 0 ? cyls : f.cylinders;
     l.firstId = f.secbase >= 0 ? f.secbase : 1;
     l.mode = defaultImdMode(f);
-    if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && !f.separateSides) {
+    if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && !f.separateSides && !padded) {
         // one side: track 0 stored at its own size, as detection reads such a raw image (core v1.2.0). Two sides of
         // one disc give only cylinder 0 side 0 that shape, which a raw image (every side's cylinder 0 alike) can't hold.
         if (f.physHeads != 1) {
@@ -714,10 +747,19 @@ bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &
         // a disc with a filesystem per side: the file holds all of side 0, then all of side 1, each side with its own
         // track 0 (the layout detection reads real Research Machines images in)
         l.sideBySide = true;
-        l.t0sectrk = f.t0sectrk;
-        l.t0seclen = f.t0seclen;
+        if (!padded) {
+            l.t0sectrk = f.t0sectrk;
+            l.t0seclen = f.t0seclen;
+        }
     }
-    img->createBlank(kind, l, QString("Made by CP/M Disk Wrangler, format %1%2").arg(f.name, f.separateSides ? ", a separate disc on each side" : ""));
+    img->createBlank(kind, l, comment);
+    if (f.t0sectrk > 0 && kind == dw::device::Kind::Raw && padded) {
+        // track 0 padded to a full track: its own sectors (E5) at the start of its place, then zeros
+        for (const RawSlot &t : rawSlots(f, l.cyls, true)) {
+            const qint64 used = qint64(t.nsec) * t.seclen;
+            if (t.len > used && !img->writeStored(t.off + used, QByteArray(int(t.len - used), '\0'), err)) return false;
+        }
+    }
     if (f.t0sectrk > 0 && kind != dw::device::Kind::Raw) {
         // the same data rate as the other tracks, in FM or MFM (ImageDisk modes 0-2 FM, 3-5 MFM)
         int rate = l.mode % 3;
@@ -732,11 +774,23 @@ bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &
     // "datasect"). The BIOS looks the sectors up by ID, so a disc whose data tracks are numbered from 1 is "Bad Sector".
     if (f.dataId >= 0 && f.dataId != l.firstId && !f.separateSides && f.sectrk > 0 && kind != dw::device::Kind::Raw) {   // (a raw file has no IDs)
         const int heads = qMax(1, f.physHeads);
-        const int total = f.cylinders * heads;
+        const int total = l.cyls * heads;
         for (int t = f.boottrk; t < total; ++t) {                  // logical tracks after the reserved ones, sides alternating
             if (!img->reshapeTrack(t / heads, t % heads, f.sectrk, f.seclen, f.dataId, l.mode, err)) return false;
         }
     }
+    return true;
+}
+
+bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &fIn, bool stamps, const QString &label, QString *err,
+               Track0Raw track0) {
+    Format f = fIn;
+    if (!f.derived && !f.derive(err)) return false;
+    if (f.offsetSectors) { *err = "formats with an image offset (hard disc partitions) can't be made as new discs"; return false; }
+    if (f.complement) { *err = QString("%1 stores its data inverted and numbers its sectors differently on each side: new discs of it can't be made here yet").arg(f.name); return false; }
+    if (!shapeBlank(img, kind, f, -1, QString("Made by CP/M Disk Wrangler, format %1%2").arg(f.name, f.separateSides ? ", a separate disc on each side" : ""), err,
+                    track0 == Track0Raw::Padded))
+        return false;
     // attach reads an all-E5 directory; then write the empty directory properly (stamps, label), on each side of a
     // disc with a filesystem per side
     for (int side = 0; side < (f.separateSides ? 2 : 1); ++side) {
@@ -763,48 +817,126 @@ bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &
     return true;
 }
 
-// Save As (and cpmdw convert) to a raw image. A disc in an ImageDisk, DSK or TeleDisk file whose format gives track 0
-// a shape of its own is written as such a raw image is kept and read: one side, track 0 at its own size (the core's
-// setOwnTrack0); a disc on each side (Research Machines'), all of side 0 then all of side 1, each with its own track 0,
-// built sector by sector (as makeBlank lays a new one out). Any other disc is saved as it always was. On success img is
-// the new file.
-bool saveAsRaw(dw::device::Container *img, const Format &f, const QString &path, const std::function<bool(dw::device::Container &, QString *)> &verify,
-               QString *err) {
-    using dw::device::Kind;
-    if (img->kind() == Kind::Raw || f.t0sectrk == 0) return img->saveAs(path, Kind::Raw, err, verify);
-    if (!f.separateSides) {
-        img->setOwnTrack0(true);
-        return img->saveAs(path, Kind::Raw, err, verify);
+// The disc's tracks as its format lays them out ([cylinder * heads + head], each track's sectors in ID order), and
+// how many cylinders: from an ImageDisk, DSK or TeleDisk file, its own tracks; from a raw file, its bytes cut up as a
+// raw image of the format holds them, track 0 at its own size or padded (*padded says which). False if the disc
+// isn't in the format's shape (a short or long raw file, other tracks): the caller then saves it as it always did.
+using Tracks = QVector<QVector<QByteArray>>;
+static bool formatTracks(const dw::device::Container &img, const Format &f, Tracks *out, int *cyls, bool *padded) {
+    const int heads = qMax(1, f.physHeads);
+    QString e;
+    if (img.kind() == dw::device::Kind::Raw) {
+        const qint64 size = img.rawFileSize();                       // a raw container's stored bytes are the file
+        for (bool pad : {false, true}) {
+            const QVector<RawSlot> v = rawSlots(f, f.cylinders, pad);
+            if (rawSize(v) != size) continue;
+            QByteArray bytes;
+            if (!img.readStored(0, size, &bytes, &e)) return false;
+            out->fill(QVector<QByteArray>(), f.cylinders * heads);
+            for (const RawSlot &t : v)
+                for (int i = 0; i < t.nsec; ++i) (*out)[t.c * heads + t.h] << bytes.mid(t.off + qint64(i) * t.seclen, t.seclen);
+            *cyls = f.cylinders;
+            *padded = pad;
+            return true;
+        }
+        return false;
     }
-    dw::device::RawLayout l;
-    l.seclen = f.seclen;
-    l.sectrk = f.sectrk;
-    l.heads = 2;
-    l.cyls = img->cylinders();
-    l.firstId = 1;
-    l.t0sectrk = f.t0sectrk;
-    l.t0seclen = f.t0seclen;
-    l.sideBySide = true;
-    dw::device::Container out;
-    out.createBlank(Kind::Raw, l, img->comment());
-    for (int c = 0; c < l.cyls; ++c)
-        for (int h = 0; h < 2; ++h) {
-            if (out.sectorCount(c, h) != img->sectorCount(c, h)) {
-                *err = QString("cylinder %1 side %2 doesn't have the format's sectors, so it can't be saved as a raw image").arg(c).arg(h);
-                return false;
-            }
-            for (int i = 0; i < img->sectorCount(c, h); ++i) {
-                QByteArray s;
-                if (!img->read(c, h, i, &s) || s.size() != img->sector(c, h, i)->size) {
-                    *err = QString("cylinder %1 side %2 sector %3 can't be read, so the disc can't be saved as a raw image").arg(c).arg(h).arg(i);
-                    return false;
-                }
-                if (!out.write(c, h, i, s, err)) return false;
+    if (img.heads() != heads) return false;
+    out->fill(QVector<QByteArray>(), img.cylinders() * heads);
+    for (int c = 0; c < img.cylinders(); ++c)
+        for (int h = 0; h < heads; ++h) {
+            const bool own = ownTrack0(f, c, h);
+            if (img.sectorCount(c, h) != (own ? f.t0sectrk : f.sectrk)) return false;
+            for (int i = 0; i < img.sectorCount(c, h); ++i) {
+                QByteArray d;
+                if (!img.read(c, h, i, &d) || d.size() != (own ? f.t0seclen : f.seclen)) return false;
+                (*out)[c * heads + h] << d;
             }
         }
-    if (!out.saveAs(path, Kind::Raw, err, verify)) return false;
+    *cyls = img.cylinders();
+    *padded = false;
+    return true;
+}
+
+bool rawTrack0Padded(const dw::device::Container &img, const Format &f) {
+    if (img.kind() != dw::device::Kind::Raw || f.t0sectrk == 0) return false;
+    Format g = f;
+    g.fixedHead = 0;
+    g.derived = false;
+    QString e;
+    if (!g.derive(&e)) return false;
+    Tracks t;
+    int cyls = 0;
+    bool padded = false;
+    return formatTracks(img, g, &t, &cyls, &padded) && padded;
+}
+
+// Save As (and cpmdw convert) to any kind; on success img is the new file.
+// - A format that gives track 0 a shape of its own (Research Machines, Osborne 8" double density, Vector Graphic), or
+//   its data tracks sector IDs of their own (Microbee DS80): the disc is cut into its tracks as the format lays them
+//   out (formatTracks) and written out as such. To ImageDisk or DSK, laid out as makeBlank lays out a new disc of it,
+//   so a raw disc's track 0 is FM again (a raw file can't say). To raw, track 0 at its own size (as such raw images are
+//   kept) or padded with zeros to a full track (track0; Keep: as the raw file it comes from was, else at its own size);
+//   a disc on each side all of side 0, then all of side 1, each with its own track 0.
+// - Any other disc, or one not in its format's shape, is saved as it always was.
+bool saveDiscAs(dw::device::Container *img, const Format &fIn, const QString &path, dw::device::Kind kind, Track0Raw track0,
+                const std::function<bool(dw::device::Container &, QString *)> &verify, QString *err) {
+    using dw::device::Kind;
+    Format f = fIn;
+    f.fixedHead = 0;                                  // the disc as a whole, as makeBlank lays it out
+    f.derived = false;
+    QString e;
+    const bool ownIds = f.dataId >= 0 && f.dataId != (f.secbase >= 0 ? f.secbase : 1);
+    const bool shaped = (f.t0sectrk > 0 || (ownIds && kind != Kind::Raw)) && !f.offsetSectors && !f.complement && f.derive(&e);
+    Tracks tracks;
+    int cyls = 0;
+    bool wasPadded = false;
+    if (!shaped || !formatTracks(*img, f, &tracks, &cyls, &wasPadded)) {
+        if (kind == Kind::Raw && img->kind() != Kind::Raw && f.t0sectrk > 0 && !f.separateSides) img->setOwnTrack0(true);
+        return img->saveAs(path, kind, err, verify);
+    }
+    const int heads = qMax(1, f.physHeads);
+    dw::device::Container out;
+    if (kind == Kind::Raw) {
+        const bool padded = track0 == Track0Raw::Padded || (track0 == Track0Raw::Keep && wasPadded);
+        if (!shapeBlank(&out, Kind::Raw, f, cyls, img->comment(), err, padded)) return false;
+        const QVector<RawSlot> v = rawSlots(f, cyls, padded);
+        QByteArray bytes(int(rawSize(v)), '\0');
+        for (const RawSlot &t : v) {
+            qint64 at = t.off;                        // the track's sectors in ID order (QVector has no join in Qt 5)
+            for (const QByteArray &d : tracks[t.c * heads + t.h]) {
+                bytes.replace(int(at), d.size(), d);
+                at += d.size();
+            }
+        }
+        if (out.storedSize() != bytes.size()) { *err = "the raw image's layout doesn't match the disc"; return false; }
+        if (!out.writeStored(0, bytes, err)) return false;
+    } else {
+        if (!shapeBlank(&out, kind, f, cyls, img->comment(), err)) return false;
+        for (int c = 0; c < cyls; ++c)
+            for (int h = 0; h < heads; ++h) {
+                const QVector<QByteArray> &t = tracks[c * heads + h];
+                if (out.sectorCount(c, h) != t.size()) return img->saveAs(path, kind, err, verify);
+                for (int i = 0; i < t.size(); ++i)
+                    if (!out.write(c, h, i, t[i], err)) return false;
+            }
+    }
+    if (!out.saveAs(path, kind, err, verify)) return false;
     *img = out;
     return true;
+}
+
+dw::device::RawLayout rawLayoutFor(const Format &f, qint64 fileSize) {
+    dw::device::RawLayout l;
+    l.seclen = f.seclen; l.sectrk = f.sectrk; l.heads = f.physHeads; l.cyls = f.cylinders;
+    if (f.t0sectrk > 0 && f.physHeads == 1 && !f.offsetSectors) {
+        dw::device::RawLayout o = l;
+        o.t0sectrk = f.t0sectrk;
+        o.t0seclen = f.t0seclen;
+        o.cyls = f.tracks;
+        if (o.bytes() == fileSize) return o;
+    }
+    return l;
 }
 
 } // namespace Cpm

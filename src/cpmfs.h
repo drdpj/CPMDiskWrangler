@@ -111,12 +111,25 @@ private:
 // the CP/M directory (Volume). Null, with *err set, if its directory can't be read.
 std::unique_ptr<Store> openStore(dw::device::Container *img, const Format &f, QString *err);
 
-// A new, empty disc in the given container: every sector E5 (the format's sector IDs and ImageDisk mode), then an
-// empty directory (with CP/M 3 time stamp entries and a label when stamps is set).
-bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &f, bool stamps, const QString &label, QString *err);
-// Save As / convert to a raw image, a disc whose format gives track 0 its own shape kept as such raw images are (cpmfs.cpp).
-bool saveAsRaw(dw::device::Container *img, const Format &f, const QString &path,
-               const std::function<bool(dw::device::Container &, QString *)> &verify, QString *err);
+// How a raw image holds a track 0 of its own shape: at its own size (as Research Machines images are kept), or padded
+// with zeros to a full track, so every track is the same length (as some emulators and tools want). Keep: as the raw
+// file the disc comes from has it (own size if it isn't a raw file).
+enum class Track0Raw { Keep, Own, Padded };
+
+// A new, empty disc in the given container: every sector E5 (the format's sector IDs and ImageDisk modes), then an
+// empty directory (with CP/M 3 time stamp entries and a label when stamps is set). track0: a raw image's track 0.
+bool makeBlank(dw::device::Container *img, dw::device::Kind kind, const Format &f, bool stamps, const QString &label, QString *err,
+               Track0Raw track0 = Track0Raw::Own);
+// Save As / convert to any kind: a disc whose format gives track 0 (or its data tracks) a shape of its own is written
+// as its format lays it out - from a raw image to ImageDisk or DSK with track 0 in FM again; to raw with track 0 at its
+// own size or padded (track0) (cpmfs.cpp).
+bool saveDiscAs(dw::device::Container *img, const Format &f, const QString &path, dw::device::Kind kind, Track0Raw track0,
+                const std::function<bool(dw::device::Container &, QString *)> &verify, QString *err);
+// A raw image holding the format's own track 0 padded to a full track.
+bool rawTrack0Padded(const dw::device::Container &img, const Format &f);
+// The raw layout a file of fileSize bytes is read with when the format is named: track 0 at its own size if the file is
+// that size, else every track alike (a padded track 0, or a format without one).
+dw::device::RawLayout rawLayoutFor(const Format &f, qint64 fileSize);
 int defaultImdMode(const Format &f);
 
 // CP/M 3 dates: days since 31 Dec 1977 (day 1 = 1 Jan 1978), hours and minutes in BCD.

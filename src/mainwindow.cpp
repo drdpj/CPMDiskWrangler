@@ -515,10 +515,11 @@ void MainWindow::afterOpen(const QString &) {
 
 dw::ui::DiscWindow *MainWindow::createWindow() { return makeWindow<MainWindow>(); }
 
-bool MainWindow::newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label) {
+bool MainWindow::newImage(const QString &path, dw::device::Kind kind, const Cpm::Format &f, bool stamps, const QString &label,
+                          Cpm::Track0Raw track0) {
     QString err;
     dw::device::Container img;
-    if (!Cpm::makeBlank(&img, kind, f, stamps, label, &err) || !img.saveAs(path, kind, &err)) {
+    if (!Cpm::makeBlank(&img, kind, f, stamps, label, &err, track0) || !img.saveAs(path, kind, &err)) {
         message("New disc image", err);
         return false;
     }
@@ -583,7 +584,7 @@ void MainWindow::newImageDialog() {
                                              QString("Disc image (*.%1)").arg(ext));
     if (p.isEmpty()) return;
     MainWindow *w = image().isOpen() ? static_cast<MainWindow *>(createWindow()) : this;
-    w->newImage(p, d.kind(), f, d.stamps(), d.label());
+    w->newImage(p, d.kind(), f, d.stamps(), d.label(), d.track0());
 }
 
 void MainWindow::revertDocument() {
@@ -618,18 +619,25 @@ bool MainWindow::askSaveAs(QString *path, dw::device::Kind *kind) {
     const QString dsk = "Extended DSK image (*.dsk)";
     const QString sdsk = "Standard DSK image (*.dsk)";
     const QString raw = "Raw sector image (*.img *.raw *.bin *.dsk *.h8d *.ima)";
+    // a format whose track 0 has a shape of its own: a raw image keeps it at its own size, or padded to a full track
+    const bool ownT0 = m_doc.store(0) && m_doc.store(0)->format().t0sectrk > 0;
+    const QString rawPad = "Raw sector image, track 0 padded to a full track (*.img *.raw *.bin *.dsk *.h8d *.ima)";
     QString filter = imd;
     QString name = QFileInfo(image().path()).completeBaseName() + ".imd";
     switch (image().kind()) {
-    case dw::device::Kind::Raw: filter = raw; name = QFileInfo(image().path()).fileName(); break;
+    case dw::device::Kind::Raw:
+        filter = ownT0 && m_doc.rawTrack0Padded() ? rawPad : raw;
+        name = QFileInfo(image().path()).fileName();
+        break;
     case dw::device::Kind::Dsk: filter = sdsk; name = QFileInfo(image().path()).completeBaseName() + ".dsk"; break;
     case dw::device::Kind::Edsk: filter = dsk; name = QFileInfo(image().path()).completeBaseName() + ".dsk"; break;
     default: break;
     }
     QString p = QFileDialog::getSaveFileName(this, "Save as", QFileInfo(image().path()).absolutePath() + "/" + name,
-                                             imd + ";;" + dsk + ";;" + sdsk + ";;" + raw, &filter);
+                                             imd + ";;" + dsk + ";;" + sdsk + ";;" + raw + (ownT0 ? ";;" + rawPad : QString()), &filter);
     if (p.isEmpty()) return false;
     *path = p;
+    m_doc.setTrack0Raw(filter == rawPad ? Cpm::Track0Raw::Padded : Cpm::Track0Raw::Own);
     *kind = filter == imd ? dw::device::Kind::Imd : filter == dsk ? dw::device::Kind::Edsk : filter == sdsk ? dw::device::Kind::Dsk : dw::device::Kind::Raw;
     return true;
 }

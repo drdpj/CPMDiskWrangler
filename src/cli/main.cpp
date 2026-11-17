@@ -32,6 +32,6 @@ int main(int argc, char **argv) {
     info.tool = "cpmdw";
     info.program = Cpm::appInfo(APP_VERSION);
     info.backend = &backend;
-    info.options = QStringList{"diskdefs", "charset", "user-folders", "trim", "stamps", "label", "separate-sides", "format-open"};
+    info.options = QStringList{"diskdefs", "charset", "user-folders", "trim", "stamps", "label", "separate-sides", "format-open", "track0"};
     return dw::runCli(argc, argv, info);
 }

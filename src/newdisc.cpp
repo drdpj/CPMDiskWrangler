@@ -57,12 +57,18 @@ NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
                            "own single-density boot track.\nTick this to make one: both sides are formatted and each is its own "
                            "drive in the window.\nLeft unticked you get a single-sided disc. Only formats that exist as "
                            "double-sided discs can be ticked.");
+    m_padT0 = new QCheckBox("Pad track 0 to a full track in the raw image");
+    m_padT0->setToolTip("This format's track 0 is smaller than the other tracks (single density on Research Machines discs).\n"
+                        "A raw image normally keeps it at its own size, as real images of these discs are kept.\n"
+                        "Tick this to pad it with zeros to the size of the other tracks, so that every track is the same "
+                        "length, as some emulators and tools want.");
     m_stamps = new QCheckBox("CP/M 3 time stamps (a label and stamp entries in the directory)");
     m_label = new QLineEdit;
     m_label->setMaxLength(12);
     m_label->setPlaceholderText("label (CP/M 3), e.g. WORK.DSK");
     auto *fl = new QFormLayout;
     fl->addRow("Container", m_kind);
+    fl->addRow(m_padT0);
     fl->addRow(m_twoSided);
     fl->addRow(m_stamps);
     fl->addRow("Disc label", m_label);
@@ -81,6 +87,7 @@ NewDiscDialog::NewDiscDialog(QWidget *parent) : QDialog(parent) {
     connect(m_list, &QListWidget::currentRowChanged, this, &NewDiscDialog::changed);
     connect(m_stamps, &QCheckBox::toggled, m_label, &QWidget::setEnabled);
     connect(m_twoSided, &QCheckBox::toggled, this, &NewDiscDialog::changed);
+    connect(m_kind, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &NewDiscDialog::changed);
     selectFormat("ibm-3740");
 }
 
@@ -97,6 +104,7 @@ void NewDiscDialog::changed() {
     const bool twoOk = f->twoSidedOk && f->physHeads == 1;
     if (!twoOk && m_twoSided->isChecked()) { QSignalBlocker b(m_twoSided); m_twoSided->setChecked(false); }
     m_twoSided->setEnabled(twoOk);
+    m_padT0->setEnabled(f->t0sectrk > 0 && kind() == dw::device::Kind::Raw);
     QString s = format().summary();
     if (f->heads == 0 && f->tracks % 2 == 0 && f->tracks <= 86)
         s += QString("\nThis definition doesn't say how many sides the disc has; it will be made with %1.").arg(f->physHeads == 1 ? "one" : "two");
@@ -128,3 +136,6 @@ Cpm::Format NewDiscDialog::format() const {
 dw::device::Kind NewDiscDialog::kind() const { return dw::device::Kind(m_kind->currentData().toInt()); }
 bool NewDiscDialog::stamps() const { return m_stamps->isChecked(); }
 QString NewDiscDialog::label() const { return m_label->text().trimmed().toUpper(); }
+Cpm::Track0Raw NewDiscDialog::track0() const {
+    return m_padT0->isEnabled() && m_padT0->isChecked() ? Cpm::Track0Raw::Padded : Cpm::Track0Raw::Own;
+}

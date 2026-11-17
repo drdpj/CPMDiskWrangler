@@ -41,7 +41,12 @@ so a `.dsk` file is read as a DSK image only if it has a DSK header.
 
 It copes with interleaved and rotated tracks, with discs whose track 0 is single density (FM) and the rest double
 density (Osborne, Research Machines 480Z, Vector Graphic), and with double-sided discs that hold a separate
-filesystem on each side (shown as **Side 0** and **Side 1**). It also reads and writes **Torch CP/N** discs (the
+filesystem on each side (shown as **Side 0** and **Side 1**). A raw image of such a disc keeps track 0 at its own
+size, as real Research Machines images are, or padded with zeros to a full track so that every track is the same
+length, as some emulators and tools want: choose "track 0 padded" in New disc image or in Save As's file types, or
+`cpmdw new` / `convert --container=raw --track0=padded` (`--track0=own` for its own size). Both kinds of file open;
+saving one as ImageDisk or DSK gives track 0 back its single density. For a disc of a format it doesn't know,
+**Tools > Disc format**'s form has a "Track 0 sectors" row for such a track 0. It also reads and writes **Torch CP/N** discs (the
 Torch Z80 second processor for the BBC Micro), whose CP/M files are kept in Torch's own filesystem rather than a
 CP/M directory; they have no labels or time stamps, and sizes are kept in whole 128-byte records.
 
@@ -203,10 +208,11 @@ The full reference, with every command and option, is in
 
 ## Limitations
 * TeleDisk images can't be saved as TeleDisk, and TeleDisk 1.x "advanced compression" isn't supported.
-* A raw image holds a disc whose track 0 differs from the rest (Research Machines, Osborne 8-inch double density,
-  Vector Graphic) with track 0 at its own size, as such images are kept, but it can't say that track 0 was single
-  density: Save As ImageDisk from a raw image records it as double density (the data is the same). A double-sided
-  disc that gives only side 0 its own track 0 needs ImageDisk or DSK.
+* A raw image can't say which kind of track 0 it holds except by its size, so a padded raw image of a single-sided
+  80-track Research Machines disc (`rm-qd`) is the size of a padded double-sided 40-track one (`rm-dd`, a disc on each
+  side). While the second half of the file is blank it opens read-only (a second side's catalogue there would be
+  empty too); `--format=rm-qd` or Tools > Disc format confirms it. Kept at its own size, it has no such twin.
+* A double-sided disc that gives only side 0 its own track 0 can be kept as a raw image only with track 0 padded.
 * Copy-protected tracks (duplicate sector numbers) are read but never written.
 * DateStamper's `!!!TIME&.DAT` time stamps are kept but not shown; CP/M 3 passwords are kept but not checked.
 * Deleted Torch CP/N files can't be recovered yet, and discs written here haven't yet been checked by a real Torch.

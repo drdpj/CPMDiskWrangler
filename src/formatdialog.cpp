@@ -191,6 +191,22 @@ FormatDialog::FormatDialog(dw::device::Container *img, const Detect::Result &det
     m_complement->setToolTip("Every byte on the disc is inverted: empty space reads 1A where a CP/M disc has E5. Some Sharp "
                              "discs (the sds400 format, for one) are written like this (libdsk's \"complement\"); most CP/M discs, "
                              "Sharp's others included, are not.\nA sign: a disc that is mostly 1A bytes, with no E5.");
+    // track 0 of its own shape: a single-density boot track on a double-density disc (Osborne, Research Machines)
+    m_t0sectrk = new QSpinBox; m_t0sectrk->setRange(0, 255); m_t0sectrk->setSpecialValueText("like the others");
+    m_t0seclen = new QComboBox; m_t0seclen->addItems({"128", "256", "512", "1024"});
+    m_t0fm = new QComboBox; m_t0fm->addItems({"FM (single density)", "MFM"});
+    const QString t0tip = "Some discs have a track 0 of their own: a single-density boot track (FM) with fewer or smaller sectors on "
+                          "an otherwise double-density disc (Osborne, Research Machines, Vector Graphic).\n"
+                          "It must be inside the boot tracks; CP/M never reads it for files.\n"
+                          "In a raw image such a track 0 is either kept at its own size (the file is shorter than every track "
+                          "full; the rest of the disc then starts earlier) or padded to a full track: set it here so a file "
+                          "of the shorter size is read correctly.\n"
+                          "A raw image can't say whether track 0 was FM or MFM; saving as ImageDisk records what you choose.";
+    m_t0sectrk->setToolTip(t0tip); m_t0seclen->setToolTip(t0tip); m_t0fm->setToolTip(t0tip);
+    connect(m_t0sectrk, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int n) {
+        m_t0seclen->setEnabled(n > 0);
+        m_t0fm->setEnabled(n > 0);
+    });
     m_formErr = new QLabel; m_formErr->setWordWrap(true);
     auto *fl = new QFormLayout;
     fl->addRow("Sector size", m_seclen);
@@ -199,6 +215,8 @@ FormatDialog::FormatDialog(dw::device::Container *img, const Detect::Result &det
     auto *hs = new QHBoxLayout; hs->addWidget(m_heads); hs->addWidget(new QLabel("order")); hs->addWidget(m_sides);
     fl->addRow("Sides", hs);
     fl->addRow("Boot tracks", m_boot);
+    auto *t0 = new QHBoxLayout; t0->addWidget(m_t0sectrk); t0->addWidget(new QLabel("x")); t0->addWidget(m_t0seclen); t0->addWidget(m_t0fm);
+    fl->addRow("Track 0 sectors", t0);
     auto *sk = new QHBoxLayout; sk->addWidget(m_skew); sk->addWidget(m_skewtab, 1);
     fl->addRow("Skew", sk);
     fl->addRow("Block size", m_bls);
@@ -320,6 +338,11 @@ void FormatDialog::fillForm(const Cpm::Format &f) {
     m_os->setCurrentIndex(int(f.os));
     m_ptr16->setChecked(f.ptr16Forced);
     m_complement->setChecked(f.complement);
+    m_t0sectrk->setValue(f.t0sectrk);
+    m_t0seclen->setCurrentText(QString::number(f.t0sectrk > 0 ? f.t0seclen : 128));
+    m_t0fm->setCurrentIndex(f.t0sectrk > 0 && !f.t0fm ? 1 : 0);
+    m_t0seclen->setEnabled(f.t0sectrk > 0);
+    m_t0fm->setEnabled(f.t0sectrk > 0);
     m_formErr->clear();
 }
 
@@ -346,6 +369,11 @@ bool FormatDialog::formFormat(Cpm::Format *f, QString *err) const {
     x.os = Cpm::Os(m_os->currentIndex());
     x.ptr16Forced = m_ptr16->isChecked();
     x.complement = m_complement->isChecked();
+    x.t0sectrk = m_t0sectrk->value();
+    if (x.t0sectrk > 0) {
+        x.t0seclen = m_t0seclen->currentText().toInt();
+        x.t0fm = m_t0fm->currentIndex() == 0;
+    }
     if (!x.derive(err)) return false;
     *f = x;
     return true;
@@ -353,8 +381,7 @@ bool FormatDialog::formFormat(Cpm::Format *f, QString *err) const {
 
 bool FormatDialog::evaluateFormat(const Cpm::Format &f, Detect::Candidate *out, QString *err) {
     if (m_img->kind() == dw::device::Kind::Raw) {
-        dw::device::RawLayout l;
-        l.seclen = f.seclen; l.sectrk = f.sectrk; l.heads = f.physHeads; l.cyls = f.cylinders;
+        const dw::device::RawLayout l = Cpm::rawLayoutFor(f, m_img->rawFileSize());   // track 0 at its own size if the file is
         if (l.bytes() < m_img->rawFileSize() - qint64(f.sectrk) * f.seclen * f.physHeads)
             *err = QString("note: this geometry covers %1 bytes of the %2-byte image").arg(l.bytes()).arg(m_img->rawFileSize());
         QString e;

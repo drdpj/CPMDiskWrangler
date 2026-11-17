@@ -443,8 +443,8 @@ bool OpenedDisc::saveAs(const QString &path, dw::device::Kind kind, QString *err
     for (int side = 0; side < sides(); ++side) ok = ok && m_stores[side]->check().ok();
     if (!ok && !m_img.readOnlyContainer()) { *err = "the directory has errors (Tools > Check disc)."; return false; }
     auto verify = [this, ok](dw::device::Container &written, QString *e) { return !ok || checkWritten(written, e); };
-    if (kind == dw::device::Kind::Raw && m_stores[0]) {
-        if (!saveAsRaw(&m_img, m_stores[0]->format(), path, verify, err)) return false;
+    if (m_stores[0]) {
+        if (!saveDiscAs(&m_img, m_stores[0]->format(), path, kind, m_track0, verify, err)) return false;
     } else if (!m_img.saveAs(path, kind, err, verify)) return false;
     noteFileState();
     return true;
