@@ -25,7 +25,7 @@ windows, the desktop and other programs via the `retro-files` format shared with
   `THIRD-PARTY-NOTICES.md` with its terms (and in About if it ships in the program); material only consulted for facts
   goes in its "Consulted" table.
 * **Never commit third-party disc images**: the tests read them from outside the repo.
-* **`core/` is the git submodule DiskWranglerCore**, shared with Acorn Disk Wrangler (clone with `--recurse-submodules`, or
+* **`core/` is the git submodule DiskWranglerCore**, shared with Acorn and FLEX Disk Wrangler (clone with `--recurse-submodules`, or
   `git submodule update --init`). Never edit files under `core/` from here: change DiskWranglerCore, tag it, and move the
   submodule to the tag. The retro-files specification is `core/docs/retro-files-format.md`.
 
@@ -95,15 +95,15 @@ starts on the filter for the kind the image already is, and the kind saved is th
    `microbee40`, a "40 track" disc of 80 cylinders on one side); `fstest library` checks it is gone.
 
 ## The window (kept in step with Acorn Disk Wrangler)
-- **Menus, button bar and context menu have the same order in both programs** (owner's rule; one program's extra
+- **Menus, button bar and context menu have the same order in all three programs** (owner's rule; one program's extra
   items may sit in between). File: New window (Ctrl+Shift+N), New disc image (Ctrl+N), Open | Save, Save as,
   Revert | Create local config file | Close, Quit. Edit: View (F3), Extract to folder (Ctrl+E) | Add files
   (Ctrl+Shift+F) | Copy, Paste (`QKeySequence::Copy/Paste`: the platform's keys) | Rename (F2), Properties
   (Alt+Return), Delete (`deleteKeys()`: Delete, plus Cmd+Backspace on macOS) | Disc label. Tools: Check disc
   (Ctrl+K) first, then this program's tools, then the options with *Keep a .bak copy* last. Buttons: View, Extract,
   Add files, Rename, Properties, Delete | Format. Acorn Disk Wrangler adds Add folder and New directory after Add
-  files, and disc-level items at the end of Edit. `guitest` here and `guitest2` there assert the order: change
-  both programs together. Window title `<file> * - CP/M Disk Wrangler`; the status bar's label says what the disc
+  files, and disc-level items at the end of Edit. `guitest` here, `guitest2` there and FLEX Disk Wrangler's `guitest` assert the
+  order: change the three programs together. Window title `<file> * - CP/M Disk Wrangler`; the status bar's label says what the disc
   is, then `  -  `-separated extras such as `read-only: <reason>`.
 - **Copy and Paste** (the same design in Acorn Disk Wrangler): Copy exports the selection at once
   (`exportForCopy`, the kit's `exportItems` with a Torch file sent as `cpm`; View, drags and drops on another window
@@ -159,7 +159,7 @@ the program's sources and its compiled-in diskdefs are in `src/`. A new source f
   (`core/ci/installer.iss`; each program's AppId in it is fixed for good). A tag `vX.Y.Z` publishes a GitHub release
   whose notes are `release-notes/<tag>.md` when that file exists. The details for people are in `core/docs/building.md`;
   a 32-bit Windows 7 build (not tried yet) in `core/docs/building-windows-32bit.md`.
-* **Still identical copies in both programs - change both:** `.github/workflows/build.yml`, `src/licences.qrc`,
+* **Still identical copies in all three programs (Acorn, CP/M, FLEX) - change all three:** `.github/workflows/build.yml`, `src/licences.qrc`,
   `licences/`, `version.pri` and `version.cmake`. (The CI scripts, the building and retro-files documents, the settings
   helper, the button bar, the Finder-open filter, the licences viewer and `settingstest` are in the core.)
 

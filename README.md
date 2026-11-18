@@ -124,18 +124,20 @@ use the system's settings, so they don't offer this.
 ## Drag and drop between disc tools
 An ordinary drag between programs carries only a file's name and contents, but a file on a retro disc has more that
 matters: an Acorn file's load and execution addresses (without them a program may not run), its access bits and DFS
-directory letter, DOS attributes, a CP/M user number. Both Wranglers implement
+directory letter, DOS attributes, a CP/M user number, a FLEX file's protection, a UniFLEX file's owner and access.
+The Disk Wranglers implement
 **[retro-files](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/retro-files-format.md)** (`application/x-retro-files+json`), an open format that carries these
 too:
 
-* **Nothing is lost between disc tools.** Drag a file between Acorn Disk Wrangler and CP/M Disk Wrangler, between two
-  copies of either, or to any other tool that adopts the format, and its attributes go with it. The receiving
-  program converts what the destination can hold (an Acorn file's lock becomes CP/M's read-only flag, for example)
-  instead of guessing from a bare file.
+* **Nothing is lost between disc tools.** Drag a file between Acorn Disk Wrangler, CP/M Disk Wrangler and FLEX Disk
+  Wrangler, between two copies of one, or to any other tool that adopts the format, and its attributes go with it.
+  The receiving program converts what the destination can hold (an Acorn file's lock becomes CP/M's read-only flag,
+  for example) instead of guessing from a bare file.
 * **Nothing else breaks.** The same drag carries ordinary files, so dropping on your desktop, a file manager or any
   other program works as usual.
 * **Any tool can join in.** It is a small, versioned JSON document with attributes grouped by filesystem (`acorn`,
-  `fat`, `cpm`): a tool for another kind of disc adds its own group and reads the ones it understands. The
+  `fat`, `cpm`, `flex`, `uniflex`, and `uef` for a tape's data as it is): a tool for another kind of disc adds its own
+  group and reads the ones it understands. The
   [specification](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/retro-files-format.md) explains the format and why it exists.
 
 ## Command line
@@ -218,13 +220,18 @@ The full reference, with every command and option, is in
 * Deleted Torch CP/N files can't be recovered yet, and discs written here haven't yet been checked by a real Torch.
 
 ## Building from source
-You need Qt 6 (or Qt 5.15) with its widgets module, and a C++17 compiler.
+You need Qt 6 (or Qt 5.15) with its widgets module, and a C++17 compiler. Clone with the shared core:
 
-    qmake cpmdiskwrangler.pro && make              # or: cmake -S . -B build && cmake --build build
-    ./cpmdiskwrangler [image ...]                  # each image opens in its own window
+    git clone --recurse-submodules https://github.com/drdpj/CPMDiskWrangler.git
+    cd CPMDiskWrangler
+    qmake cpmdiskwrangler.pro && make -j$(nproc)  # or: cmake -S . -B build && cmake --build build -j$(nproc)
+    ./cpmdiskwrangler [image ...]                 # each image opens in its own window
 
-[building.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/building.md) (in DiskWranglerCore, which is the `core/` submodule: clone with `--recurse-submodules`) covers Linux installs, Windows (MSYS2), macOS, Qt 5, and how the release
-builds are made and carry their licences.
+The console program `cpmdw` builds from `cpmdw.pro` in a folder of its own (CMake builds it with the program).
+On Linux, `make install` (or `qmake PREFIX=$HOME/.local ...`, then `make install`, for just you) adds a menu entry
+so docks show the program's icon. [building.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/building.md)
+(in DiskWranglerCore, which is the `core/` submodule) covers Windows (MSYS2), macOS, Qt 5 (`-DUSE_QT5=ON` for
+CMake), and how the release builds are made and carry their licences.
 
 Working on the code? Start with [AGENTS.md](AGENTS.md): the design rules, the source map, the window and the tests.
 The formats are described in [docs/disc-formats.md](docs/disc-formats.md) and format detection in
