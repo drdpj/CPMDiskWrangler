@@ -231,7 +231,9 @@ The console program `cpmdw` builds from `cpmdw.pro` in a folder of its own (CMak
 On Linux, `make install` (or `qmake PREFIX=$HOME/.local ...`, then `make install`, for just you) adds a menu entry
 so docks show the program's icon. [building.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/building.md)
 (in DiskWranglerCore, which is the `core/` submodule) covers Windows (MSYS2), macOS, Qt 5 (`-DUSE_QT5=ON` for
-CMake), and how the release builds are made and carry their licences.
+CMake), and how the release builds are made and carry their licences. The releases are 64-bit; for 32-bit Windows
+(Windows 7 SP1 and later), see
+[building-windows-32bit.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/building-windows-32bit.md).
 
 Working on the code? Start with [AGENTS.md](AGENTS.md): the design rules, the source map, the window and the tests.
 The formats are described in [docs/disc-formats.md](docs/disc-formats.md) and format detection in
