@@ -15,7 +15,7 @@
                 "description": "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
                 "diskdef": "diskdef ibm-3740\n  seclen 128\n  tracks 77\n  sectrk 26\n  blocksize 1024\n  maxdir 64\n  skew 6\n  boottrk 2\n  os 2.2\nend",
                 "name": "ibm-3740",
-                "origin": "cpmtools",
+                "origin": "built-in",
                 "summary": "26 x 128 bytes/track, 77 tracks (1 side), skew 6, 2 boot tracks, 1K blocks, 64 directory entries, CP/M 2.2, 243K"
             },
             "fromLibrary": true,
@@ -37,7 +37,7 @@
                     "the first file block follows the directory",
                     "text files read as text: 12 of 12",
                     ".COM files starting with a likely instruction: 5 of 7",
-                    "a known format (cpmtools)",
+                    "a known format (built-in)",
                     "the same layout is also defined as zen9"
                 ],
                 "fsId": "cpm",
@@ -60,7 +60,7 @@
                 "the first file block follows the directory",
                 "text files read as text: 12 of 12",
                 ".COM files starting with a likely instruction: 5 of 7",
-                "a known format (cpmtools)",
+                "a known format (built-in)",
                 "the same layout is also defined as zen9"
             ],
             "fsId": "cpm",

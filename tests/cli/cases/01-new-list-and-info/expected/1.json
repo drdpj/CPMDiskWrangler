@@ -180,6 +180,66 @@
                 "summary": "26x256, 57 trk, skew 5, boot 2, 4K, 48 dir"
             },
             {
+                "description": "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
+                "doubleSided": false,
+                "id": "ibm-3740",
+                "name": "ibm-3740 - 8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 77 trk, skew 6, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "Zenith Z-100 SSSD 8-inch",
+                "doubleSided": false,
+                "id": "zen9",
+                "name": "zen9 - Zenith Z-100 SSSD 8-inch",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 77 trk, skew 6, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "Intel MDS single density",
+                "doubleSided": false,
+                "id": "mds-sd",
+                "name": "mds-sd - Intel MDS single density",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "26x128, 77 trk, no skew, boot 2, 1K, 64 dir"
+            },
+            {
+                "description": "TRS-80 Model I, Omikron CP/M, single density, 72K",
+                "doubleSided": false,
+                "id": "trsomsssd",
+                "name": "trsomsssd - TRS-80 Model I, Omikron CP/M, single density, 72K",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "18x128, 35 trk, skew 4, boot 3, 1K, 64 dir"
+            },
+            {
+                "description": "Osborne 1 single density, 92K",
+                "doubleSided": false,
+                "id": "osb1sssd",
+                "name": "osb1sssd - Osborne 1 single density, 92K",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": false,
+                "summary": "10x256, 40 trk, skew 2, boot 3, 2K, 64 dir"
+            },
+            {
+                "description": "Research Machines 380Z/480Z single density (MDS), 40 track, FM 16 x 128",
+                "doubleSided": false,
+                "id": "rm-sd",
+                "name": "rm-sd - Research Machines 380Z/480Z single density (MDS), 40 track, FM 16 x 128",
+                "origin": "built-in",
+                "os": "2.2",
+                "separateSidesOk": true,
+                "summary": "16x128, 40 trk, skew 3, boot 3, 1K, 64 dir"
+            },
+            {
                 "description": "Research Machines 480Z double density (MD), 40 track: track 0 FM 16 x 128",
                 "doubleSided": false,
                 "id": "rm-dd",
@@ -198,16 +258,6 @@
                 "os": "2.2",
                 "separateSidesOk": true,
                 "summary": "9x512, 80 trk, skew 5, boot 3, 2K, 128 dir"
-            },
-            {
-                "description": "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
-                "doubleSided": false,
-                "id": "ibm-3740",
-                "name": "ibm-3740 - 8-inch single density IBM 3740, 241K (the standard CP/M distribution format)",
-                "origin": "cpmtools",
-                "os": "2.2",
-                "separateSidesOk": false,
-                "summary": "26x128, 77 trk, skew 6, boot 2, 1K, 64 dir"
             },
             {
                 "description": "4MB hard disc (z80pack / simh style)",
@@ -750,16 +800,6 @@
                 "summary": "8x512, 80 trk, no skew, boot 2, 2K, 256 dir"
             },
             {
-                "description": "Zenith Z-100 SSSD 8-inch",
-                "doubleSided": false,
-                "id": "zen9",
-                "name": "zen9 - Zenith Z-100 SSSD 8-inch",
-                "origin": "cpmtools",
-                "os": "2.2",
-                "separateSidesOk": false,
-                "summary": "26x128, 77 trk, skew 6, boot 2, 1K, 64 dir"
-            },
-            {
                 "description": "Zenith Z-100 SSDD 8-inch",
                 "doubleSided": false,
                 "id": "zena",
@@ -790,16 +830,6 @@
                 "summary": "5x1024, 40 trk, skew 3, boot 2, 2K, 128 dir"
             },
             {
-                "description": "Osborne 1 single density, 92K",
-                "doubleSided": false,
-                "id": "osb1sssd",
-                "name": "osb1sssd - Osborne 1 single density, 92K",
-                "origin": "cpmtools",
-                "os": "2.2",
-                "separateSidesOk": false,
-                "summary": "10x256, 40 trk, skew 2, boot 3, 2K, 64 dir"
-            },
-            {
                 "description": "Altos DSDD",
                 "doubleSided": true,
                 "id": "altdsdd",
@@ -808,16 +838,6 @@
                 "os": "3",
                 "separateSidesOk": false,
                 "summary": "9x512, 160 trk (2 sides alt), no skew, boot 2, 4K, 177 dir"
-            },
-            {
-                "description": "",
-                "doubleSided": false,
-                "id": "trsomsssd",
-                "name": "trsomsssd",
-                "origin": "cpmtools",
-                "os": "2.2",
-                "separateSidesOk": false,
-                "summary": "18x128, 35 trk, skew 4, boot 3, 1K, 64 dir"
             },
             {
                 "description": "",
@@ -1110,16 +1130,6 @@
                 "summary": "26x128, 98 trk (2 sides alt), no skew, boot 2, 2K, 64 dir"
             },
             {
-                "description": "Research Machines single density",
-                "doubleSided": false,
-                "id": "rm-sd",
-                "name": "rm-sd - Research Machines single density",
-                "origin": "cpmtools",
-                "os": "2.2",
-                "separateSidesOk": false,
-                "summary": "16x128, 40 trk, skew 3, boot 3, 1K, 64 dir"
-            },
-            {
                 "description": "",
                 "doubleSided": false,
                 "id": "amp1",
@@ -1258,16 +1268,6 @@
                 "os": "2.2",
                 "separateSidesOk": false,
                 "summary": "52x128, 77 trk, no skew, boot 2, 2K, 128 dir"
-            },
-            {
-                "description": "Intel MDS single density",
-                "doubleSided": false,
-                "id": "mds-sd",
-                "name": "mds-sd - Intel MDS single density",
-                "origin": "cpmtools",
-                "os": "2.2",
-                "separateSidesOk": false,
-                "summary": "26x128, 77 trk, no skew, boot 2, 1K, 64 dir"
             },
             {
                 "description": "Amstrad NC200 CP/M",
