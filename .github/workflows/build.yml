@@ -267,7 +267,7 @@ jobs:
           if [ "$QT" = 6 ]; then pkgs=(qt6-base-dev qt6-base-dev-tools qmake6 qt6-qpa-plugins libgl-dev)
           else pkgs=(qtbase5-dev qt5-qmake); fi
           sudo apt-get update -qq
-          sudo apt-get install -y -qq "${pkgs[@]}" build-essential dpkg-dev xvfb
+          sudo apt-get install -y -qq "${pkgs[@]}" build-essential dpkg-dev xvfb groff-base man-db   # the last two: the manual page's check
           echo "QMAKE=$(command -v "$([ "$QT" = 6 ] && echo qmake6 || echo qmake)")" >> "$GITHUB_ENV"
           mkdir -p "$HOME/tools"
           for t in linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
@@ -291,6 +291,8 @@ jobs:
           # setpriv (util-linux) runs the exit-10 case as nobody; the cases are tests/cli/cases, made with SOURCE_DATE_EPOCH fixed
           bash tests/cli/run_cli.sh "build-cli/$CLI" "$RUNNER_TEMP/cli"
           ! ldd "build-cli/$CLI" | grep -iE 'QtGui|QtWidgets'
+      - name: Console program - its manual page names every command and option it has
+        run: bash core/ci/check-manpage.sh "build-cli/$CLI" "man/$CLI.1"
       - name: Collect licences
         run: bash core/ci/collect-licences.sh linux build/AppDir
       - name: Rebuild with the licences compiled in
@@ -339,6 +341,7 @@ jobs:
           [ $? = 124 ] || { echo "::error::the installed $APP exited before the timeout"; exit 1; }
           set -e
           "$CLI" --version
+          man -w "$CLI"                      # its manual page, /usr/share/man/man1/<cli>.1.gz
       - uses: actions/upload-artifact@v7
         with:
           name: linux

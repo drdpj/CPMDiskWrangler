@@ -1,0 +1,552 @@
+.\" cpmdw(1) - CP/M Disk Wrangler's console program
+.\" Copyright (C) 2026 Daniel Jameson. GPL v3 or later.
+.\" Checked against the program by core/ci/check-manpage.sh (tests/run_all.sh): every command has a .SS of its own,
+.\" and every option the program takes, and only those, is named here.
+.TH CPMDW 1 2026-11-24 "CP/M Disk Wrangler" "User Commands"
+.nh
+.SH NAME
+cpmdw \- list, extract, add and change files on CP/M disc images
+.SH SYNOPSIS
+.B cpmdw
+.RI [ "global options" ]
+.I command
+.RI [ options ]
+.IR arguments ...
+.SH DESCRIPTION
+.B cpmdw
+is the console version of CP/M Disk Wrangler: the same detection, the same checks and the same checked save as the
+window, with no display needed, so it works in scripts.
+It reads and writes CP/M discs in raw sector images, ImageDisk
+.RI ( .imd ),
+CPCEMU DSK and extended DSK files, and reads TeleDisk
+.RI ( .td0 )
+files.
+It also reads and writes Torch CP/N discs, whose CP/M files are kept in Torch's own filesystem, and Research Machines
+double-sided discs, which hold a separate CP/M disc on each side.
+.PP
+Global options may come before or after the command.
+An image and a path on it are always separate arguments
+.RB ( "cpmdw get games.img 0:GAME.COM out/" ),
+never
+.IR image : path .
+.PP
+Each run opens the image, makes its changes as one transaction and saves once: the directory is checked first, the new
+file is written beside the old one and read back, then put in its place.
+If anything fails, the image is left exactly as it was.
+.SS Paths
+A file is named
+.IB user : NAME.EXT
+or just
+.I NAME.EXT
+(user 0).
+.B 3:
+is user area 3,
+.B *:FILE.TXT
+is that name in every user area,
+.B *:
+is every user area, and the root
+.RB ( /
+or nothing) is the whole disc.
+The wildcards
+.B *
+and
+.B ?\&
+expand in
+.BR get ,
+.BR rm ,
+.B attr
+and
+.BR ls .
+.SS Formats
+CP/M discs don't say how they are laid out, so
+.B cpmdw
+works the format out from the disc (its directory, the files on it, the image's size and sectors), using a library of
+formats: cpmtools' diskdefs and the program's own.
+.B "cpmdw new \-\-list"
+lists them.
+.PP
+When it can't be sure, because the directory is empty (a disc just made with
+.BR new ,
+for one), or the layout was found only by searching, the disc opens read-only, and every command that changes it needs
+.BI \-\-format= NAME
+to say which format it is; without it the change fails with exit status 6.
+.B info
+says which format was found and how sure it is.
+Once a disc has files on it, detection usually confirms its format on its own.
+.SH GLOBAL OPTIONS
+.TP
+.B \-\-json
+Write one JSON document on standard output (see
+.BR "JSON OUTPUT" )
+and nothing else there.
+.TP
+.B \-\-dry\-run
+Do everything, including every check, but write nothing.
+.TP
+.BI \-\-vol= NAME
+Which volume of the image:
+.B cpm
+for a CP/M disc,
+.B side0
+and
+.B side1
+for a disc with a separate CP/M disc on each side,
+.B torch
+for a Torch CP/N disc.
+.B all
+lists every volume, for
+.B ls
+and
+.BR info .
+.TP
+.BI \-\-fs= ID
+Read the image as this filesystem, whatever detection says
+.RB ( info
+lists the readings and their ids).
+.TP
+.B \-\-backup
+Keep the old file as
+.IB name .bak
+when saving.
+.TP
+.BR \-q ", " \-\-quiet
+No output on success.
+.TP
+.BR \-f " \fINAME\fR, " \-\-format= \fINAME\fR
+The disc's format, one of the names
+.B new \-\-list
+gives; on
+.BR new ,
+the format to make.
+.TP
+.BI \-\-diskdefs= FILE
+Read more formats from a diskdefs file (cpmtools' syntax); may be given more than once.
+A format from such a file is known only in runs that name the file.
+.TP
+.BI \-\-charset= NAME
+The national character set for names and text:
+.B ascii
+(as on the disc),
+.BR dk\-no ,
+.BR se\-fi ,
+.BR de ,
+.BR fr ,
+.BR it ,
+.B es
+or
+.BR pt .
+The disc always holds the 7-bit bytes; the set changes only how names are shown and how host names are written.
+.TP
+.BR \-h ", " \-\-help
+Print the commands and global options;
+.IB command " \-\-help"
+prints that command's own options.
+.TP
+.B \-\-version
+Print the version and the DiskWranglerCore version.
+.SH COMMANDS
+.SS info
+.B cpmdw info
+.I image
+.PP
+What the image is: the container, the detection result and the other readings, the format and how sure it is, and
+each volume with its free space.
+For a layout in no library, its definition in diskdefs syntax, to save to a file for
+.BR \-\-diskdefs .
+.SS check
+.B cpmdw check
+.I image
+.RB [ \-\-strict ]
+.PP
+Check the directory of every volume.
+Exit status 4 if one fails;
+.B \-\-strict
+counts warnings as failures too.
+.SS ls
+.B cpmdw ls
+.I image
+.RI [ path ]
+.RB [ \-R ]
+.RB [ \-d ]
+.PP
+List the files, by user number, then name: name, attributes
+.RB ( R
+read-only,
+.B S
+system,
+.B A
+archive), size, and the date on a CP/M 3 disc with time stamps.
+.BR \-R ", " \-\-recursive
+lists every level below the path;
+.BR \-d ", " \-\-directory
+shows the path itself.
+.SS get
+.B cpmdw get
+.I image path... hostdir
+.PP
+Extract files into the host folder
+.IR hostdir ,
+or, with
+.B \-
+as
+.IR hostdir ,
+write one file to standard output.
+.RS
+.TP
+.BI \-\-user\-folders= auto | on | off
+Put each user area's files in a folder
+.BI user N\fR.
+.B auto
+does so only when the files come from more than one user area.
+.TP
+.B \-\-trim
+Cut the ^Z padding off the end of a text file (CP/M keeps most files in whole 128-byte records, padded with ^Z).
+.TP
+.BI \-\-manifest= FILE
+Also write a retro-files manifest of what was extracted.
+.TP
+.BR \-\-replace ", " \-\-skip
+What to do with a host file of the same name: replace it, or leave it and go on.
+Without either, the run stops with exit status 5.
+.RE
+.SS put
+.B cpmdw put
+.I image host... dir
+.PP
+Add host files and folders to
+.IR dir ,
+a user area such as
+.BR 0: .
+Folders called
+.B user0
+to
+.B user15
+go to those user areas.
+Names are made valid CP/M 8.3 names; a name that clashes within one
+.B put
+gets
+.BR ~1 ,
+.BR ~2 ...
+.RS
+.TP
+.BR \-\-replace ", " \-\-skip
+What to do when a file of that name is on the disc.
+Without either, the run stops with exit status 5.
+.TP
+.B \-\-force
+Replace a read-only file too.
+.TP
+.BI \-\-retro= FILE
+Take names, user areas and attributes from a retro-files manifest or JSON file (the drag-and-drop format shared with
+Acorn Disk Wrangler and FLEX Disk Wrangler); may be given more than once.
+.TP
+.BI \-\-letters= dirs | flatten
+Accepted as the other Disk Wranglers accept it (Acorn DFS files arriving on an ADFS disc); it changes nothing on CP/M.
+.RE
+.SS rm
+.B cpmdw rm
+.I image path...
+.RB [ \-r ]
+.RB [ \-\-force ]
+.PP
+Delete files.
+.BR \-r ", " \-\-recursive
+deletes a whole user area
+.RB ( 3: );
+.B \-\-force
+deletes read-only files too.
+.SS mkdir
+.B cpmdw mkdir
+.I image path...
+.RB [ \-p ]
+.PP
+CP/M has no directories, so this always fails with exit status 6.
+.RB ( \-p ", " \-\-parents
+is accepted for the other Disk Wranglers' sake.)
+.SS mv
+.B cpmdw mv
+.I image from to
+.PP
+Rename a file, or move it to another user area
+.RB ( "cpmdw mv disc.img 0:A.TXT 3:B.TXT" ).
+.SS attr
+.B cpmdw attr
+.I image path...
+.RB [ \-\-set
+.IR key = value ]...
+.PP
+Show a file's attributes, or change them with
+.BR \-\-set ,
+which may be given more than once.
+The keys are
+.BR readonly ,
+.BR system ,
+.B archive
+and
+.BR f1 \- f4 ;
+the values
+.BR yes / no ,
+.BR on / off ,
+.BR true / false
+or
+.BR 1 / 0 .
+.SS title
+.B cpmdw title
+.I image
+.RI [ text ]
+.PP
+Show or set a CP/M 3 disc's label (a disc made with
+.BR "new \-\-stamps" ).
+Other CP/M discs have none (exit status 6).
+.SS boot
+.B cpmdw boot
+.I image
+.RI [ option ]
+.PP
+CP/M discs have no boot option: this exists for the other Disk Wranglers and fails with exit status 6.
+.SS new
+.B cpmdw new
+.I file
+.BI \-\-format= NAME
+.RI [ options ]
+.br
+.B cpmdw new \-\-list
+.PP
+Make a blank disc of a format from the library.
+The disc is checked and opened again before it is kept.
+The new disc's directory is empty, so commands that change it need
+.B \-\-format
+too (see
+.BR Formats ).
+.RS
+.TP
+.B \-\-list
+List the formats (with
+.BR \-\-json ,
+each one's description, layout and whether it exists double-sided).
+.TP
+.BI \-\-container= KIND
+.B raw
+(the default),
+.B imd
+(ImageDisk),
+.B dsk
+(the standard CPCEMU DSK, which older emulators read) or
+.B edsk
+(extended DSK).
+An ImageDisk file records each track's density as the real disc has it: single-density formats are FM, a
+double-density disc's single-density track 0 is FM.
+.TP
+.B \-\-stamps
+A CP/M 3 disc with time stamps (the format's layout, with CP/M 3's directory).
+.TP
+.BI \-\-label= TEXT
+The disc label; needs
+.BR \-\-stamps .
+.TP
+.B \-\-separate\-sides
+A double-sided disc with a separate CP/M disc on each side, as Research Machines' are, for a format that exists so
+.RB ( rm\-sd ,
+.BR rm\-dd ,
+.BR rm\-qd ).
+A raw file holds all of side 0, then all of side 1.
+.TP
+.BI \-\-track0= own | padded
+For a raw file of a format whose track 0 is smaller than the other tracks (a single-density track 0): keep it at its
+own size
+.RB ( own ,
+as real Research Machines images are), or pad it with zeros to a full track
+.RB ( padded ,
+as some emulators want).
+.TP
+.B \-\-replace
+Replace the file if it exists.
+.RE
+.SS convert
+.B cpmdw convert
+.I image
+.RI [ out ]
+.RB [ \-\-container= \fIKIND\fR]
+.PP
+Write the disc in another container
+.RB ( raw ,
+.BR imd ,
+.B dsk
+or
+.BR edsk ),
+to
+.I out
+or over the image.
+A raw disc saved as ImageDisk or DSK gets the tracks a new disc of its format has (a single-density track 0 back,
+say).
+TeleDisk files can't be written, so convert one to change it.
+.RS
+.TP
+.BI \-\-track0= own | padded
+As for
+.BR new .
+.TP
+.B \-\-replace
+Replace
+.I out
+if it exists.
+.RE
+.SS copy
+.B cpmdw copy
+.I src dest path...
+.RB [ \-\-into= \fIDIR\fR]
+.RB [ \-\-to\-vol= \fINAME\fR]
+.PP
+Copy files from one image to another (or within one), mapping names as drag and drop does.
+.B \-\-into
+names the user area they go to,
+.B \-\-to\-vol
+the volume of
+.IR dest .
+.BR \-\-replace ,
+.BR \-\-skip ,
+.B \-\-force
+and
+.B \-\-letters
+are as for
+.BR put .
+.SS script
+.B cpmdw script
+.I image
+.RI [ file | \- ]
+.PP
+Run many commands on one image with one save.
+Each line of
+.I file
+(or standard input) is a command without
+.B cpmdw
+and the image
+.RB ( "put host/GAME.COM 2:" );
+lines starting
+.B #
+are comments.
+Global options go on the
+.B script
+command itself;
+.BR new ,
+.B convert
+and
+.B script
+can't be used in a script.
+It stops at the first line that fails, and then nothing is saved.
+.SH JSON OUTPUT
+With
+.BR \-\-json ,
+standard output is one JSON document (schema 1):
+.BR schema ,
+.BR tool ,
+.BR command ,
+.BR image ,
+.BR vol ,
+.BR ok ,
+.BR exit ,
+.BR dryRun ,
+.BR saved ,
+.B result
+(which depends on the command),
+.B changes
+(one per file added, deleted, renamed or changed),
+.B warnings
+and
+.B error
+(null, or
+.BR code ,
+.BR kind ,
+.B message
+and
+.BR path ).
+Scripts should read
+.B exit
+for the outcome and the rest for detail.
+Text output is for people and may change between versions; the JSON only gains fields.
+.SH EXIT STATUS
+.TP 4
+.B 0
+Success.
+.TP
+.B 1
+The operation failed (the disc is full, a bad name, a file that can't be read).
+.TP
+.B 2
+Wrong arguments.
+.TP
+.B 3
+The image, a path on it, or a host file isn't there.
+.TP
+.B 4
+The disc fails its check, so nothing was written.
+.TP
+.B 5
+A name exists and neither
+.B \-\-replace
+nor
+.B \-\-skip
+was given.
+.TP
+.B 6
+Unsupported, or read-only: a TeleDisk file, a disc whose format isn't confirmed (give
+.BR \-\-format ),
+something the filesystem can't do.
+.TP
+.B 7
+The disc belongs to another Disk Wrangler (an Acorn or FLEX disc;
+.B info
+names it).
+.TP
+.B 8
+Two readings are equally likely: choose one with
+.BR \-\-fs .
+.TP
+.B 9
+Nothing recognised the disc
+.RB ( \-\-fs
+tries a reading anyway).
+.TP
+.B 10
+The checked save failed; the original file is untouched.
+.SH ENVIRONMENT
+.TP
+.B SOURCE_DATE_EPOCH
+If set, the time used for CP/M 3 time stamps and ImageDisk headers, so that a run gives the same bytes every time.
+.SH EXAMPLES
+In a folder holding the files
+.I HELLO.TXT
+and
+.IR GAME.COM :
+.PP
+.EX
+cpmdw new games.img \-\-format=kpii                  # a blank Kaypro II disc
+cpmdw put games.img \-\-format=kpii HELLO.TXT GAME.COM 0:
+cpmdw ls games.img
+cpmdw get games.img 0:GAME.COM out/                # out/game.com
+cpmdw check games.img
+cpmdw convert games.img games.dsk \-\-container=dsk
+cpmdw \-\-dry\-run rm games.img 0:HELLO.TXT
+cpmdw new rm.imd \-\-format=rm\-sd \-\-separate\-sides \-\-container=imd
+cpmdw \-\-json ls games.img
+.EE
+.SH SEE ALSO
+.BR cpmdiskwrangler ,
+the program with a window;
+.BR acorndw (1)
+and
+.BR flexdw (1),
+the other Disk Wranglers' console programs;
+.BR cpmls (1),
+.BR cpmcp (1)
+(cpmtools).
+.PP
+The full reference, with the JSON schema:
+.UR https://github.com/drdpj/DiskWranglerCore/blob/main/docs/cli.md
+.UE .
+The program:
+.UR https://github.com/drdpj/CPMDiskWrangler
+.UE .
+.SH AUTHOR
+Daniel Jameson.
+CP/M Disk Wrangler is free software under the GNU General Public License, version 3 or later.

@@ -73,6 +73,8 @@ step "console program: the command-line layer (clitest), golden-image cases, no 
 "$src/tests/cli/run_cli.sh" "$b/cpmdw/cpmdw" "$W/cli" $real > "$W/cli.log" 2>&1
 tail -1 "$W/cli.log" | grep -q "^ALL PASSED" && echo "cpmdw golden: $(grep -c '^pass' "$W/cli.log") cases passed, $(grep -c '^skip' "$W/cli.log") skipped" || { grep -v '^pass' "$W/cli.log" | head -30; fail=1; }
 ldd "$b/cpmdw/cpmdw" | grep -qiE "QtGui|QtWidgets" && { echo "FAIL: cpmdw links QtGui or QtWidgets"; fail=1; } || echo "cpmdw links neither QtGui nor QtWidgets"
+# its manual page (the .deb's /usr/share/man/man1/cpmdw.1.gz) names every command and option it has, and only those
+bash "$src/core/ci/check-manpage.sh" "$b/cpmdw/cpmdw" "$src/man/cpmdw.1" || fail=1
 if [ -n "$adw" ]; then "$src/tests/cli/cross_tool.sh" "$b/cpmdw/cpmdw" "$b/acorndw/acorndw" "$W/cross" > "$W/cross.log" 2>&1 && echo "cross_tool: ok" || { cat "$W/cross.log"; fail=1; }; fi
 step "not CP/M: Acorn DFS discs, and DFS discs with the catalogue wiped"
 mkdir -p "$W/foreign" && python3 "$src/tests/make_foreign.py" "$W/foreign"

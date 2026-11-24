@@ -157,7 +157,7 @@ that name in every user area.
 * **macOS:** inside the app, at `Contents/MacOS/cpmdw`. To run it from Terminal, make a link:
   `sudo ln -s "/Applications/CP:M Disk Wrangler.app/Contents/MacOS/cpmdw" /usr/local/bin/cpmdw`
   (the Finder shows the app as CP/M Disk Wrangler; the file name has a colon in it).
-* **Linux, `.deb`:** `/usr/bin/cpmdw`, installed with the program.
+* **Linux, `.deb`:** `/usr/bin/cpmdw`, installed with the program, with its manual page: `man cpmdw`.
 * **Linux, AppImage:** the AppImage runs the console program when it is started under the name `cpmdw`, so make a
   link to it: `ln -s cpmdiskwrangler-<version>-linux-x86_64.AppImage cpmdw`, then run `./cpmdw`.
 
@@ -206,7 +206,8 @@ the envelope for detail. The full schema is in
 | 9 | unrecognised | Nothing recognised the disc (`--fs=ID` tries a reading anyway) |
 | 10 | save | The checked save failed; the original is untouched |
 
-The full reference, with every command and option, is in
+`cpmdw COMMAND --help` lists a command's options. The full reference, with every command and option, is the manual
+page (`man cpmdw`, from the `.deb`; [man/cpmdw.1](man/cpmdw.1) here) and
 [docs/cli.md](https://github.com/drdpj/DiskWranglerCore/blob/main/docs/cli.md).
 
 ## Limitations
