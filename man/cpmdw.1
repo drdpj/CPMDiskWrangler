@@ -3,6 +3,10 @@
 .\" Checked against the program by core/ci/check-manpage.sh (tests/run_all.sh): every command has a .SS of its own,
 .\" and every option the program takes, and only those, is named here.
 .TH CPMDW 1 2026-11-24 "CP/M Disk Wrangler" "User Commands"
+.\" left-aligned (no stretched spaces), one space after a full stop, no hyphenation
+.ds AD l
+.ad l
+.ss 12 0
 .nh
 .SH NAME
 cpmdw \- list, extract, add and change files on CP/M disc images
@@ -60,8 +64,11 @@ and
 .SS Formats
 CP/M discs don't say how they are laid out, so
 .B cpmdw
-works the format out from the disc (its directory, the files on it, the image's size and sectors), using a library of
-formats: cpmtools' diskdefs and the program's own.
+works the format out from the disc (its directory, the files on it, the image's size and sectors), using the library
+of formats built into it: the disc definitions (the
+.I diskdefs
+file) of cpmtools 2.23, copied in, and the program's own.
+cpmtools itself is a separate package and isn't needed.
 .B "cpmdw new \-\-list"
 lists them.
 .PP
@@ -120,7 +127,7 @@ gives; on
 the format to make.
 .TP
 .BI \-\-diskdefs= FILE
-Read more formats from a diskdefs file (cpmtools' syntax); may be given more than once.
+Read more formats from a diskdefs file (written in cpmtools' syntax); may be given more than once.
 A format from such a file is known only in runs that name the file.
 .TP
 .BI \-\-charset= NAME
@@ -520,14 +527,31 @@ and
 .IR GAME.COM :
 .PP
 .EX
-cpmdw new games.img \-\-format=kpii                  # a blank Kaypro II disc
+# a blank Kaypro II disc
+cpmdw new games.img \-\-format=kpii
+
+# add two files to user area 0 (the format named: the new disc's directory is empty)
 cpmdw put games.img \-\-format=kpii HELLO.TXT GAME.COM 0:
+
+# list it
 cpmdw ls games.img
-cpmdw get games.img 0:GAME.COM out/                # out/game.com
+
+# extract GAME.COM: out/game.com
+cpmdw get games.img 0:GAME.COM out/
+
+# check the disc
 cpmdw check games.img
+
+# write it as a DSK file
 cpmdw convert games.img games.dsk \-\-container=dsk
+
+# see what a delete would do, without doing it
 cpmdw \-\-dry\-run rm games.img 0:HELLO.TXT
+
+# a Research Machines disc with a CP/M disc on each side, as ImageDisk
 cpmdw new rm.imd \-\-format=rm\-sd \-\-separate\-sides \-\-container=imd
+
+# the listing as JSON, for a script
 cpmdw \-\-json ls games.img
 .EE
 .SH SEE ALSO
@@ -537,16 +561,20 @@ the program with a window;
 and
 .BR flexdw (1),
 the other Disk Wranglers' console programs;
-.BR cpmls (1),
-.BR cpmcp (1)
-(cpmtools).
+.BR cpmls (1)
+and
+.BR cpmcp (1),
+from cpmtools, a separate package (not part of CP/M Disk Wrangler) whose disc definitions
+.B cpmdw
+includes.
 .PP
 The full reference, with the JSON schema:
 .UR https://github.com/drdpj/DiskWranglerCore/blob/main/docs/cli.md
-.UE .
+.UE
+.PP
 The program:
 .UR https://github.com/drdpj/CPMDiskWrangler
-.UE .
+.UE
 .SH AUTHOR
 Daniel Jameson.
 CP/M Disk Wrangler is free software under the GNU General Public License, version 3 or later.
