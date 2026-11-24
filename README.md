@@ -87,7 +87,8 @@ status bar says why.
 * **Tools > Check disc** checks the directory; **Tools > Disc information** shows the geometry and format.
 * **File > New disc image** makes a disc in any format in the library, as ImageDisk, extended or standard DSK, or
   raw, optionally with CP/M 3 time stamps and a label. Tick *Double-sided* for a Research Machines disc with a
-  separate filesystem on each side. **File > Save As** converts between image types (TeleDisk to ImageDisk, say).
+  separate filesystem on each side (single, double or quad density; `cpmdw new --separate-sides`). A single-density
+  disc made as ImageDisk is FM, as the real disc is. **File > Save As** converts between image types (TeleDisk to ImageDisk, say).
 * **Save** (Ctrl+S). Nothing is written until you save. The directory is checked first, and it won't save if
   another program changed the file meanwhile. A `.bak` copy of the previous file is kept unless you turn that off
   (Tools).

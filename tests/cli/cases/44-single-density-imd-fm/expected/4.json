@@ -1,0 +1,30 @@
+{
+    "changes": [
+        {
+            "from": null,
+            "note": "osb1sssd",
+            "op": "new",
+            "path": "img_osb1sd.imd",
+            "vol": ""
+        }
+    ],
+    "command": "new",
+    "dryRun": false,
+    "error": null,
+    "exit": 0,
+    "image": "img_osb1sd.imd",
+    "ok": true,
+    "result": {
+        "file": "img_osb1sd.imd",
+        "format": "osb1sssd",
+        "volumes": [
+            "cpm"
+        ]
+    },
+    "saved": true,
+    "schema": 1,
+    "tool": "cpmdw",
+    "vol": null,
+    "warnings": [
+    ]
+}

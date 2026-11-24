@@ -66,6 +66,17 @@ checked on. Read this before changing `core/diskwrangler/device/` (the container
   map), count, size code (0xFF: a table of sizes), sector numbering map, records 0-8 (0 missing, even =
   compressed, 3/4 deleted, 5-8 with data error). Checked against an independent Python parser
   (`tests/decode_container.py`) and libdsk.
+- **Density of a new disc** (the ImageDisk mode of each track; issue #5, 24 Nov 2026): a definition's `imdmode`, else
+  cpmtools' `fm yes` / `datarate SD` (FM), else MFM; 500 kbps for an 8-inch shape (26 x 128 or 26 x 256) or a track of
+  7,680 bytes or more, else 250 kbps (`defaultImdMode`). cpmtools' diskdefs rarely say, so single-density formats came
+  out MFM. The built-in file now gives these an `imdmode`, their layout cpmtools' own: `ibm-3740`, `zen9`, `mds-sd` (0,
+  8-inch FM: single density by definition), `rm-sd` (2: cpmtools' notes, "all tracks FM 16x128"), `trsomsssd` (2:
+  cpmtools' notes), `osb1sssd` (2: cpmtools' notes say MFM, but 13 real Osborne 1 single-density ImageDisk files, all
+  detected as it, are mode 2 on every track). Not changed: `mds-dd` (Intel M2FM, which ImageDisk has no mode for),
+  and formats with 128-byte sectors but no evidence of their density (the Memotech types). A DSK file records no
+  density (the extended format's data-rate and encoding bytes are written 0, "unknown"). Tests: `fstest` checks every
+  track's mode against a table written from the machines (`expectedImdMode`), and the console case
+  `44-single-density-imd-fm` reads the mode bytes of `cpmdw new` images with `tests/imd_modes.py`.
 - **Mixed density / track 0 of its own shape**: each `Track` keeps its sectors and IMD mode; `Image::shape()` takes
   the most common shape **by bytes** (not by track count) and counts heads only where that shape occurs. A format
   may declare `track0 SECTRK SECLEN fm|mfm [FIRSTID]` (cpmtools ignores the key); it must be inside the boot area,
@@ -85,7 +96,7 @@ checked on. Read this before changing `core/diskwrangler/device/` (the container
   length with track 0 at its own size (`rawLayoutFor`); before, it read it with every track alike and saving padded the
   end of the file. Detection reads all of these back: its raw layouts include track 0 at the format's own size and
   padded (one side, or two sides side after side or cylinder by cylinder; side after side with every track alike fits
-  a disc on each side only for a format with its own track 0). Detection: +3 when the disc's track 0 matches a
+  a disc on each side only for a format with its own track 0, or one with `twosided yes` and none: `rm-sd`). Detection: +3 when the disc's track 0 matches a
   format's `track0`, -3 when it doesn't, 0 when a raw file's track 0 is a full track (padded, or not this format: the
   bytes can't say). `sameLayout` ignores it (it doesn't affect the filesystem). After ranking, every reading of a disc
   whose track 0 has a shape of its own records it in its format (`detect()`): a raw layout's short track 0 (as FM),
@@ -142,15 +153,20 @@ checked on. Read this before changing `core/diskwrangler/device/` (the container
   then attaches one `Cpm::Volume` per side (`m_vols[2]`), and every row, `FileRef`, drag payload and import
   carries the side. Drags between the two sides of one window are allowed; drags back onto the same side are not.
   Not yet: generic search for separate sides (only library formats).
-  **New discs of this kind**: a single-sided definition with `twosided yes` (`rm-dd`, `rm-qd`) gets a "Double-sided: a
-  separate disc on each side" box in File > New disc image; ticking it gives `separateSides` + 2 heads, and `makeBlank`
-  formats both sides (each side its own directory, stamps and label if asked) and, as IMD/DSK, gives cylinder 0 of
-  **each** side the track 0 shape (FM 16 x 128). As a raw image the file is side 0 then side 1 (`RawLayout::sideBySide`)
+  **New discs of this kind**: a single-sided definition with `twosided yes` (`rm-sd`, `rm-dd`, `rm-qd`) gets a
+  "Double-sided: a separate disc on each side" box in File > New disc image (`cpmdw new --separate-sides`); ticking it
+  gives `separateSides` + 2 heads, and `makeBlank` formats both sides (each side its own directory, stamps and label if
+  asked) and, as IMD/DSK, gives cylinder 0 of **each** side the track 0 shape (FM 16 x 128; `rm-sd` has none: every
+  track of both sides is FM 16 x 128). As a raw image the file is side 0 then side 1 (`RawLayout::sideBySide`)
   with a track 0 on each, 732,160 bytes for `rm-qd` - the size of the real discs (`BASIC-disk1.img`, `basiczasm.img`),
   detected back as `rm-qd`, a separate disc on each side. A single-sided format with its own track 0 is still refused as
   raw. The boot track is made blank (E5), not with RM's boot code. Tests: `fstest rm-qd+ds raw|imd|edsk` (both sides
   written, committed, reopened, detected), `tests/verify_rm_sides.py` (cpmtools reads each side of the raw file: first
-  track padded to 9 x 512, `fsck.cpm` clean, every file exact; also run on the real images), and guitest.
+  track padded to a full track, `fsck.cpm` clean, every file exact; also run on the real images), and guitest.
+  `rm-sd` (issue #6, 24 Nov 2026): a double-sided single-density disc is two single-sided `rm-sd` discs, as the owner's
+  hand-built ImageDisk of one showed (detected `rm-sd`, certain, a disc on each side; read and written on both sides by
+  a Research Machines 480Z). As raw, side 0 then side 1 (163,840 bytes), detected back as a disc on each side; while
+  side 1 is still empty that file is also an 80-track one-sided disc, so it opens read-only until confirmed.
 - **Research Machines 480Z** (checked on three of the owner's real discs: `BASIC-disk1.img`, `BASIC-disk2.img`,
   `basiczasm.img`, raw, 732,160 bytes): side 0 then side 1 in the file; each side = FM track 0 of 16 x 128 (RM
   boot code, "Quad density disc"), then 79 tracks of 9 x 512; each side is an `rm-qd` disc (skew 5, 3 boot

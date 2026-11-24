@@ -249,14 +249,12 @@ diskdef einstein
   os 2.2
 end
 
-describe ibm-3740 "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)"
 describe ibm-8ss "8-inch single-sided double density"
 describe ibm-8ds "8-inch double-sided double density"
 describe 4mb-hd "4MB hard disc (z80pack / simh style)"
 describe z80pack-hd "z80pack 4MB hard disc"
 describe z80pack-hdb "z80pack 512MB hard disc"
 describe osborne1 "Osborne 1 double density, 185K"
-describe osb1sssd "Osborne 1 single density, 92K"
 describe osborne4 "Osborne Executive / Nuevo / Vixen, double-sided"
 describe epsqx10 "Epson QX-10"
 describe p112 "P112 1.44M"
@@ -272,10 +270,8 @@ describe bw12 "Bondwell 12"
 describe bw14 "Bondwell 14"
 describe v1050 "Visual 1050"
 withdraw microbee40 "a 40-track Microbee disc is double-sided (microbee-ds40); read as cpmtools gives it, it is 80 cylinders on one side, which is microbee-ss80"
-describe rm-sd "Research Machines single density"
 describe myz80 "MYZ80 hard disc"
 describe mds-dd "Intel MDS double density"
-describe mds-sd "Intel MDS single density"
 describe attwp "AT&T / Olivetti word processor"
 describe fdd3000 "Timex FDD3000 3-inch"
 describe nc200cpm "Amstrad NC200 CP/M"
@@ -284,7 +280,6 @@ describe alpha "Alphatronic PC"
 describe heassdd8 "Heath/Zenith 8-inch SSDD"
 describe zen7 "Zenith Z-100 SSDD 5.25-inch"
 describe zen8 "Zenith Z-100 DSDD 5.25-inch"
-describe zen9 "Zenith Z-100 SSSD 8-inch"
 describe zena "Zenith Z-100 SSDD 8-inch"
 describe lobo2 "Lobo Max-80 8-inch CP/M 2"
 describe lobo3 "Lobo Max-80 8-inch CP/M 3"
@@ -355,6 +350,100 @@ diskdef vector-26x256
   track0 26 128 fm
   secbase 1
   imdmode 3
+  os 2.2
+end
+
+# Single-density (FM) discs. cpmtools' diskdefs have no density, so without these a new ImageDisk of them was MFM
+# (issue #5). Each layout is cpmtools' own, unchanged ("fstest library" checks it); only the ImageDisk mode is added.
+
+diskdef ibm-3740
+  desc "8-inch single density IBM 3740, 241K (the standard CP/M distribution format)"
+  source "cpmtools ibm-3740. The IBM 3740 format is single density (FM, 500 kbps) by definition."
+  seclen 128
+  tracks 77
+  heads 1
+  sectrk 26
+  blocksize 1024
+  maxdir 64
+  skew 6
+  boottrk 2
+  imdmode 0
+  os 2.2
+end
+
+diskdef zen9
+  desc "Zenith Z-100 SSSD 8-inch"
+  source "cpmtools zen9 (Zenith Z-100, single-sided single density 8-inch: FM, 500 kbps)."
+  seclen 128
+  tracks 77
+  heads 1
+  sectrk 26
+  blocksize 1024
+  maxdir 64
+  skew 6
+  boottrk 2
+  imdmode 0
+  os 2.2
+end
+
+diskdef mds-sd
+  desc "Intel MDS single density"
+  source "cpmtools mds-sd (Intel MDS 8-inch single density, untested there: FM, 500 kbps)."
+  seclen 128
+  tracks 77
+  heads 1
+  sectrk 26
+  blocksize 1024
+  maxdir 64
+  skew 0
+  boottrk 2
+  imdmode 0
+  os 2.2
+end
+
+diskdef trsomsssd
+  desc "TRS-80 Model I, Omikron CP/M, single density, 72K"
+  source "cpmtools trsomsssd, whose notes say FM (250 kbps)."
+  seclen 128
+  tracks 35
+  heads 1
+  sectrk 18
+  blocksize 1024
+  maxdir 64
+  skew 4
+  boottrk 3
+  imdmode 2
+  os 2.2
+end
+
+diskdef osb1sssd
+  desc "Osborne 1 single density, 92K"
+  source "cpmtools osb1sssd. Its notes say MFM, but 13 real Osborne 1 single-density ImageDisk files (o1next repository), all detected as this format, are FM (mode 2, 250 kbps) on every 10 x 256 track."
+  seclen 256
+  tracks 40
+  heads 1
+  sectrk 10
+  blocksize 2048
+  maxdir 64
+  skew 2
+  boottrk 3
+  imdmode 2
+  os 2.2
+end
+
+diskdef rm-sd
+  desc "Research Machines 380Z/480Z single density (MDS), 40 track, FM 16 x 128"
+  source "cpmtools rm-sd (all tracks FM 16 x 128). Double-sided discs hold a separate disc on each side, as rm-dd and rm-qd do: such an image is read and written on both sides by a Research Machines 480Z (issue #6)."
+  seclen 128
+  tracks 40
+  heads 1
+  sectrk 16
+  blocksize 1024
+  maxdir 64
+  skew 3
+  boottrk 3
+  twosided yes
+  imdmode 2
   os 2.2
 end
 

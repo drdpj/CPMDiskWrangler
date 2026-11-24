@@ -156,6 +156,11 @@ int main(int argc, char **argv) {
             CHECK(g.separateSides && g.physHeads == 2 && g.cylinders == 80, "ticked: two sides of 80 cylinders, a disc on each");
             nd.selectFormat("ibm-3740");
             CHECK(!two->isChecked(), "choosing a format with no double-sided disc unticks it");
+            CHECK(nd.selectFormat("rm-sd") && two->isEnabled(), "offered for rm-sd (single density, issue #6)");
+            two->setChecked(true);
+            g = nd.format();
+            CHECK(g.separateSides && g.physHeads == 2 && g.cylinders == 40 && g.t0sectrk == 0, "rm-sd ticked: two sides of 40 cylinders, every track alike");
+            two->setChecked(false);
         }
         Cpm::Format ds = *Cpm::findFormat("rm-qd");
         ds.separateSides = true; ds.heads = 2; ds.derived = false;

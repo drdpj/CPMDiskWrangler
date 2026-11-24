@@ -25,7 +25,7 @@ export QT_QPA_PLATFORM=offscreen
 W=$(mktemp -d); chmod 755 "$W"      # mktemp makes it private; the console tests run one case as an unprivileged user, who must reach it
 step "fstest: every format in every container, then independent checks"
 for k in raw imd edsk dsk; do
-  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd vector-26x256 microbee-ss80 microbee-ds40 microbee-ds80 microbee-ds84 rm-dd rm-qd torch-cpn; do
+  for f in ibm-3740 kpii kpiv osborne1 osb1sssd cpcdata cpcsys pcw pcw720 acorn-z80 p112 osborne-8dd vector-26x256 microbee-ss80 microbee-ds40 microbee-ds80 microbee-ds84 rm-sd trsomsssd rm-dd rm-qd torch-cpn; do
     "$b/fstest/fstest" "$W/fs/$k" $f $k > "$W/fs-$k-$f.log" 2>&1 || { echo "FAIL fstest $f $k"; cat "$W/fs-$k-$f.log"; fail=1; }
   done
 done
@@ -48,11 +48,11 @@ if grep -q "acorn-z80" "$W/sas/b.log" && grep -q "confidence high; writable" "$W
 else echo "FAIL acorn-z80 side after side"; sed -n 1,12p "$W/sas/b.log"; fail=1; fi
 step "Research Machines double-sided discs: a separate filesystem on each side, made new"
 for k in raw imd edsk; do
-  for f in rm-dd+ds rm-qd+ds; do
+  for f in rm-sd+ds rm-dd+ds rm-qd+ds; do
     "$b/fstest/fstest" "$W/fsds/$k" $f $k > "$W/fsds-$k-$f.log" 2>&1 || { echo "FAIL fstest $f $k"; cat "$W/fsds-$k-$f.log"; fail=1; }
   done
 done
-for f in rm-dd rm-qd; do   # independent: cpmtools reads each side of the raw file; every file back exactly
+for f in rm-sd rm-dd rm-qd; do   # independent: cpmtools reads each side of the raw file; every file back exactly
   python3 -I "$src/tests/verify_rm_sides.py" "$W/fsds/raw/$f+ds.img" "$W/fsds/raw/$f+ds.diskdef" $f "$W/rmout/$f" \
       "$W/fsds/raw/$f+ds.expect" "$W/fsds/raw/$f+ds.expect1" || { echo "FAIL independent check of $f+ds"; fail=1; }
 done

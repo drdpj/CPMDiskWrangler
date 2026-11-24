@@ -1,0 +1,11 @@
+# single-density formats made new as ImageDisk are FM (issue #5); rm-sd also with a disc on each side (issue #6)
+$TOOL new img_rmsd.imd --format=rm-sd --container=imd --json
+$TOOL new img_rmsdds.imd --format=rm-sd --separate-sides --container=imd --json
+$TOOL new img_3740.imd --format=ibm-3740 --container=imd --json
+$TOOL new img_osb1sd.imd --format=osb1sssd --container=imd --json
+$TOOL new img_rmdd.imd --format=rm-dd --container=imd --json
+$TOOL info img_rmsdds.imd --json
+$TOOL put img_rmsdds.imd host/GAME.COM 0: --vol=side0 --json
+$TOOL put img_rmsdds.imd host/GAME.COM 3: --vol=side1 --json
+$TOOL ls img_rmsdds.imd --vol=side0 --json
+$TOOL ls img_rmsdds.imd --vol=side1 --json

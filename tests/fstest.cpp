@@ -31,6 +31,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QRandomGenerator>
 #include <cstdio>
 #include "../src/cpmfs.h"
@@ -75,6 +76,19 @@ static bool verify(Cpm::Store &v, const QVector<Expect> &ex, const QString &what
     CHECK(r.ok(), what + ": check: " + r.errors.join("; "));
     CHECK(r.warnings.isEmpty(), what + ": check warnings: " + r.warnings.join("; "));
     return failures == before;
+}
+
+// The ImageDisk mode every track of a new disc must have (apart from a track 0 of its own shape), written down here
+// from what each machine's discs are, not from the program's definitions: 0/1/2 FM 500/300/250 kbps, 3/4/5 MFM.
+// Single density is FM (issue #5: these came out MFM). -1: not checked.
+static int expectedImdMode(const QString &name) {
+    static const QHash<QString, int> m = {
+        {"ibm-3740", 0}, {"zen9", 0}, {"mds-sd", 0},                       // 8-inch single density
+        {"rm-sd", 2}, {"trsomsssd", 2}, {"osb1sssd", 2},                   // 5.25-inch single density
+        {"acorn-z80", 2}, {"torch-cpn", 2},                                // the BBC Micro's 8271/1770 discs, FM
+        {"rm-dd", 5}, {"rm-qd", 5}, {"osborne1", 5}, {"kpii", 5},         // double density (rm-*: after track 0)
+    };
+    return m.value(name, -1);
 }
 
 static dw::device::Kind kindOf(const QString &k) {
@@ -133,6 +147,23 @@ static int formatTest(const QString &outdir, const QString &fname, const QString
             CHECK(t0 && t0->secs.size() == f.t0sectrk && t0->secs[0].size == f.t0seclen, QString("track 0 of side %1 has its own shape").arg(h));
             if (kind == dw::device::Kind::Imd) CHECK(t0 && t1 && (t0->mode <= 2) == f.t0fm && t1->mode >= 3, QString("side %1: track 0 mode %2, track 1 mode %3").arg(h).arg(t0 ? t0->mode : -1).arg(t1 ? t1->mode : -1));
         }
+    if (kind == dw::device::Kind::Imd && expectedImdMode(lf->name) >= 0) {
+        // every track on every side, each side's own track 0 left out (checked above)
+        const int want = expectedImdMode(lf->name);
+        int tracks = 0, wrong = 0;
+        QString first;
+        for (int h = 0; h < qMax(1, f.physHeads); ++h)
+            for (int c = 0; c < f.cylinders; ++c) {
+                if (f.t0sectrk > 0 && c == 0 && (ds || h == 0)) continue;
+                const dw::device::Track *t = im2.track(c, h);
+                ++tracks;
+                if (!t || t->mode != want) {
+                    if (!wrong++) first = QString("cylinder %1 head %2 mode %3").arg(c).arg(h).arg(t ? t->mode : -1);
+                }
+            }
+        CHECK(tracks > 0 && wrong == 0, QString("ImageDisk mode %1 expected on every track: %2 of %3 differ (first %4)").arg(want).arg(wrong).arg(tracks).arg(first));
+        if (!wrong) printf("  ImageDisk mode %d on all %d tracks%s\n", want, tracks, want <= 2 ? " (FM)" : " (MFM)");
+    }
     if (f.dataId >= 0 && kind != dw::device::Kind::Raw) {                // reserved tracks numbered from secbase, data tracks from datasect
         const int heads = qMax(1, f.physHeads);
         bool okRes = true, okData = true;

@@ -354,9 +354,10 @@ bool physicallyFits(const Cpm::Format &f, const dw::device::Container &img, cons
         if (f.t0sectrk > 0 && l.t0sectrk > 0 && (f.t0sectrk != l.t0sectrk || f.t0seclen != l.t0seclen)) return false;
         // side after side: a disc with a filesystem per side (each with its own track 0), or a two-sided outback one
         if (l.sideBySide && l.heads == 2) {
-            // (every track alike: an outback disc, or one per side whose track 0 is padded to a full track)
+            // (every track alike: an outback disc, or one per side whose track 0 is padded to a full track or, a format
+            // that exists with a disc on each side, has no track 0 of its own: rm-sd)
             if (l.t0sectrk > 0) { if (!f.separateSides) return false; }
-            else if (f.separateSides ? f.t0sectrk == 0 : (f.physHeads != 2 || f.sides != Cpm::SideOrder::OutBack)) return false;
+            else if (f.separateSides ? (f.t0sectrk == 0 && !f.twoSidedOk) : (f.physHeads != 2 || f.sides != Cpm::SideOrder::OutBack)) return false;
         }
         if (f.separateSides) return f.seclen == l.seclen && f.sectrk == l.sectrk && l.heads == 2 && f.cylinders <= l.cyls;
         return f.seclen == l.seclen && f.sectrk == l.sectrk && f.physHeads == l.heads && f.cylinders <= l.cyls &&
@@ -759,6 +760,13 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
             }
             qint64 full = (qint64(f.tracks) * f.sectrk + f.offsetSectors) * f.seclen;
             qint64 trackBytes = qint64(f.sectrk) * f.seclen;
+            // a disc with a separate filesystem on each side whose tracks are all alike (Research Machines single
+            // density, rm-sd): all of side 0, then all of side 1, twice one side's size
+            if (f.twoSidedOk && f.physHeads == 1 && !f.offsetSectors && size == 2 * full) {
+                dw::device::RawLayout d;
+                d.seclen = f.seclen; d.sectrk = f.sectrk; d.heads = 2; d.cyls = f.cylinders; d.sideBySide = true;
+                addLayout(d);
+            }
             bool fits = size == full || (size < full && size % trackBytes == 0 && size > qint64(f.dataStart + 4) * f.seclen &&
                                          size * 10 >= full * 6);
             if (!fits) continue;
@@ -842,8 +850,9 @@ Result detect(dw::device::Container &img, const QString &remembered, int keep) {
         for (const Cpm::Format &lf : Cpm::library()) {
             Cpm::Format f = lf;
             // a single-sided format on a two-sided disc: perhaps a separate disc on each side
-            // (side after side with every track alike: only one whose track 0 is padded to a full track)
-            if ((!sideAfterSide || lf.t0sectrk > 0) && lf.physHeads == 1 && (raw ? layout.heads : sh.heads) == 2) {
+            // (side after side with every track alike: only one whose track 0 is padded to a full track, or one that
+            // exists with a disc on each side and has no track 0 of its own: rm-sd)
+            if ((!sideAfterSide || lf.t0sectrk > 0 || lf.twoSidedOk) && lf.physHeads == 1 && (raw ? layout.heads : sh.heads) == 2) {
                 Cpm::Format s = lf;
                 s.separateSides = true;
                 s.heads = 2;

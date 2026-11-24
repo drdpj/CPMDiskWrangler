@@ -14,7 +14,10 @@ relies on are in [disc-formats.md](disc-formats.md).
    no searching, which would only find again what the cylinder-by-cylinder layout reads (side after side in order
    `outout` is the same bytes as `alt`). The physical description then ends "side 0 then side 1", and so does the
    reading's evidence. Before, such a disc read as a 5 x 512 `alt` layout found by searching: the directory and the
-   files on side 0 right, but every file reaching side 1 wrong, and read-only.
+   files on side 0 right, but every file reaching side 1 wrong, and read-only. A raw file twice the size of a
+   single-sided `twosided yes` format whose tracks are all alike (`rm-sd`) is tried side after side too, as a disc on
+   each side (issue #6, 24 Nov 2026); while side 1 is blank the same bytes also read as an 80-track one-sided disc, so
+   that reading is "medium" and read-only until confirmed.
 2. Library candidates that fit physically are evaluated directly (+3 for being known; +4 / -6 if the format
    has a sector-ID base and the disc's IDs match / don't). The PCW spec (+15) and a remembered format (+20) too.
    A Torch CP/N format (`torchcpn`) is scored by `evaluateTorch` instead: its map's fixed bits are required (else

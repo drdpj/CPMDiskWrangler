@@ -2,8 +2,9 @@
 # CP/M Disk Wrangler - Copyright (C) 2026 Daniel Jameson - GPL v3 or later
 # verify_rm_sides.py <raw image> <diskdef file> <diskdef name> <outdir> [<expect dir side 0> [<expect dir side 1>]]
 # Independent check of a Research Machines double-sided raw image (a separate CP/M disc on each side, side 0 then
-# side 1 in the file, each side starting with a 16 x 128 FM track 0): each side is cut out, its first track padded to
-# the 9 x 512 bytes cpmtools expects of it, and cpmtools (cpmls, cpmcp, fsck.cpm) reads it with the disc definition.
+# side 1 in the file; rm-dd and rm-qd start each side with a 16 x 128 FM track 0, rm-sd's tracks are all alike): each
+# side is cut out, a track 0 of its own shape padded to the full track cpmtools expects of it, and cpmtools (cpmls,
+# cpmcp, fsck.cpm) reads it with the disc definition, whose seclen, sectrk and track0 give the track sizes.
 # Files are written to <outdir>/side0 and <outdir>/side1; with expect directories every file must match exactly.
 # Needs cpmtools. Shares no code with the program.
 import os, subprocess, sys, tempfile, shutil
@@ -11,7 +12,18 @@ import os, subprocess, sys, tempfile, shutil
 img, defs, name, out = sys.argv[1:5]
 expect = sys.argv[5:7]
 b = open(img, 'rb').read()
-T0, TRK = 16 * 128, 9 * 512                      # track 0 as stored; every other track
+def shape(defs, name):                           # (track 0 as stored, every other track) from the diskdef
+    cur, d = None, {}
+    for line in open(defs):
+        w = line.split('#')[0].split()
+        if not w: continue
+        if w[0] == 'diskdef': cur = w[1] if len(w) > 1 and w[1] == name else None
+        elif w[0] == 'end': cur = None
+        elif cur: d[w[0]] = w[1:]
+    if 'seclen' not in d or 'sectrk' not in d: sys.exit("FAIL: no diskdef %s with seclen and sectrk in %s" % (name, defs))
+    trk = int(d['sectrk'][0]) * int(d['seclen'][0])
+    return (int(d['track0'][0]) * int(d['track0'][1]) if 'track0' in d else trk), trk
+T0, TRK = shape(defs, name)
 cyls = (len(b) // 2 - T0) // TRK + 1             # cylinders per side
 side_len = T0 + (cyls - 1) * TRK
 if len(b) != 2 * side_len:
@@ -21,7 +33,7 @@ tmp = tempfile.mkdtemp()
 shutil.copy(defs, os.path.join(tmp, 'diskdefs'))
 for side in (0, 1):
     raw = b[side * side_len:(side + 1) * side_len]
-    logical = b'\xe5' * TRK + raw[T0:]           # track 0 padded to a 9 x 512 track (its contents are not read)
+    logical = raw if T0 == TRK else b'\xe5' * TRK + raw[T0:]   # track 0 padded to a full track (its contents are not read)
     path = os.path.join(tmp, 'side%d.img' % side)
     open(path, 'wb').write(logical)
     env = dict(os.environ, CPMTOOLSFMT='')

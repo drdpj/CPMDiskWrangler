@@ -1,0 +1,17 @@
+python3 -I "$TESTS/imd_modes.py" img_rmsd.imd 2 40 1 16 128
+python3 -I "$TESTS/imd_modes.py" img_rmsdds.imd 2 40 2 16 128
+python3 -I "$TESTS/imd_modes.py" img_3740.imd 0 77 1 26 128
+python3 -I "$TESTS/imd_modes.py" img_osb1sd.imd 2 40 1 10 256
+# a double-density control: rm-dd's data tracks stay MFM 250 kbps (its FM track 0 is fstest's to check)
+python3 -I - img_rmdd.imd <<'PY'
+import sys
+b = open(sys.argv[1], 'rb').read(); i = b.index(0x1a) + 1; m = []
+while i < len(b):
+    mode, c, h, ns, sz = b[i:i + 5]; i += 5 + ns
+    for k in range(ns):
+        t = b[i]; i += 1
+        i += 0 if t == 0 else 1 if t % 2 == 0 else 128 << sz
+    m.append((c, mode))
+assert [x for c, x in m if c == 0] == [2] and {x for c, x in m if c > 0} == {5}, m
+print('ok   img_rmdd.imd: track 0 FM, the rest MFM')
+PY
