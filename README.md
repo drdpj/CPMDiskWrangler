@@ -39,6 +39,11 @@ Help > About shows the version; Help > Licences shows the licences of the progra
 The image type comes from the file's contents, never its name: many emulators use `.dsk` for a plain sector dump,
 so a `.dsk` file is read as a DSK image only if it has a DSK header.
 
+If an ImageDisk file from another program isn't recognised, try
+[`fix_imd_header.py`](https://github.com/drdpj/DiskWranglerCore/blob/main/tools/fix_imd_header.py), a small Python
+script in DiskWranglerCore. It repairs the two faults seen so far: a first line that doesn't start `IMD`, and empty
+junk tracks at the end of the file.
+
 It copes with interleaved and rotated tracks, with discs whose track 0 is single density (FM) and the rest double
 density (Osborne, Research Machines 480Z, Vector Graphic), and with double-sided discs that hold a separate
 filesystem on each side (shown as **Side 0** and **Side 1**). A raw image of such a disc keeps track 0 at its own
